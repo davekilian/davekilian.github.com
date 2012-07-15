@@ -1,6 +1,6 @@
 ---
 layout: post
-title: Networking II
+title: Multiplayer II &ndash; Client / Server Architecture
 subtitle: Multiplayer with smart servers and dumb clients
 author: Dave
 ---

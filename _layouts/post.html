@@ -2,7 +2,7 @@
 <html>
     <head>
         <meta charset="utf-8" />
-        <title>{% if page.title %} {{ page.title }} | {%endif%} Dave Kilian</title>
+        <title>{% if page.title %} {{ page.title }} | {%endif%} Dave Kilian's Blog</title>
         <link rel="stylesheet" href="/bootstrap.min.css" />
         <link rel="stylesheet" href="/global.css" />
     </head>
@@ -28,6 +28,8 @@
                         <h6>{{ page.date | date_to_long_string }}</h6>
                     </header>
                     {{ content }}
+                    <hr />
+                    <a href="/">Back to Blog Index</a>
                 </div>
             </div>
         </div>

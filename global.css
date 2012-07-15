@@ -25,3 +25,8 @@ div.sidebar
     height: 100%;
 }
 
+h2
+{
+    padding-top: .5em;
+}
+

@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <meta charset="utf-8" />
+        <title>{% if page.title %} {{ page.title }} | {%endif%} Dave Kilian</title>
+        <link rel="stylesheet" href="/bootstrap.min.css" />
+        <link rel="stylesheet" href="/global.css" />
+    </head>
+    <body>
+        <div class="container-fluid">
+            <div class="row-fluid">
+                <div class="span2 sidebar">
+                    <img style="margin-bottom: 1em" src="http://1.gravatar.com/avatar/45adbee0467afae3e26db7d060e0b386"</img>
+                    <h1>Dave<br>Kilian</h1>
+                    <ul class="nav">
+                        <li><h4><a href="/">Blog</a></h4></li>
+                        <li><h4><a href="/about.html">About</a></h4></li>
+                        <li><h4><a href="http://www.github.com/davekilian">GitHub</a></h4></li>
+                        <li><h4><a href="http://cs.brown.edu/people/dkilian/resume">CV</a></h4></li>
+                    </ul>
+                    <footer style="position: fixed; bottom: 1em;">
+                        <h5>&copy; Dave Kilian 2012</h5>
+                    </footer>
+                </div>
+                <div class="span10" style="padding: 1em">
+                    <header style="padding-bottom: 1em">
+                        <h1>{{ page.title }}</h1>
+                        <h6>{{ page.date | date_to_long_string }}</h6>
+                    </header>
+                    {{ content }}
+                </div>
+            </div>
+        </div>
+    </body>
+</html>
+

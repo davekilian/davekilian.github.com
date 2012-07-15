@@ -1,0 +1,16 @@
+---
+layout: default
+---
+<section class="content">
+    {% for post in site.posts %}
+
+    <header style="padding-bottom: 1em">
+        <h1><a href="{{ post.url }}">{{ post.title }}</a></h1>
+        <h6>{{ post.date | date_to_long_string }}</h6>
+    </header>
+    <p>{{ post.subtitle }}</p>
+    <hr/>
+
+    {% endfor %}
+</section>
+

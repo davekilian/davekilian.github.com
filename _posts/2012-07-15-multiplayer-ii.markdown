@@ -1,14 +1,35 @@
 ---
 layout: post
 title: Multiplayer II &ndash; Client / Server Architecture
-subtitle: Multiplayer with smart servers and dumb clients
 author: Dave
 ---
 
-Welcome back! In this post we'll expand our single-player game into a
-basic client/server architecture. The client will be able to render 
-the outcomes of the server-side simulation, but will not yet be able
-to collect inputs to send to the server.
+Welcome back! It's time to expand our single-player game into multiplayer game
+on a basic client/server architecture. Shall we dive straight in?
+
+## "The Server is the Man"
+
+Most, if not all multiplayer shooters use client/server architectures. In a
+client/server architecture, each player controls his own client, and all players
+are connected to the central server. The server runs the game logic and
+broadcasts game state to the clients. The clients render the state and
+collect player input. The server uses the input to modify the 
+simulation.
+
+This model is simple, elegant, and works wonderfully in a low-latency
+environment. Each client only needs to talk to the server, which reduces
+bandwidth. Replication is easy because all clients just mirror the server
+state. As the title of this section implies, the server is the authority
+over the game state. This makes it harder for a single client to cheat.
+
+Unfortunately, this model crumbles when latency is high. Over the Internet,
+a game designed like this would be unplayable. We'll fix this by making a
+client that constantly guesses what the server is about to do. For now, 
+though, we'll pretend we don't need to worry about latency. We'll 
+make the client simply mirror the server's game state. Then we'll add guessing
+(called _prediction_) in a later post.
+
+---
 
 ## Expanding the Original Game
 

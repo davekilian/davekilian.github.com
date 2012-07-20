@@ -1,7 +1,6 @@
 ---
 layout: post
 title: Multiplayer I &ndash; Introduction
-subtitle: Building a robust networking system for online multiplayer
 author: Dave
 ---
 
@@ -15,7 +14,8 @@ machines.
 Writing a multiplayer game that works well over the Internet is a different
 story. Packet loss is common. Latency is high, and changes without warning.
 The anonymity of online play encourages some players to cheat. 
-Dealing with these conditions requires a bit more finesse. 
+Dealing with these conditions requires a bit more finesse than simply 
+replicating state.
 
 This series of blog posts is a nuts-and-bolts introduction to building 
 an Internet-ready first-person shooter. The game will be playable over typical
@@ -29,13 +29,13 @@ and [id Software's QuakeWorld](http://en.wikipedia.org/wiki/QuakeWorld).
 ## Audience
 
 This series is aimed at readers who have experience developing video games.
-Readers should know enough to make their own single-player FPS without
-relying heavily on tutorials or game engines.
+If you can build a basic FPS without relying too much on tutorials or game
+engines, these posts are for you!
 
 Readers should be able to read C++. Each post in this series has C++ example
-code, built on the [Qt Framework](http://qt.nokia.com). Code snippets 
-throughout the series will also be written in C++. Most of the content, 
-however, can be applied to your programming language of choice.
+code, built on the [Qt Framework](http://qt.nokia.com). Inline code snippets 
+will also be written in C++. That said, you can apply what you learn in any
+language you desire.
 
 Game networking is shenanigans. You should be prepared to get stuck a couple 
 times while following the tutorial. When you do, take a break and come back
@@ -48,7 +48,7 @@ Fiedler's
 [Networking for Game Programmers](http://gafferongames.com/networking-for-game-programmers) 
 series. In particular, I won't be covering packet transport layers because
 Glenn does it so well. He explains client/server gameplay at a high level;
-this series covers the same with more technical detail.
+this series covers the same in greater technical detail.
 
 The following is a list of documents I consulted when developing multiplayer
 for nullZERO. You may also find them useful:
@@ -57,62 +57,73 @@ for nullZERO. You may also find them useful:
 * [Latency Compensating Methods in Client/Server In-Game Protocol Design and Optimization](https://developer.valvesoftware.com/wiki/Latency_Compensating_Methods_in_Client/Server_In-game_Protocol_Design_and_Optimization)
 * [NPC Lag Compensation](https://developer.valvesoftware.com/wiki/NPC_Lag_Compensation)
 
----
+## Client-Server in a Nutshell
 
-TODO let's move the rest to the next post. Finish out with some skeleton
-code for a first-person FPS and an implementation of the custom UDP protocol.
+TODO diagram
 
----
+We'll be building our game on a client/server architecture. I'll assume 
+you're familiar with client/server systems in general. For games,
+a client-server system usually means:
 
-## "The Server is the Man"
+* The server tracks the state of the game
+* The server sends the state to the clients
+* The clients locally render the server state to the player's screen
+* The clients collect player input
+* The clients send the player input to the server
+* The server uses the input to affect the simulation
 
-Most, if not all multiplayer shooters use client/server architectures. In a 
-client/server architecture, each player has his own client, and all players 
-are conencted to the central server. The server runs the game logic and 
-broadcasts the results to the clients. The clients render the results and 
-collect player input. The server uses the player input to modify the 
-simulation.
+Posts further down the line will blur this division of labor, but this 
+description will suffice for now.
 
-This model is wonderful. The client doesn't need to understand anything about
-the server's simulation logic. Since the client is not authoritative about the
-game's state, it's impossible for the client to cheat. Clients save on
-bandwidth because they only need to talk to the server. Replication is easy
-because all clients just mirror the server's state. 
+## Terminology
 
-As described, this model would work great on a LAN. 
-Unfortunately, factoring in the latency and unreliability of an Internet
-connection uncovers serious responsiveness problems. To mitigate these we'll
-end up making the model more complicated. But for now, we'll assume
-the client is a dumb terminal that just renders the server's simulation.
+Network programmers worry about time a lot. Each client and the server has
+a separate timeline of the game's events. As we'll see later, these timelines 
+can sometimes diverge. To avoid ambiguity, these posts will use the following
+terms to mean specific things:
 
-## What is a Simulation?
+* A **simulation** is a series of **events** that occur over time. Time here
+  doesn't necessarily correspond to the real world: for example, we could
+  choose to run the simulation at half speed. Then 1 second of simultation
+  time would elapse every 2 seconds of real-world time. 
 
-We'll use the term _simulation_ to mean a sequence of _events_ that happen
-over time. "Time" in terms of the simulation is not the same as real-world
-clock time. For example, we could choose to run a simulation at half speed,
-which means 1s of simulation time elapses every 2s of real-world time.
+* **Virtual time** (or **v-time**) will always refer to the timeline of a
+  simulation. 1 second of v-time elapsed in our previous example.
 
-To avoid ambiguity, we will always refer to virtual simulation time as
-_simulation time_ or _sim-time_, and real-world physical time as _wall time_. 
+* **Real time** (or **clock time**) will always refer to the time elapsed in
+  the real world. 2 seconds of clock time elapsed in our previous example.
 
-With this, we can more precisely state the jobs of the server and client:
+* **Client time** refers to the **v-time** of the client's local version of
+  the **simulation**.
 
-* The server generates simulation events, as dictated by the simulation 
-  logic and client inputs. The simulation time always matches the server's
-  wall time perfectly.
+* **Server time** refers to the **v-time** of the server's local version of
+  the **simulation**. In many cases, **server time** is identical to **real
+  time**. 
 
-* The client renders the simulation. The simulation time being rendered
-  is always a small, constant amount earlier than the client's wall time.
-
-Note that wall time may be different for the client and server, but the
-simulation time will always match (since the client and server are
-dealing with the same simulation).
+If you ever find a place in this series where it's not clear whether the time
+being discussed is virtual or real, please
+[file a bug](https://github.com/davekilian/davekilian.github.com/issues)
+against the blog post!
 
 ## Example Code
 
-TODO
+[Example Code I](404)
 
-Now that we've got some of the basics out of the way, we can start building
-our system. Head on over to [Networking II: Client/Server Architectures](TODO)
-when you're ready!
+The example code for this post is a game with basic FPS gameplay. We'll be
+expanding this into a fully multiplayer game. 
+
+One of the most common beginner mistakes in networking is to decide to build
+your game first and add multiplayer later. Although you should usually leave
+networking out of your initial prototypes, 'adding' multiplayer usually means
+rewriting your core game logic. If you want your game to be multiplayer, 
+don't put it off until the end!
+
+In addition to the FPS skeleton, the example code also implements a UDP
+protocol like the one Fielder describes in
+[Networking for Game Programmers](http://gafferongames.com/networking-for-game-programmers).
+
+## Onward
+
+Ready to start? Head on over to
+[Multiplayer II: Client / Server Architecture](/2012/07/15/multiplayer-ii.html)!
 

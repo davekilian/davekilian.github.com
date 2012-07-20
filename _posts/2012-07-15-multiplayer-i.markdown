@@ -32,10 +32,9 @@ This series is aimed at readers who have experience developing video games.
 If you can build a basic FPS without relying too much on tutorials or game
 engines, these posts are for you!
 
-Readers should be able to read C++. Each post in this series has C++ example
-code, built on the [Qt Framework](http://qt.nokia.com). Inline code snippets 
-will also be written in C++. That said, you can apply what you learn in any
-language you desire.
+Readers should be able to read C++. The example code for each post, as well
+as the inline code snippets, are written in C++. That said, you can apply
+what you learn in any language you desire.
 
 Game networking is shenanigans. You should be prepared to get stuck a couple 
 times while following the tutorial. When you do, take a break and come back
@@ -61,9 +60,9 @@ for nullZERO. You may also find them useful:
 
 TODO diagram
 
-We'll be building our game on a client/server architecture. I'll assume 
-you're familiar with client/server systems in general. For games,
-a client-server system usually means:
+We'll be building our game using a client-server architecture. I'll assume 
+you're familiar with client/server systems in general. For games, a 
+client-server system usually means:
 
 * The server tracks the state of the game
 * The server sends the state to the clients
@@ -77,15 +76,15 @@ description will suffice for now.
 
 ## Terminology
 
-Network programmers worry about time a lot. Each client and the server has
-a separate timeline of the game's events. As we'll see later, these timelines 
-can sometimes diverge. To avoid ambiguity, these posts will use the following
-terms to mean specific things:
+Network programmers worry about time a lot. Each client has a separate 
+timeline of the game's events, as does the server. As we'll see later, these 
+timelines can sometimes diverge. To avoid ambiguity, these posts will use the 
+following terms to mean specific things:
 
 * A **simulation** is a series of **events** that occur over time. Time here
   doesn't necessarily correspond to the real world: for example, we could
   choose to run the simulation at half speed. Then 1 second of simultation
-  time would elapse every 2 seconds of real-world time. 
+  time would elapse for every 2 seconds of real-world time. 
 
 * **Virtual time** (or **v-time**) will always refer to the timeline of a
   simulation. 1 second of v-time elapsed in our previous example.
@@ -107,10 +106,14 @@ against the blog post!
 
 ## Example Code
 
-[Example Code I](404)
+Download: [Example Code I](404)
+
+Each post in this series has attached sample code. It's written in C++ using
+the cross-platform [Qt Framework](http://qt.nokia.com) for graphics, windowing,
+networking, and the like.
 
 The example code for this post is a game with basic FPS gameplay. We'll be
-expanding this into a fully multiplayer game. 
+expanding this into a multiplayer game. 
 
 One of the most common beginner mistakes in networking is to decide to build
 your game first and add multiplayer later. Although you should usually leave

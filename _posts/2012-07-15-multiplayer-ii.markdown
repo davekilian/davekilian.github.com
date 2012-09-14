@@ -2,6 +2,7 @@
 layout: post
 title: Multiplayer II &ndash; Client / Server Architecture
 author: Dave
+draft: true
 ---
 
 Welcome back! It's time to expand our single-player game into multiplayer game

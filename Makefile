@@ -1,4 +1,4 @@
 
 all :
-	jekyll
+	rvm all do jekyll
 

@@ -14,12 +14,12 @@ machines.
 
 Writing a multiplayer game that works well over the Internet is a different
 story. Packet loss is common. Latency is high, and changes without warning.
-The anonymity of online play encourages some players to cheat. 
-Dealing with these conditions requires a bit more finesse than simply 
-replicating state.
+Some players will inevitably tamper with the network to cheat. Dealing
+with these conditions requires a bit more finesse than simply replicating 
+state.
 
 This series of blog posts is a nuts-and-bolts introduction to building 
-an Internet-ready first-person shooter. The game will be playable over typical
+an Internet-ready first-person shooter. The game will perform well over
 broadband connections, and we'll take some steps to mitigate cheating.
 
 These posts are based on what I learned while building online multiplayer 
@@ -30,8 +30,8 @@ and [id Software's QuakeWorld](http://en.wikipedia.org/wiki/QuakeWorld).
 ## Audience
 
 This series is aimed at readers who have experience developing video games.
-If you can build a basic FPS without relying too much on tutorials or game
-engines, these posts are for you!
+If you can build a rudimentary FPS without relying heavily on sample code,
+these posts are for you!
 
 Readers should be able to read C++. The example code for each post, as well
 as the inline code snippets, are written in C++. That said, you can apply
@@ -50,8 +50,8 @@ series. In particular, I won't be covering packet transport layers because
 Glenn does it so well. He explains client/server gameplay at a high level;
 this series covers the same in greater technical detail.
 
-The following is a list of documents I consulted when developing multiplayer
-for nullZERO. You may also find them useful:
+The following is a list of other documents I consulted when developing 
+nullZERO. You may also find them useful:
 
 * [Source Multiplayer Networking](https://developer.valvesoftware.com/wiki/Source_Multiplayer_Networking)
 * [Latency Compensating Methods in Client/Server In-Game Protocol Design and Optimization](https://developer.valvesoftware.com/wiki/Latency_Compensating_Methods_in_Client/Server_In-game_Protocol_Design_and_Optimization)
@@ -61,7 +61,7 @@ for nullZERO. You may also find them useful:
 
 TODO diagram
 
-We'll be building our game using a client-server architecture. I'll assume 
+We'll build our game using a client-server architecture. I'll assume 
 you're familiar with client/server systems in general. For games, a 
 client-server system usually means:
 

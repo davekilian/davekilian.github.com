@@ -8,15 +8,13 @@ draft: true
 There are many tutorials online for 3D graphics APIs like DirectX and OpenGL.
 Most start with a discussion of the standard graphics pipeline, followed by a
 deep dive into function calls and sample code. But what's really going on 
-under the hood? Understanding the answer is vital for writing reliable,
-performant rendering code. 
+under the hood? The answer will help you write better, faster rendering code.
 
 ## The Graphics Device
 
-While computer graphics has its earliest roots in software-based 
-rasterization, the idea of using dedicated hardware to perform 
-graphics-related tasks has become ubiquitious in computing today. To 
-understand why, it's important to look at what makes graphics hardware
+Although computer graphics began with software-based rasterization, the idea 
+of using dedicated hardware to render graphics has become ubiquitious in 
+computing today. To understand why, we'll look at what makes graphics hardware
 special.
 
 The graphics card is an add-in card you can connect to your PC's
@@ -26,12 +24,12 @@ processors (called GPUs) and onboard RAM.
 
 A GPU can be thought of as a highly parallel CPU. Both GPUs and CPUs
 perform similar tasks (they both execute programs), but they do so
-in very different manners:
+very differently:
 
-* A CPU consists of a handful of complex cores that run at very
-  high speeds (often around 2-3 GHz).  In order to process a large data 
-  set, where the same task needs to be performed on each element, the CPU 
-  can process few elements at once. It moves through the data set sequentially.
+* A CPU consists of a handful of complex cores that run at high speeds (around 
+  2-3 GHz). Given a parallelizable dataset (one with many elements that can be
+  processed in any order), a CPU can only handle a few elements at once. It
+  moves through the data set sequentially.
 
   This is an example of a **MIMD** (pronounced _"mim-dee"_) architecture. MIMD
   stands for "Multiple Instruction / Multiple Data." On a MIMD architecture,
@@ -42,7 +40,7 @@ in very different manners:
   They make up for this simplicity by packing many cores together (10s,
   100s, or sometimes 1000s). 
 
-  The resulting system is **SIMD**: Single Instruction, Multiple Data.
+  This system is **SIMD**: Single Instruction, Multiple Data.
   GPUs excel at processing data sets in which each data element can be 
   procesed on its own. 
 

@@ -30,3 +30,14 @@ h2
     padding-top: .5em;
 }
 
+div.post-blurb
+{
+    display: block;
+    color: #888;
+}
+
+div.post-blurb:hover
+{
+    color: black;
+}
+

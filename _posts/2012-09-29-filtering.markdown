@@ -5,32 +5,59 @@ author: Dave
 draft: true
 ---
 
-Every year, [CS123](http://cs.brown.edu/cs123) spends a few weeks discussing
-image filtering, culminating with a project where students implement some
-simple filters, blurs and scaling algorithms. 
-Unfortunately, filtering (and signal processing in general!) is tricky, and 
-it's easy to get lost in the theory.
+Every year, [CS123](http://cs.brown.edu/cs123) students spend a couple weeks
+learning about image filtering in class, before going off on their own to 
+implement some basic filters, blurs and scaling algorithms. Filtering (and
+signal processing in general!) can be tricky. When it comes to image sampling
+and reconstruction, it's easy to get lost in the theory.
 
 Let's see if we can put everything in perspective.
+
+## Duals
+
+Before we can dive into signal processing, we're going to need a theoretical
+tool to talk about our signals. So let's talk about _duals_. 
+
+Think back to calculus. Consider a function _f(x)_, and its derivative 
+_f'(x)_. 
+
+    TODO graphs of a function and its derivative
+
+When you take the derivative of a function, you get back another function.
+This derivative says something about the original function, but probably looks
+nothing like the original function at all. You can integrate the derivative to
+reconstruct the original function.
+
+If you change the function, you get a different derivative. If you modify
+the derivative, you integrate to a different function than the original.
+You can think of the function and derivative as _duals_ of each other.
+
+    TODO graphs showing ramifications of modifications
+
+Disclaimer: mathematically-inclined readers are probably shaking their
+heads in disgust right now :) While this example is a useful way to initially
+understand duality, true duality is actually a bit stronger than this. It
+requires using the same operation to transform into the dual and back.
+Derivation and integration, however, are entirely different beasts. This 
+wasn't a true example of duality.
+
+## The Frequency Domain
+
+So why are we talking about duals? Because we'll find one duality particularly
+useful for image processing: the duality between the spatial and frequency 
+domains. What's that?
+
+It turns out every function can be represented as a sum of infinitely many 
+sine waves. Specifically, if we took one sine wave for every possible 
+frequency, multiplied each by a different amplitude, and summed all of those, 
+we could get back any function by choosing our amplitudes carefully. 
+This isn't totally obvious!
 
 ---
 
 TODO
 
-Duals
-* We're going to need a tool to discuss this stuff first. So let's talk about duals.
-* One dual you've probably seen before is derivatives / integrals in calculus.
-* If you take a derivative of a function, you get another function. This new function
-  says something about the original function, but doesn't look like it at all. If
-  you integrate, you get the same thing back.
-* If you change the function, you get a new derivative. If you change the derivative,
-  integration gives you a different functions. So functions and their derivatives
-  line up, and you can go back between each other. This notion is called a _dual_.
-
 Spatial / Frequency Dual
-* Another dual relates to Fourier Transforms (link)
-* Every signal can be represented by a sum of infinitely many sine waves of all
-  possible frequencies. This isn't intuitively obvious!
 * Example with a simple sine wave. Be sure to explain how the horizontal axes don't
   line up between the duals.
 * More complex example

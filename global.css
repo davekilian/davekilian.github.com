@@ -41,3 +41,27 @@ div.post-blurb:hover
     color: black;
 }
 
+body
+{
+    font-size: 100%;
+    line-height: 1.5em;
+    word-spacing: .12em;
+}
+
+p
+{
+    margin-bottom: 1em;
+    text-align: justify;
+}
+
+li
+{
+    text-align: justify;
+    line-height: 1.5em;
+}
+
+ul
+{
+    margin-top: 1em;
+    margin-bottom: 1em;
+}

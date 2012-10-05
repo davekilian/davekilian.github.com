@@ -5,6 +5,17 @@
         <title>{% if page.title %} {{ page.title }} | {%endif%} Dave Kilian's Blog</title>
         <link rel="stylesheet" href="/bootstrap.min.css" />
         <link rel="stylesheet" href="/global.css" />
+
+        <script type="text/javascript"
+          src="http://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML">
+        </script>
+        <script type="text/x-mathjax-config">
+          MathJax.Hub.Config({
+            extensions: ["tex2jax.js"],
+            jax: ["input/TeX","output/HTML-CSS"],
+            tex2jax: {inlineMath: [["$","$"],["\\(","\\)"]]}
+          });
+        </script>
     </head>
     <body>
         <div class="container-fluid">
@@ -24,7 +35,7 @@
                         <h5>&copy; Dave Kilian 2012</h5>
                     </footer>
                 </div>
-                <div class="span10" style="padding: 1em">
+                <div class="span10" style="padding: 1em; max-width: 600px">
                     <header style="padding-bottom: 1em">
                         <h1>{{ page.title }}</h1>
                         <h6>{{ page.date | date_to_long_string }}</h6>

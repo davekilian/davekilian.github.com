@@ -5,11 +5,11 @@ author: Dave
 draft: true
 ---
 
-Every year, [CS123](http://cs.brown.edu/cs123) students spend a couple weeks
+Every year, [CS123](http://cs.brown.edu/courses/cs123) students spend a couple weeks
 learning about image filtering in class, before going off on their own to 
-implement some basic filters, blurs and scaling algorithms. Filtering (and
-signal processing in general!) can be tricky. When it comes to image sampling
-and reconstruction, it's easy to get lost in the theory.
+implement some basic filters, blurs and scaling algorithms. Filtering, like
+signal processing in general, can be tricky. It's easy to get lost in the
+theory when you start talking about image sampling and reconstruction.
 
 So, let's see if we can put everything in perspective.
 
@@ -45,7 +45,7 @@ Derivation and integration, however, are entirely different beasts.
 
 So why are we talking about duals? Because we'll find one duality particularly
 useful for image processing: the duality between the spatial and frequency 
-domains. What's that?
+domains.
 
 It turns out every function can be represented as a sum of infinitely many 
 sine waves. Specifically, if we took one sine wave for every possible 
@@ -53,25 +53,57 @@ frequency $f$, multiplied each by a different amplitude $a\_f$, and summed
 all of those, we get back some function. By carefully choosing our values
 of $a\_f$, we can exactly recreate any function this way. 
 
-In other words, every function $h(x)$ can be rewritten as follows:
+In other words, every function $g(x)$ can be rewritten as follows:
 
-$$h(x) = \sum\_f a\_f \sin(fx)$$
+$$g(x) = \sum\_f a\_f \sin(fx)$$
 
-    TODO example with a simple sine wave
+### Visualizing the Frequency Domain
 
-Consider a function consisting of a simple sine wave. 
+Like regular (spatial domain) functions, frequency domain functions can be
+graphed. However, the axes of frequency graphs mean something 
+different than the axes of spatial domain graphs. 
+
+For regular functions, the graph axes represent spatial units. The graph
+is actually just a 2D space, in which a function is drawn. For frequency
+graphs, however,
+
+* The horizontal axis represents **frequency**
+* The vertical axis represents **amplitude**
+
+Then each point on the frequency graph specifies the frequency and amplitude
+of one of the infinitely many sine waves.
+
+Let's try some examples. Consider $g(x)$, a spatial function consisting of a 
+simple sine wave:
+
+    TODO graph of a simple sine wave
+
+The frequency graph of $g(x)$ looks like this:
+
+    TODO line at y = 0, single point at (f, a_f)
+
+Notice the horizontal line at $y = 0$. The amplitude of every sine wave,
+except one, is 0. So none of these sine waves contributes to the sum
+that produces $g(x)$. 
+
+However, the point at $(f, a\_f)$ specifies the sine wave with frequency
+$f$ be assigned the amplitude $a\_f$. So if we transform this frequency
+graph back into the spatial domain, we get back the original $g(x)$:
+
+$$g(x) = \sum\_i a\_i \sin(ix) = 0 + ... + a\_f \sin(fx) + ... + 0 = a\_f \sin(fx)$$
+
+In principle, we can do this for any function $g(x)$, even if $g(x)$ isn't
+a trigonometric function (e.g. $g(x) = x^2$). For now, you should treat
+the transformation that does this as a black box. If you're interested later,
+you can read more about the transformation, which is called a
+[Fourier transform](http://google.com/search?q=Fourier+transform).
+
+## Sampling
 
 ---
 
 TODO
 
-Spatial / Frequency Dual
-* Example with a simple sine wave. Be sure to explain how the horizontal axes don't
-  line up between the duals.
-* More complex example
-* This is a theoretical tool. We'll use it in a minute ...
-
-Sampling
 * Images as continuous functions
 * Our representation is a discretization -- sampling
 * What information can we represent with sampling? Nyquist limit

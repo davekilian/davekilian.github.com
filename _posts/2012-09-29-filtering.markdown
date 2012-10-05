@@ -11,35 +11,35 @@ implement some basic filters, blurs and scaling algorithms. Filtering (and
 signal processing in general!) can be tricky. When it comes to image sampling
 and reconstruction, it's easy to get lost in the theory.
 
-Let's see if we can put everything in perspective.
+So, let's see if we can put everything in perspective.
 
 ## Duals
 
 Before we can dive into signal processing, we're going to need a theoretical
-tool to talk about our signals. So let's talk about _duals_. 
+tool to help us talk about our signals. That tool is the _dual_. 
 
-Think back to calculus. Consider a function _f(x)_, and its derivative 
-_f'(x)_. 
+Think back to calculus. Consider a function $f(x)$, and its derivative 
+$f'(x)$. 
 
     TODO graphs of a function and its derivative
 
 When you take the derivative of a function, you get back another function.
-This derivative says something about the original function, but probably looks
+This derivative says something about the original function, but may look
 nothing like the original function at all. You can integrate the derivative to
-reconstruct the original function.
+get back the original function.
 
-If you change the function, you get a different derivative. If you modify
-the derivative, you integrate to a different function than the original.
-You can think of the function and derivative as _duals_ of each other.
+If you change the function, you get back a different derivative. If you modify
+the derivative, the integral is different from the original function.
+The function and derivative seem to be tied to one another.
+You can think of them as _duals_ of each other.
 
     TODO graphs showing ramifications of modifications
 
 Disclaimer: mathematically-inclined readers are probably shaking their
-heads in disgust right now :) While this example is a useful way to initially
-understand duality, true duality is actually a bit stronger than this. It
-requires using the same operation to transform into the dual and back.
-Derivation and integration, however, are entirely different beasts. This 
-wasn't a true example of duality.
+heads in disgust right now :) While this example is a useful way to gain
+intuition about duality, the real definition is a bit stronger: duality
+requires the same operation to transform something into its dual and back.
+Derivation and integration, however, are entirely different beasts. 
 
 ## The Frequency Domain
 
@@ -49,9 +49,17 @@ domains. What's that?
 
 It turns out every function can be represented as a sum of infinitely many 
 sine waves. Specifically, if we took one sine wave for every possible 
-frequency, multiplied each by a different amplitude, and summed all of those, 
-we could get back any function by choosing our amplitudes carefully. 
-This isn't totally obvious!
+frequency $f$, multiplied each by a different amplitude $a\_f$, and summed 
+all of those, we get back some function. By carefully choosing our values
+of $a\_f$, we can exactly recreate any function this way. 
+
+In other words, every function $h(x)$ can be rewritten as follows:
+
+$$h(x) = \sum\_f a\_f \sin(fx)$$
+
+    TODO example with a simple sine wave
+
+Consider a function consisting of a simple sine wave. 
 
 ---
 

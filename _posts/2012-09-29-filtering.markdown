@@ -98,17 +98,94 @@ the transformation that does this as a black box. If you're interested later,
 you can read more about the transformation, which is called a
 [Fourier transform](http://google.com/search?q=Fourier+transform).
 
+## Representing Images Mathematically
+
+From here on in, we'll only talk about 1D images (i.e. those consisting of a
+single row of pixels), in grayscale. Everything we talk about will generalize
+to 2D color images, however. This just makes the graphs easier to understand :)
+
+One way to mathematically represent an image is to use a function. This
+function is defined over the spatial extents of the image. For every point 
+$(x, y)$ on the graph, $y \in \[0, 1\]$ denotes how much light is measured
+or displayed at point $x$ in the image. $y = 0$ denotes black and $y = 1$ 
+denotes white. All values in between are shades of gray.
+
+Below is a 1D image and its corresponding image function:
+
+    TODO example graph and image
+
+This function is sometimes called the **signal**. In fact, everything we are
+doing is part of the field called **signal processing**.
+
 ## Sampling
+
+On a computer, we represent the signal by **sampling** it.
+To sample the signal, we move along the $x$ axis, stopping at regular intervals
+at recording the $y$ value at each $x$. The result is a set of $(x, y)$ points
+from the original function. We call these points **samples** or **pixels**.
+
+    TODO diagram for sampling the graph above
+
+Note that, since samples are points, they have no associated width or height.
+You may be used to thinking of pixels as little squares, but for this article
+you should think of pixels as infinitesimally small points, with zero width
+or height.
+
+Of course, we lose information when we do this. Given only a set of sample 
+points, we can guess at what the original function looked like, but we can
+never be sure. For example, given these points:
+
+    TODO points
+
+The original function could have looked like this:
+
+    TODO lerped
+
+Or this:
+
+    TODO cubic interpolation
+
+Or even this:
+
+    TODO something crazy
+
+The process of recreating a function from its sample points is called
+**reconstruction**. Reconstruction isn't perfect, but it works well enough
+given enough input data.
+
+## The Nyquist Limit
+
+We mentioned that we sample by moving along the $x$ axis at regular intervals.
+One natural question is: How big should these intervals be? Smaller intervals
+give us more data, but take up more storage space. So how large can we get away
+with making our sampling interval?
+
+Harry Nyquist approached this problem by thinking about the frequency domain
+dual of the original signal. He invented the Nyquist Limit, which works as 
+follows:
+
+>   Look at the frequency domain representation of the image. Find the point
+>   with the highest frequency that has a non-zero amplitude. This denotes
+>   highest frequency component of the continuous image. Let $f$ be that
+>   frequency.
+>   
+>   &nbsp;
+>   
+>   The wavelength of $f$ is $\frac{1}{f}$. To faithfully represent the 
+>   original function, the sampling interval must be no larger than 
+>   $\frac{1}{2f}$. Equivalently, the sampling frequency must be no less than 
+>   $2f$.
+
+To gain insight on why this is true, try playing with
+[this CS123 applet](http://www.cs.brown.edu/exploratories/freeSoftware/repository/edu/brown/cs/exploratories/applets/nyquist/nyquist_limit_java_browser.html).
+
+## Dealing With the Nyquist Limit
 
 ---
 
 TODO
 
-* Images as continuous functions
-* Our representation is a discretization -- sampling
-* What information can we represent with sampling? Nyquist limit
-* What happens when we don't adhere to the Nyquist limit?
-* So need to filter at twice the frequency of the signal from the real world.
+* So need to sample at twice the frequency of the signal from the real world.
 * But the number of samples we take is fixed ...
 * Compromise: change the signal, throwing out any high frequency noise
 * This is called low-pass filtering

@@ -6,7 +6,7 @@ draft: true
 ---
 
 Every year, [CS123](http://cs.brown.edu/courses/cs123) students spend a couple weeks
-learning about image filtering in class, before going off on their own to 
+learning about image filtering in class before going off on their own to 
 implement some basic filters, blurs and scaling algorithms. Filtering, like
 signal processing in general, can be tricky. It's easy to get lost in the
 theory when you start talking about image sampling and reconstruction.
@@ -28,8 +28,8 @@ This derivative says something about the original function, but may look
 nothing like the original function at all. You can integrate the derivative to
 get back the original function.
 
-If you change the function, you get back a different derivative. If you modify
-the derivative, the integral is different from the original function.
+If you change $f(x)$, you get back a different $f'(x)$. If you modify
+$f'(x)$, integrating gives you a different $f(x)$ than the original.
 The function and derivative seem to be tied to one another.
 You can think of them as _duals_ of each other.
 
@@ -45,7 +45,8 @@ Derivation and integration, however, are entirely different beasts.
 
 So why are we talking about duals? Because we'll find one duality particularly
 useful for image processing: the duality between the spatial and frequency 
-domains.
+domains. The spatial domain is another name for the types of functions you've
+been graphing all your life. But what is the frequency domain?
 
 It turns out every function can be represented as a sum of infinitely many 
 sine waves. Specifically, if we took one sine wave for every possible 
@@ -63,7 +64,7 @@ Like regular (spatial domain) functions, frequency domain functions can be
 graphed. However, the axes of frequency graphs mean something 
 different than the axes of spatial domain graphs. 
 
-For regular functions, the graph axes represent spatial units. The graph
+In the spatial domain, the graph axes represent spatial units. The graph
 is actually just a 2D space, in which a function is drawn. For frequency
 graphs, however,
 
@@ -87,7 +88,7 @@ except one, is 0. So none of these sine waves contributes to the sum
 that produces $g(x)$. 
 
 However, the point at $(f, a\_f)$ specifies the sine wave with frequency
-$f$ be assigned the amplitude $a\_f$. So if we transform this frequency
+$f$ has amplitude $a\_f$. So if we transform this frequency
 graph back into the spatial domain, we get back the original $g(x)$:
 
 $$g(x) = \sum\_i a\_i \sin(ix) = 0 + ... + a\_f \sin(fx) + ... + 0 = a\_f \sin(fx)$$
@@ -98,30 +99,33 @@ the transformation that does this as a black box. If you're interested later,
 you can read more about the transformation, which is called a
 [Fourier transform](http://google.com/search?q=Fourier+transform).
 
+Whew! With that bit of theory out of the way, we can start talking about the
+images themselves...
+
 ## Representing Images Mathematically
 
 From here on in, we'll only talk about 1D images (i.e. those consisting of a
 single row of pixels), in grayscale. Everything we talk about will generalize
-to 2D color images, however. This just makes the graphs easier to understand :)
+to 2D color images, however. This just makes the graphs easier to draw :)
 
-One way to mathematically represent an image is to use a function. This
+For analysis, we're going to represent an image using a function. This
 function is defined over the spatial extents of the image. For every point 
 $(x, y)$ on the graph, $y \in \[0, 1\]$ denotes how much light is measured
-or displayed at point $x$ in the image. $y = 0$ denotes black and $y = 1$ 
-denotes white. All values in between are shades of gray.
+or displayed at point $x$ in the image. The value $y = 0$ denotes pure black 
+and $y = 1$ denotes pure white. All values in between are shades of gray.
 
 Below is a 1D image and its corresponding image function:
 
     TODO example graph and image
 
-This function is sometimes called the **signal**. In fact, everything we are
-doing is part of the field called **signal processing**.
+This function is called the **signal**. The term originates from **signal
+processing**, the field where most of this content originated.
 
 ## Sampling
 
 On a computer, we represent the signal by **sampling** it.
 To sample the signal, we move along the $x$ axis, stopping at regular intervals
-at recording the $y$ value at each $x$. The result is a set of $(x, y)$ points
+and recording the $y$ value at each $x$. The result is a set of $(x, y)$ points
 from the original function. We call these points **samples** or **pixels**.
 
     TODO diagram for sampling the graph above
@@ -129,11 +133,11 @@ from the original function. We call these points **samples** or **pixels**.
 Note that, since samples are points, they have no associated width or height.
 You may be used to thinking of pixels as little squares, but for this article
 you should think of pixels as infinitesimally small points, with zero width
-or height.
+and height.
 
 Of course, we lose information when we do this. Given only a set of sample 
-points, we can guess at what the original function looked like, but we can
-never be sure. For example, given these points:
+points, we can only guess at what the original function looked like. For
+example, given these points:
 
     TODO points
 
@@ -151,30 +155,29 @@ Or even this:
 
 The process of recreating a function from its sample points is called
 **reconstruction**. Reconstruction isn't perfect, but it works well enough
-given enough input data.
+given enough input data. More input data makes reconstruction more accurate.
 
 ## The Nyquist Limit
 
 We mentioned that we sample by moving along the $x$ axis at regular intervals.
-One natural question is: How big should these intervals be? Smaller intervals
-give us more data, but take up more storage space. So how large can we get away
-with making our sampling interval?
+One natural question is: How big should these intervals be? Using a smaller 
+interval gives us more data (thus improving reconstruction), but it requires
+more storage space. How large can we get away with making our sampling
+interval without making our reconstruction terrible?
 
-Harry Nyquist approached this problem by thinking about the frequency domain
-dual of the original signal. He invented the Nyquist Limit, which works as 
-follows:
+Harry Nyquist approached this problem by transforming the signal into the
+frequency domain. His Nyquist Limit works as follows:
 
->   Look at the frequency domain representation of the image. Find the point
->   with the highest frequency that has a non-zero amplitude. This denotes
->   highest frequency component of the continuous image. Let $f$ be that
->   frequency.
+>   Look at the frequency domain representation of the image. Find the 
+>   highest-frequency point that has a non-zero amplitude. Let $f$ be the
+>   frequency associated with this point. $f$ is the highest frequency
+>   component of the continuous image signal.
 >   
 >   &nbsp;
 >   
 >   The wavelength of $f$ is $\frac{1}{f}$. To faithfully represent the 
 >   original function, the sampling interval must be no larger than 
->   $\frac{1}{2f}$. Equivalently, the sampling frequency must be no less than 
->   $2f$.
+>   $\frac{1}{2f}$. Equivalently, the sampling frequency must be $\geq 2f$. 
 
 To gain insight on why this is true, try playing with
 [this CS123 applet](http://www.cs.brown.edu/exploratories/freeSoftware/repository/edu/brown/cs/exploratories/applets/nyquist/nyquist_limit_java_browser.html).

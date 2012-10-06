@@ -1,6 +1,6 @@
 ---
 layout: post
-title: Understanding Image Filtering
+title: An Image Filtering Overview
 author: Dave
 draft: true
 ---
@@ -184,30 +184,70 @@ To gain insight on why this is true, try playing with
 
 ## Dealing With the Nyquist Limit
 
+Thanks to the Nyquist limit, we now know how to sample an image: just choose a
+high enough sampling frequency to faithfully represent the image, and sample
+the image intensity at each of the sample points.
+
+There's a hitch: the maximum frequency of an image depends on what you point
+your camera at, but your camera's sampling rate is fixed. Digital cameras
+sample using a rectangular array of CCDs, each of which samples the light
+intensity at that point. The camera's sampling rate is constant, determined 
+by how far apart the CCDs are placed.
+
+    TODO diagram of a signal with high frequency stuff
+
+Although we cannot faithfully represent signals from scenes with high
+frequency data, we can represent a subset of the scene. What we need is a
+modified version of the scene, identical to the original except with all of
+the high frequency data somehow cut out.
+
+    TODO diagrams of corresponding filtered signal
+
+This, finally, is where the duals (and, indeed, filtering in general) come 
+into play.
+
+## Low-Pass Filtering
+
+The filter that removes high-frequency data is called a low-pass filter. The
+name simply means _low_-frequency data is _pass_ed through the filter, while
+high frequency data is removed. As you might imagine, this is where the
+frequency domain comes in handy!
+
+Consider our original signal from a little while ago:
+
+    TODO spatial graph
+
+Here's its frequency graph, determined by a discrete Fourier transform:
+
+    TODO frequency graph
+
+To filter out the high frequencies, we just zero the amplitude at any point
+beyond the maximum allowable frequency $f\_{max}$ (determined by the
+Nyquist limit):
+
+    TODO another frequency graph
+
+Then we can reconstruct the spatial signal using a Fourier transform:
+
+    TODO filtered graph
+
+Now we can sample with impunity!
+
 ---
 
 TODO
 
-* So need to sample at twice the frequency of the signal from the real world.
-* But the number of samples we take is fixed ...
-* Compromise: change the signal, throwing out any high frequency noise
-* This is called low-pass filtering
-
-Low-Pass Filtering
-* Why did we take this digression? 
-* Because low-pass filtering is really easy in the frequency domain. Just multiply
-  by the box function!
-* Show that it works.
+* Box function
 
 Perspective!
 * To recap, we're trying to represent images using a limited number of discrete samples.
 * To do this, we'll filter out high frequency noise. The result is a similar signal, but contains less information.
 * Here's our new algorithm:
 
-    Use FFT to create the frequency domain equivalent of the signal
-    Zero the high frequencies we can't represent
-    Use InvFFT to reconstruct the modified spatial domain function
-    That's our image!
+        Use FFT to create the frequency domain equivalent of the signal
+        Zero the high frequencies we can't represent
+        Use InvFFT to reconstruct the modified spatial domain function
+        That's our image!
 
 There's a Better (Read: Faster) Way
 * All this is complex math. It's probably pretty complicated and slow. Let's not deal with it?

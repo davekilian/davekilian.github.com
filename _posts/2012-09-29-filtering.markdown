@@ -1,14 +1,14 @@
 ---
 layout: post
-title: An Image Filtering Overview
+title: A Sampling Overview
 author: Dave
 draft: true
 ---
 
-Every year, [CS123](http://cs.brown.edu/courses/cs123) students spend a couple weeks
-learning about image filtering in class before going off on their own to 
-implement some basic filters, blurs and scaling algorithms. Filtering, like
-signal processing in general, can be tricky. It's easy to get lost in the
+Every year, [CS123](http://cs.brown.edu/courses/cs123) students spend a 
+couple weeks learning about image filtering in class before going off on 
+their own to implement some basic filters, blurs and scaling algorithms. 
+Signal processing can be tricky. It's easy to get lost in the
 theory when you start talking about image sampling and reconstruction.
 
 So, let's see if we can put everything in perspective.
@@ -16,7 +16,7 @@ So, let's see if we can put everything in perspective.
 ## Duals
 
 Before we can dive into signal processing, we're going to need a theoretical
-tool to help us talk about our signals. That tool is the _dual_. 
+tool to help us talk about signals. That tool is the _dual_. 
 
 Think back to calculus. Consider a function $f(x)$, and its derivative 
 $f'(x)$. 
@@ -24,7 +24,7 @@ $f'(x)$.
     TODO graphs of a function and its derivative
 
 When you take the derivative of a function, you get back another function.
-This derivative says something about the original function, but may look
+This derivative means something about the original function, but may look
 nothing like the original function at all. You can integrate the derivative to
 get back the original function.
 
@@ -35,18 +35,16 @@ You can think of them as _duals_ of each other.
 
     TODO graphs showing ramifications of modifications
 
-Disclaimer: mathematically-inclined readers are probably shaking their
-heads in disgust right now :) While this example is a useful way to gain
-intuition about duality, the real definition is a bit stronger: duality
-requires the same operation to transform something into its dual and back.
-Derivation and integration, however, are entirely different beasts. 
+Disclaimer: Although this example captures the main idea, it's a bit of an
+oversimplification. The real definition of duality is a bit stronger: duality 
+requires the same operation to transform someting into its dual and back. 
+However, derivativation and integration are entirely different beasts.
 
 ## The Frequency Domain
 
 So why are we talking about duals? Because we'll find one duality particularly
 useful for image processing: the duality between the spatial and frequency 
-domains. The spatial domain is another name for the types of functions you've
-been graphing all your life. But what is the frequency domain?
+domains. What are those?
 
 It turns out every function can be represented as a sum of infinitely many 
 sine waves. Specifically, if we took one sine wave for every possible 
@@ -58,20 +56,38 @@ In other words, every function $g(x)$ can be rewritten as follows:
 
 $$g(x) = \sum\_f a\_f \sin(fx)$$
 
-### Visualizing the Frequency Domain
+Once this makes sense, we can define the difference between spatial and
+frequency domains:
+
+* The **spatial domain** is how you've represented functions all your life.
+  It's also how we defined $g(x)$ above. In the spatial domain, functions
+  take in an $X$ value and produce a $Y$ value. The $Y$ value denotes the
+  height of the function above the axis at a given $X$ point.
+
+* The **frequency domain** may be new. In the frequency domain, functions 
+  take in a frequency and produce the amplitude of the sine wave with that 
+  frequency. That is, the function takes an $f$ value and produces the
+  corresponding $a\_f$ value.
+
+## Visualizing the Frequency Domain
 
 Like regular (spatial domain) functions, frequency domain functions can be
-graphed. However, the axes of frequency graphs mean something 
-different than the axes of spatial domain graphs. 
+graphed. However, the axes of frequency graphs mean something different than 
+the axes of spatial graphs. 
 
-In the spatial domain, the graph axes represent spatial units. The graph
-is actually just a 2D space, in which a function is drawn. For frequency
-graphs, however,
+Remember spatial domain functions take in an $X$ and produce a $Y$. Similarly,
+frequency domain functions take in an $f$ and produce an $a\_f$. To graph
+spatial domain functions, we represent $X$ with a horizontal axis and $Y$
+with a vertical axis.
+
+Knowing that, how do you think we use the axes of a frequency graph?
+
+The answer:
 
 * The horizontal axis represents **frequency**
 * The vertical axis represents **amplitude**
 
-Then each point on the frequency graph specifies the frequency and amplitude
+So each point on the frequency graph specifies the frequency and amplitude
 of one of the infinitely many sine waves.
 
 Let's try some examples. Consider $g(x)$, a spatial function consisting of a 
@@ -108,18 +124,18 @@ From here on in, we'll only talk about 1D images (i.e. those consisting of a
 single row of pixels), in grayscale. Everything we talk about will generalize
 to 2D color images, however. This just makes the graphs easier to draw :)
 
-For analysis, we're going to represent an image using a function. This
-function is defined over the spatial extents of the image. For every point 
+For analysis, we'll use functions to represent images. These functions are
+defined over the spatial extents of the image. For every point 
 $(x, y)$ on the graph, $y \in \[0, 1\]$ denotes how much light is measured
-or displayed at point $x$ in the image. The value $y = 0$ denotes pure black 
-and $y = 1$ denotes pure white. All values in between are shades of gray.
+or displayed at point $x$ in the image. The value $y = 0$ means pure black 
+and $y = 1$ means pure white. All values in between are shades of gray.
 
 Below is a 1D image and its corresponding image function:
 
     TODO example graph and image
 
-This function is called the **signal**. The term originates from **signal
-processing**, the field where most of this content originated.
+This function is called the **signal**. The term originates from signal
+processing, the field where most of this content originated.
 
 ## Sampling
 
@@ -129,11 +145,6 @@ and recording the $y$ value at each $x$. The result is a set of $(x, y)$ points
 from the original function. We call these points **samples** or **pixels**.
 
     TODO diagram for sampling the graph above
-
-Note that, since samples are points, they have no associated width or height.
-You may be used to thinking of pixels as little squares, but for this article
-you should think of pixels as infinitesimally small points, with zero width
-and height.
 
 Of course, we lose information when we do this. Given only a set of sample 
 points, we can only guess at what the original function looked like. For
@@ -154,19 +165,19 @@ Or even this:
     TODO something crazy
 
 The process of recreating a function from its sample points is called
-**reconstruction**. Reconstruction isn't perfect, but it works well enough
+**reconstruction**. Reconstruction isn't perfect, but it works fine
 given enough input data. More input data makes reconstruction more accurate.
 
 ## The Nyquist Limit
 
 We mentioned that we sample by moving along the $x$ axis at regular intervals.
 One natural question is: How big should these intervals be? Using a smaller 
-interval gives us more data (thus improving reconstruction), but it requires
+gives us a better reconstruction (because there's more data), but it requires
 more storage space. How large can we get away with making our sampling
-interval without making our reconstruction terrible?
+interval without ruining the reconstruction?
 
-Harry Nyquist approached this problem by transforming the signal into the
-frequency domain. His Nyquist Limit works as follows:
+Harry Nyquist approached this problem by thinking in the frequency domain.
+His Nyquist Limit works as follows:
 
 >   Look at the frequency domain representation of the image. Find the 
 >   highest-frequency point that has a non-zero amplitude. Let $f$ be the
@@ -188,8 +199,8 @@ Thanks to the Nyquist limit, we now know how to sample an image: just choose a
 high enough sampling frequency to faithfully represent the image, and sample
 the image intensity at each of the sample points.
 
-There's a hitch: the maximum frequency of an image depends on what you point
-your camera at, but your camera's sampling rate is fixed. Digital cameras
+There's a htich: the maximum frequency of an image is highly variable, but
+your camera's sampling rate is fixed. Digital cameras
 sample using a rectangular array of CCDs, each of which samples the light
 intensity at that point. The camera's sampling rate is constant, determined 
 by how far apart the CCDs are placed.
@@ -203,8 +214,7 @@ the high frequency data somehow cut out.
 
     TODO diagrams of corresponding filtered signal
 
-This, finally, is where the duals (and, indeed, filtering in general) come 
-into play.
+This is where image filtering comes into play.
 
 ## Low-Pass Filtering
 

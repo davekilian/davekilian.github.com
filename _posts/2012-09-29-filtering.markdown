@@ -243,21 +243,66 @@ Then we can reconstruct the spatial signal using a Fourier transform:
 
 Now we can sample with impunity!
 
+## Filtering Math
+
+As it will turn out later, it's useful to represent the idea of filtering
+in the frequency domain as multiplying the frequency function by a filter
+function. That is,
+
+$$result(x) = filter(x) \times signal(x)$$
+
+For low-pass filtering, we want all frequencies from $-f\_{max}$ to $f\_{max}$
+to keep the same amplitude. We want all frequencies outside that range to have
+an amplitude of 0. The former is achieved by multiplying the amplitudes by 1;
+the latter is achieved by multiplying by 0.
+
+Let $box(m, x)$ be defined as follows:
+
+    if |x| < m              
+        return 1
+    else                    
+        return 0
+
+$box(m, x)$ looks like this:
+
+    TODO graph
+
+To low-pass filter in the frequency domain, we can multiply the signal by
+$box(f\_{max}, x)$:
+
+$$result(x) = box(f\_{max}, x) \times signal(x)$$
+
+    TODO graph of example multiplication
+
+## Recap
+
+We've gone off on a few tangents now, so maybe it's time to remind ourselves
+what exactly we're trying to do.
+
+We want to represent images using discrete samples. To do this correctly, there's
+a minimum number of samples we must take. The Nyquist limit tells us exactly how
+many.
+
+Unfortunately, the resolutions of our cameras and monitors is fixed. 
+Instead of taking more samples, we have to reduce the complexity of the image.
+
+Here's our algorithm for doing that
+
+* Use a Fourier transform to obtain the frequency plot of the signal
+* Multiply by the box function to remove high frequencies we can't represent
+* Use a Fourier transform to obtain the spatial plot of the modified frequency 
+  plot
+* That's our image!
+
+## Why is Any of This Useful Anyway?
+
 ---
 
 TODO
 
-* Box function
-
-Perspective!
-* To recap, we're trying to represent images using a limited number of discrete samples.
-* To do this, we'll filter out high frequency noise. The result is a similar signal, but contains less information.
-* Here's our new algorithm:
-
-        Use FFT to create the frequency domain equivalent of the signal
-        Zero the high frequencies we can't represent
-        Use InvFFT to reconstruct the modified spatial domain function
-        That's our image!
+* Mention that the camera does all the prefiltering in hardware already.
+* All this stuff is only useful when you need to resample an image for some reason, like scaling.
+* Maybe want to restructure things a bit actually. Otherwise this section seems kinda random.
 
 There's a Better (Read: Faster) Way
 * All this is complex math. It's probably pretty complicated and slow. Let's not deal with it?

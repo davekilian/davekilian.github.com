@@ -46,17 +46,19 @@
                         <h5>&copy; Dave Kilian 2012</h5>
                     </footer>
                 </div>
-                <div class="span10" style="padding: 1em; max-width: 700px">
-                    <header style="padding-bottom: 1em">
-                        <h1>{{ page.title }}</h1>
-                        <h6>{{ page.date | date_to_long_string }}</h6>
-                        {% if page.draft %}
-                            <h5 style="color:#a22">This post is marked as a draft. Content may be incomplete or missing.</h5>
-                        {% endif %}
-                    </header>
-                    {{ content }}
-                    <hr />
-                    <a href="/">Back to Blog Index</a>
+                <div class="span10" style="padding: 1em">
+                    <div style="max-width: 700px; margin-left: auto; margin-right: auto">
+                        <header style="padding-bottom: 1em">
+                            <h1>{{ page.title }}</h1>
+                            <h6>{{ page.date | date_to_long_string }}</h6>
+                            {% if page.draft %}
+                                <h5 style="color:#a22">This post is marked as a draft. Content may be incomplete or missing.</h5>
+                            {% endif %}
+                        </header>
+                        {{ content }}
+                        <hr />
+                        <a href="/">Back to Blog Index</a>
+                    </div>
                 </div>
             </div>
         </div>

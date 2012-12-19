@@ -41,6 +41,23 @@ div.post-blurb:hover
     color: black;
 }
 
+div.post-content
+{
+    font-family: "Source Sans Pro", "Helvetica", "Arial", sans-serif;
+    font-weight: 400;
+    line-height: 1.5em;
+}
+
+div.post-content strong, b
+{
+    font-weight: 1100;
+}
+
+div.post-content h1, h2, h3, h4, h5, h6
+{
+    font-family: sans-serif;
+}
+
 body
 {
     font-size: 100%;
@@ -50,8 +67,15 @@ body
 
 p
 {
-    margin-bottom: 1em;
+    margin-top: 1.25em;
+    margin-bottom: 1.25em;
     text-align: left;
+    text-indent: 1.5em;
+}
+
+h1+p, h2+p, h3+p, h4+p, h5+p, h6+p, li p
+{
+    text-indent: 0em;
 }
 
 li

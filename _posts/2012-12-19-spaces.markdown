@@ -5,23 +5,23 @@ author: Dave
 draft: true
 ---
 
-Shader programming requires some care, since bugs can be difficult to find.
-Incorrect use of transformations is one of the most common shader bugs.
-Without some background, it's also one of the easiest mistakes to make. 
-
-Incorrect transformations can cause all sorts of problems:
+Shader bugs can be difficult to track down. One of the most common such bugs is
+using transformations incorrectly. This bug is easy to write unless you're
+careful, and it can cause all sorts of bizarre behavior:
 
 * Lighting could look totally wrong.
-* Lighting may look correct, but only from one point of view.
+* Lighting might look correct, but only from one point of view.
 * It may appear as if the light source is moving with the camera.
 
 Oftentimes beginners have a hard time figuring out which transformations to
-apply to each vector. This post is an overview of vector spaces and proper
-use of transformations in GLSL. 
+apply to each vector. Even more advanced shader programmers get tripped up from
+time to time.
 
-We'll assume you have some experience with 3D graphics (specifically, lighting
-models and per-object transformations). We'll also assume you have a little
-experience writing shader programs.
+This post contains both an overview of vector spaces / transformations and some
+hands-on advice for writing shaders in GLSL. We'll assume you have some
+experience with 3D graphics (specifically, lighting models and object
+transformations). We'll also assume you have a little experience writing shader
+programs.
 
 Shall we?
 
@@ -29,7 +29,7 @@ Shall we?
 
 $5 + 2 = 7$. Or does it? Things get murkier when we add units to the mix.
 
-* If every term uses the same units, then the equation holds:
+* If every term uses the same unit, the equation holds:
   $5 m + 2 m = 7 m$
 
 * But if the units don't match, the equation is meaningless:
@@ -43,42 +43,36 @@ $5 m + 2 ft * \dfrac{0.3048 m}{ft} = 5.6096 m$
 
 ## Vector Spaces
 
-Like units, vector spaces give meaning to values. We used units to give
-physical meaning to numbers; we'll use vector spaces to do something similar
-with vectors.
+Like units, vector spaces define how values may be used together. Units are for
+scalar numbers; vector spaces are for vectors.
 
 Before, we defined units relative to each other using scale factors. There were
-.3048 meters in a single foot; ergo there were 0.6096 meters in two feet. 
+.3048 meters in a single foot; ergo there were 0.6096 meters in two feet. We
+can do the same thing (and more!) for vector spaces. A *transformation* is a
+way of representing one vector space relative to another. A few common
+transformations on vector spaces include:
 
-We can do the same thing with vector spaces relative to each other. We can also
-go further than just scaling. A few common ways of representing vector spaces 
-relative to each other include:
-
-* **Scaling**, as we just discussed.
-* **Rotation**, where the direction of a vector in one space is the rotation of
-  the same vector in a different space.
-* **Translation**, where the tip of a vector (or a point in the vector space)
-  is displaced a fixed amount along each of the axes relative to the same
-  vector in a different space.
-* Any combination of the above.
+* Scaling (multiply each component by a constant)
+* Rotating (about the origin)
+* Translating (add a constant to each component)
+* Any combination of the above
 
 We can represent these transformations using matrices:
 
-1. Given a vector $v$ in vector space $A$
-2. And a matrix $M$ representing a transform from vector space $A$ to vector
-   space $B$
-3. The value of $v$ in vector space $B$ is $M \times v$ (or just $Mv$)
+1. Given a vector $v$ in vector space $A$,
+2. And a matrix $M$ representing the transformation from vector space $A$ to
+   vector space $B$,
+3. The value of $v$ in vector space $B$ is $M \times v$, or just $Mv$.
 
 We mentioned we could combine transformations. This works as follows:
 
 * Say we have a vector $v$, which is defined in space $A$
 * We have a matrix $M\_1$ that transforms from $A$ to space $B$
 * We have a matrix $M\_2$ that transforms from $B$ to space $C$
-* We would like to computer $v$ in space $C$
-
-To compute $v$ in $B$-space, we can multiply $v$ by $M\_1$. To compute $v$ in
-$C$-space, we can multiply the result by $M\_2$. The final expression becomes
-$M\_2(M\_1v)$, or $M\_2M\_1v$.
+* We would like to compute $v$ in space $C$
+* To compute $v$ in $B$-space, we can multiply $v$ by $M\_1$. To compute $v$ in
+  $C$-space, we can multiply the result by $M\_2$. The final expression becomes
+  $M\_2(M\_1v)$, or $M\_2M\_1v$.
 
 One handy property of matrices is associativity. This allows us to combine
 multiple transformation matrices into a single transformation matrix. For
@@ -98,26 +92,24 @@ vectors are defined in the same vector space.
 
 ## Common Vector Spaces in Graphics
 
-In real-time rendering (using packages like OpenGL and DirectX), each primitive
-goes through a series of vector spaces to end up on your screen. Here are the
-important ones:
+In real-time rendering packages like OpenGL and DirectX, each primitive is
+transformed through a series of vector spaces to end up on your screen. Here
+are the more important spaces:
 
 ### Object Space
 
-Most scenes are composed either from primitives (e.g. spheres and cylinders), 
-models (i.e. triangle meshes) or both. An "object" is simply one of your 
-primitives or one of your models. 
+Most scenes are composed of primitives (like spheres and cylinders), models
+(triangle meshes), or some combination of the two. An "object" is simply one of
+these primitives or models.
 
-Object space is a coordinate system that is convenient for defining a specific
-object in your scene. Typically, object spaces are defined such that the object
-is at the origin. 
-
-Unlike the rest of the spaces listed below, there are multiple object spaces.
-There is one object space for each unique primitive / model in your scene.
+Object space is a coordinate system that is convenient for defining an object
+in your scene. Unlike the rest of the spaces listed below, there is more than
+one object space: one for each type of object. Object spaces are usually
+defined so that the object is at the origin.
 
 ### World Space
 
-To compose a scene from objects, the objects need to be defined relatively to
+To compose objects into a scene, the objects need to be defined relative to
 one another. As such, they need to each be transformed into one common vector
 space. We call this space world space.
 
@@ -128,8 +120,9 @@ Sometimes the units in world space correspond to physical length.
 
 (also known as camera space, view space)
 
-The camera represents the position and orientation from which the viewer is
-observing the scene. Eye space is simply the object space for the camera.
+The camera represents the viewer's position and orientation. Eye space is
+simply the camera's object space. It is defined so that the camera is at the
+origin, looking down the negative $z$ axis, with $y$ pointing up.
 
 It turns out representing the scene in eye space makes it easier to render. As
 such, we typically end up transforming everything in the scene from world space
@@ -159,16 +152,16 @@ that
 * $(0, h-1)$ corresponds to the bottom-left
 * $(w-1, h-1)$ corresponds to the bottom-right
 
-Where $w$ and $h$ are respecitvely the width and height of your display in 
-pixels.
+$w$ and $h$ are respecitvely the width and height of your display in 
+pixels. Thus every 2D coordinate $(i, j)$ is the index of a pixel. Screen-space
+coordinates are sometimes called pixel coordinates for this reason.
 
 ## Transforming Between the Spaces
 
-Recall that transformations between vector spaces are represented with
-matrices. The goal of rendering is to transform each triangle from its original
-object-space vertex positions to screen-space pixel positions.
-
-The following transformation pipeline accomplishes this.
+Recall that transformations between vector spaces are represented by
+matrices. One of the goals of rendering is to transform each triangle's
+vertices from their original object-space positions to their final screen-space
+pixel positions. The following transformation pipeline accomplishes this.
 
 ### Object $\rightarrow$ World
 
@@ -183,19 +176,24 @@ specialized data structure like a
 
 ### World $\rightarrow$ Eye
 
-Called the *view* matrix. A composition of (typically) translations and
-rotations that move the scene so that the camera lies in eye space.
+Called the *view* matrix. Typically a composition of translations and rotations
+that move the scene so the camera (which is placed within the scene) lies where
+eye space defines it to be.
 
-Since the camera has its own eye space and has a position/orientation in the
-scene, you can construct a world matrix for the camera. This matrix would
-transform from the camera's object space (a.k.a. eye space) to world space.
+That sound confusing? Here's another way to think about it. We mentioned before
+that eye space is just object space for the camera (i.e. we're treating the
+camera like an object). Since the camera is placed in the scene, we can 
+construct a world matrix for the camera.
 
-The view matrix is the inverse of such a transformation. 
+Such a world matrix would transform from the camera's object space (a.k.a.
+eye space) to world space. With the view matrix, we wanted to do the
+opposite: we wanted to transform the scene from world space to eye space.
+Thus the view matrix is the inverse of the camera's world matrix.
 
 ### Eye $\rightarrow$ Clip
 
 Called the *projection* matrix. The projection matrix is usually the
-composition of a scaling operation followed by a perspectivization:
+composition of a scaling operation followed by perspectivization:
 
 * The scale operation scales down the scene so the visible range spans from -1
   to 1 on the $x$ and $y$ axes, as defined by clip space.
@@ -205,7 +203,28 @@ composition of a scaling operation followed by a perspectivization:
 ### Clip $\rightarrow$ Screen
 
 Usually handled by the graphics package, not exposed to the programmer. Simply
-drops the $Z$ term and scales the $X$ and $Y$ terms appropriately.
+drops the $Z$ term and scales the $X$ and $Y$ terms appropriately to fill the
+screen.
+
+### Conclusion
+
+This pipeline transforms triangle vertices from their original object-space
+positions to final screen-space pixel positions. We can perform the entire
+pipeline by composing the matrices from all the steps. Then we can render the
+triangles as follows:
+
+    Obtain scene global matrices (everything except the world matrix)
+
+    For each object
+        Obtain the object's world matrix
+        Compose all the matrices above in the correct order
+
+        For each triangle 
+            Multiply the vertices by the final matrix
+            Figure out which screen pixels the vertices enclose (rasterization)
+            Figure out what colors to assign those pixels (shading)
+
+In essence, this how GPUs render scenes.
 
 ## Transformation Matrices in OpenGL
 
@@ -239,15 +258,15 @@ There are two matrix stacks: one for the projection matrix and one for the
 modelview. The projection stack is typically boring, so we'll focus on the 
 modelview stack.
 
-Note that we want to apply the model matrix to each vertex before the view
-matrix. This will successfully transform the vertex from object space to eye
-space. In stack semantics this means:
+Why a stack? Think about the order vertices are multiplied by matrices:
 
-1. Pushing the view matrix onto the stack
-2. Then pushing the object's model matrix onto the stack
+1. The original vertex is multiplied by the world matrix, moving it to world space
+2. The new vertex is multiplied by the view matrix, moving it to eye space
 
-Now we see why stack semantics are useful: we can specify the view matrix just
-once. Our transformations algorithm becomes:
+Note that the view matrix changes once (it's constant throughout the scene),
+but the world matrix changes often (changes on a per-object basis). This is
+what makes the stack useful: we can push the view matrix once, then push/pop
+the world matrix once per object. Our transformation algorithm becomes:
 
     Switch to the projection stack
     Clear the stack
@@ -281,9 +300,11 @@ Shaders are programs you can run on the GPU to perform certain steps of the
 The vertex shader is executed on each input vertex. It is given a vertex in
 object space and is responsible for transforming the vertex to clip space. 
 
-The graphics hardware moves the vertex to screen space and computes which
-pixels are inside the screen-space triangle. It executes the fragment shader on
-each pixel to determine what color it should have.
+The graphics hardware moves the vertex from clip space to screen space, and
+then rasterizes to identify which pixels are inside the screen-space triangle.
+
+The fragment shader is then executed on each rasterized pixel, to determine
+what color it should have.
 
 This is a simplified view of the rendering pipeline, but it will suffice for
 our discussion.
@@ -307,14 +328,14 @@ matrices into one modelview matrix.
 
 Consider Phong's lighting model for a single point light:
 
-$color = ambient + diffuse * (N \cdot L) + specular * (E \cdot R)^{specular\\_power}$
+$color = ambient + diffuse * (N \cdot L) + specular * (E \cdot R)^{specular\\\_power}$
 
 We have four vector to compute:
 
 * $N$, the normal vector
 * $L$, the vector from the vertex to the light source
 * $E$, the vector from the vertex to the eye point
-* $R$, $L$ reflected about $N$
+* $R$, which is $L$ reflected about $N$
 
 We'll represent all the vectors in eye space, as OpenGL makes this the easiest
 space to transform to.
@@ -322,26 +343,26 @@ space to transform to.
 * To compute $N$, we'll multiply the object-space normal by the modelview
   matrix. In GLSL, this is easy:
 
-        N = gl_NormalMatrix * gl_Normal;
+        vec3 N = gl_NormalMatrix * gl_Normal;
 
-* To compute $L$, we need to know the eye-space vertex position and the eye
-  space light position. The problem then comes down to vector subtraction:
+* To compute $L$, we need to know the vertex position and the light position,
+  both in eye space. The problem then comes down to vector subtraction:
 
-        vertex = gl_ModelViewMatrix * gl_Vertex;
-        light = gl_LightSource\\[0\\].position
-        L = normalize(light - vertex)
+        vec4 vertex = gl_ModelViewMatrix * gl_Vertex;
+        vec4 light = gl_LightSource[0].position;
+        vec3 L = normalize(light - vertex).xyz;
 
 * To compute $E$:
 
-        eye = vec3(0.0); // by definition of eye space
-        E = eye - vertex; 
+        vec3 eyepos = vec3(0.0); // by definition of eye space
+        vec3 E = eyepos - vertex; 
         
         // or just
-        E = -vertex
+        vec3 E = -vertex.xyz;
 
 * To compute $R$:
 
-        R = reflect(L, N)
+        vec3 R = reflect(L, N);
 
 An astute reader might wonder how `gl_LightSource[0]` gets set in your C
 application. When you call `glLightfv(GL_POSITION, ...)`, you specify the
@@ -349,10 +370,9 @@ light's position in world space; yet the light pops out in the shader in eye
 space. How can this be?
 
 When you call `glLightfv(GL_POSITION, ...)` OpenGL actually multiplies the
-position you specified with the current modelview matrix. The assumption is
+position you specified by the current modelview matrix. The assumption is
 that, when you specify your lights, the modelview matrix == the view matrix.
-Thus the modelview transforms from world to eye, and the resulting light
-position is in eye space.
+Thus multiplying moves the light from world space to eye space.
 
 That's why it's very important your draw loop takes the following form:
 
@@ -368,22 +388,19 @@ That's why it's very important your draw loop takes the following form:
         Pop the model matrix
 
 If you swap the order of these operations, you'll likely get incorrect
-transformations and a moderately severe headache.
+transformations and a nice headache.
 
 ## Wrap-Up
 
 Much of the OpenGL API was deprecated in OpenGL 3.0 and 'removed' in OpenGL
-3.1. This functionality, which we used above exnteisvely, is still available on
-the desktop via the Compatability Profile.
+3.1. This functionality, which we used above extensively, is still available on
+desktop computers via what OpenGL calls the 'compatability profile.'
 
 If you opt for the core profile instead (or if you're using OpenGL ES or WebGL,
 neither of which supports a compatibility profile), you have much more freedom. 
 You can specify your model, view and projection matrices to your shaders as
-separate uniforms. 
-
-This freedom comes at the cost of boilerplate: you have to do much more work to
-render just a single triangle. You can find lots more using your favorite
-search engine.
+separate uniforms. This freedom comes at the cost of boilerplate: you have to 
+do much more work to render just a single triangle. 
 
 Eventually, no matter what platform you're writing shaders on, being able to
 think about your vectors in terms of spaces and transformations will come in

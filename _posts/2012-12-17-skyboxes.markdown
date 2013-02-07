@@ -1,0 +1,9 @@
+---
+layout: post
+title: Skyboxes
+author: Dave
+draft: true
+---
+
+TODO small explanation of how skyboxes work and how to implement one
+

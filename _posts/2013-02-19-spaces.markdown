@@ -5,31 +5,37 @@ author: Dave
 draft: true
 ---
 
-Shader bugs can be difficult to track down. One of the most common such bugs is
-using transformations incorrectly. This bug is easy to write unless you're
-careful, and it can cause all sorts of bizarre behavior:
+The relationship between the GPU and CPU makes it hard to debug shaders.
+Without printlines or a proper debugger, oftentimes shader programmers
+resort to using the fragment shader's output color as a way of testing
+their assumptions. This leads to slow and unproductive debugging sessions.
 
-* Lighting could look totally wrong.
+Thus it's better to not need to debug your shaders in the first place, if it
+can be helped :). One of the most common shader bugs is the misuse of
+transformations. Unfrotunately, messing up your transformations can make your
+shader act weird in all sorts of ways:
+
+* Lighting could be totally wrong or missing.
 * Lighting might look correct, but only from one point of view.
-* It may appear as if the light source is moving with the camera.
+* Lighting may look correct, but the lights might seem to follow the camera.
 
-Oftentimes beginners have a hard time figuring out which transformations to
-apply to each vector. Even more advanced shader programmers get tripped up from
-time to time.
+The easiest way to avoid transformation-related bugs is to carefully define
+what transformations should be applied to which vectors, by convention.
 
-This post contains both an overview of vector spaces / transformations and some
-hands-on advice for writing shaders in GLSL. We'll assume you have some
-experience with 3D graphics (specifically, lighting models and object
-transformations). We'll also assume you have a little experience writing shader
-programs.
+This post overviews what transformations are, how they're used in conventional
+rasterized 3D rendering, and specifically how they are used in OpenGL today.
+The author will assume that the reader has some experience with 3D graphics
+(e.g. using lighting models and transforming objects), as well as a little
+experience writing shader programs.
 
 Shall we?
 
 ## Starting with the Basics
 
-$5 + 2 = 7$. Or does it? Things get murkier when we add units to the mix.
+Does $5 + 2 = 7$? This equation is not necessarily true when we take units into
+account:
 
-* If every term uses the same unit, the equation holds:
+* If every term uses the same units of measurement, the equation holds:
   $5 m + 2 m = 7 m$
 
 * But if the units don't match, the equation is meaningless:
@@ -39,56 +45,38 @@ We can, however, _transform_ each term from one unit space into another. You
 can check your transformations are correct using a technique called
 [dimensional analysis](http://www.chem.tamu.edu/class/fyp/mathrev/mr-da.html):
 
-$5 m + 2 ft * \dfrac{0.3048 m}{ft} = 5.6096 m$
+$5 m + 2 ft * \dfrac{0.3048 m}{ft} = 5 m + 0.6096 m = 5.6096 m$
 
 ## Vector Spaces
 
-Like units, vector spaces define how values may be used together. Units are for
-scalar numbers; vector spaces are for vectors.
+Like units, vector spaces define how values may be used together. You might say
+units are for scalar numbers what vector spaces are for vectors. Since your
+scene is made of vectors, vector spaces tend to come in handy!
 
-Before, we defined units relative to each other using scale factors. There were
-.3048 meters in a single foot; ergo there were 0.6096 meters in two feet. We
-can do the same thing (and more!) for vector spaces. A *transformation* is a
-way of representing one vector space relative to another. A few common
-transformations on vector spaces include:
+Why are vector spaces handy? Before we noticed that it makes no sense to
+directly add two numbers that have different units. Likewise, it makes no sense
+to operate on two vectors (via addition, dot product, what have you) unless 
+they're both in the same vector space.
 
-* Scaling (multiply each component by a constant)
-* Rotating (about the origin)
-* Translating (add a constant to each component)
-* Any combination of the above
+If that's true, we need a way to go from one vector space to another, like we
+did with units. The tool for moving between vector spaces
+is called the *transformation*. You've probably seen these before; they allow
+you to scale, rotate and translate the objects in your scene.
 
-We can represent these transformations using matrices:
+Mathematically, each transformation is represented by a transformation matrix.
+If a matrix transforms from $A$-space to $B$-space, and a vector is defined in
+$A$ space, then multiplying the two together produces the same vector in
+$B$-space.
 
-1. Given a vector $v$ in vector space $A$,
-2. And a matrix $M$ representing the transformation from vector space $A$ to
-   vector space $B$,
-3. The value of $v$ in vector space $B$ is $M \times v$, or just $Mv$.
+You can build complex transformations by daisy-chaining the simpler ones.
+Transformation matrices are combined via matrix multiplication:
 
-We mentioned we could combine transformations. This works as follows:
+* If $M\_{AB}$ transforms from $A$-space to $B$-space
+* And $M\_{BC}$ transforms from $B$-space to $C$-space
+* Then $M\_{BC} \times M\_{AB}$ transforms from $A$-space to $B$-space to 
+  $C$-space; in other words, it transforms from $A$-space to $C$-space
 
-* Say we have a vector $v$, which is defined in space $A$
-* We have a matrix $M\_1$ that transforms from $A$ to space $B$
-* We have a matrix $M\_2$ that transforms from $B$ to space $C$
-* We would like to compute $v$ in space $C$
-* To compute $v$ in $B$-space, we can multiply $v$ by $M\_1$. To compute $v$ in
-  $C$-space, we can multiply the result by $M\_2$. The final expression becomes
-  $M\_2(M\_1v)$, or $M\_2M\_1v$.
-
-One handy property of matrices is associativity. This allows us to combine
-multiple transformation matrices into a single transformation matrix. For
-example, if we computed $M\_3 = M\_2M\_1$, then we can transform $v$ from
-$A$-space to $C$-space with just one multiplication: $M\_3v$
-
-Another handy property is invertibility. If $M\_1$ transforms from $A$-space to
-$B$-space, the inverse of $M\_1$ (denoted $(M\_1)^{-1}$) transforms from
-$B$-space to $A$-space.
-
-### Why is Any of This Important?
-
-Before, we noted that it makes no sense to directly add two numbers that have
-different units. Similarly, it makes no sense to use two vectors in the same
-equation (addition, subtraction, dot products, what have you) unless both
-vectors are defined in the same vector space. 
+This process ends up looking a lot like dimensional analysis.
 
 ## Common Vector Spaces in Graphics
 

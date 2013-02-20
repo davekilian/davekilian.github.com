@@ -5,6 +5,14 @@ author: Dave
 draft: true
 ---
 
+## TODO
+
+We're currently working on a WebGL port of the nullZERO prototype from 
+CS195-U. Could make sense to revamp the series to use the js port as the
+example code.
+
+---
+
 Ever wanted to write a multiplayer video game?
 
 Writing a multiplayer game that works well over a LAN isn't too hard. Packets

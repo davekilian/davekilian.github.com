@@ -1,4 +1,4 @@
 
 all :
-	rvm all do jekyll
+	/bin/bash -c "rvm all do jekyll >& /dev/null"
 

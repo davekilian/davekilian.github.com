@@ -5,79 +5,91 @@ author: Dave
 draft: true
 ---
 
-The relationship between the GPU and CPU makes it hard to debug shaders.
-Without printlines or a proper debugger, oftentimes shader programmers
-resort to using the fragment shader's output color as a way of testing
-their assumptions. This leads to slow and unproductive debugging sessions.
+Debugging shaders is hard. Without printlines or a proper debugger, shader
+developers often resort to using the fragment shader's output to see what's
+going on. This way of debugging is slow and unproductive. For most people, it's
+hard to make sense of per-pixel color output.
 
-Thus it's better to not need to debug your shaders in the first place, if it
-can be helped :). One of the most common shader bugs is the misuse of
-transformations. Unfrotunately, messing up your transformations can make your
-shader act weird in all sorts of ways:
+It would be nice to not have to debug your shaders in the first place, if it
+can be helped ;). This post focuses on the most common shader programming
+mistake: messing up your transformations.
+
+## Symptoms
+
+The kind of behavior you can get from mishandling transformations is bizarre
+and varied:
 
 * Lighting could be totally wrong or missing.
 * Lighting might look correct, but only from one point of view.
 * Lighting may look correct, but the lights might seem to follow the camera.
 
-The easiest way to avoid transformation-related bugs is to carefully define
-what transformations should be applied to which vectors, by convention.
+To understand why this kind of thing happens, let's take a look at something a
+bit easier to grasp than shaders.
 
-This post overviews what transformations are, how they're used in conventional
-rasterized 3D rendering, and specifically how they are used in OpenGL today.
-The author will assume that the reader has some experience with 3D graphics
-(e.g. using lighting models and transforming objects), as well as a little
-experience writing shader programs.
+## 'Transforming' Physical Units
 
-Shall we?
+$5 + 2 = 7$. 
+That's clearly correct, right? Who would dispute that?
 
-## Starting with the Basics
+Me.
 
-Does $5 + 2 = 7$? This equation is not necessarily true when we take units into
-account:
-
-* If every term uses the same units of measurement, the equation holds:
+* The equation works if every term uses the same unit:
   $5 m + 2 m = 7 m$
-
 * But if the units don't match, the equation is meaningless:
   $5 m + 2 ft = 7 (...?)$
 
-We can, however, _transform_ each term from one unit space into another. You
-can check your transformations are correct using a technique called
-[dimensional analysis](http://www.chem.tamu.edu/class/fyp/mathrev/mr-da.html):
+In short, the math only makes sense if every term uses the same unit.
+In high school physics you probably learned what to do if your terms' units
+mismatch: convert (or _transform_) some of the terms to a different unit of
+measurement. Then the math works out fine.
 
 $5 m + 2 ft * \dfrac{0.3048 m}{ft} = 5 m + 0.6096 m = 5.6096 m$
 
-## Vector Spaces
+## Vector Spaces are the Same
 
-Like units, vector spaces define how values may be used together. You might say
-units are for scalar numbers what vector spaces are for vectors. Since your
-scene is made of vectors, vector spaces tend to come in handy!
+You might say a vector space is to a vector what a unit is to a number. If you
+have an equation made of vector addition, subtraction, dot products, or
+what-have-you, the math only works out if the vectors all occupy the same
+vector space. 
 
-Why are vector spaces handy? Before we noticed that it makes no sense to
-directly add two numbers that have different units. Likewise, it makes no sense
-to operate on two vectors (via addition, dot product, what have you) unless 
-they're both in the same vector space.
+Again like units, you can use a _transformation_ to convert some vectors
+to a different vector space. Once everything is in the same vector space, the
+math works the way it's supposed to and your shaders are bug-free. Hooray!
 
-If that's true, we need a way to go from one vector space to another, like we
-did with units. The tool for moving between vector spaces
-is called the *transformation*. You've probably seen these before; they allow
-you to scale, rotate and translate the objects in your scene.
+Of course, this is easier said than done. Once we understand how
+transformations tie into the graphics pipeline, however, we can simplify the
+process by setting up conventions and best-practices.
 
-Mathematically, each transformation is represented by a transformation matrix.
-If a matrix transforms from $A$-space to $B$-space, and a vector is defined in
-$A$ space, then multiplying the two together produces the same vector in
-$B$-space.
+## Vector Space Transformations
 
-You can build complex transformations by daisy-chaining the simpler ones.
-Transformation matrices are combined via matrix multiplication:
+You've probably seen these before. They allow you to scale, rotate and
+translate the objects in your scene.
+
+Mathematically, each transformation is represented by a matrix. Say you have a
+vector in the vector space $A$ ("$A$-space" for short), and you'd like to
+transform it to $B$-space. If you already have the transformation matrix 
+$M_{AB}$, you can simply multiply it with the $A$-space vector. The
+result is the $B$-space vector. So, $v_B = M_{AB} \times v_A$.
+
+Often $M_{AB}$ is simple. For example, if $B$-space is the same as $A$-space,
+except that everything in $B$-space is twice as large as in $A$-space, then
+$M_{AB}$ is just a scale matrix.
+You can build complex $M_{AB}$'s by daisy-chaining the simpler ones.
+They are combined via matrix multiplication:
 
 * If $M\_{AB}$ transforms from $A$-space to $B$-space
 * And $M\_{BC}$ transforms from $B$-space to $C$-space
-* Then $M\_{BC} \times M\_{AB}$ transforms from $A$-space to $B$-space to 
-  $C$-space; in other words, it transforms from $A$-space to $C$-space
+* Then $M\_{AC} = M_{BC} \times M_{AB}$ transforms from $A$-space to $C$-space.
 
-This process ends up looking a lot like dimensional analysis.
+Intuitively, you might say $M_{AC}$ transforms from $A$-space to $B$-space to
+$C$-space. 
 
+## Transformations in Graphics
+
+TODO move the discussion about the pipeline here. Talk about why precomputing
+everything down to a single matrix is a big win from a Big-O standpoint.
+
+:qa
 ## Common Vector Spaces in Graphics
 
 In real-time rendering packages like OpenGL and DirectX, each primitive is

@@ -57,6 +57,10 @@
                             {% endif %}
                         </header>
                         <div class="post-content">
+
+                            {% comment %} Force the first paragraph not to indent {% endcomment %}
+                            <h2 style="display: block; height: 0px">&nbsp;</h2>
+
                             {{ content }}
                         </div>
                         <hr />

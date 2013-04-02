@@ -5,64 +5,63 @@ author: Dave
 draft: true
 ---
 
-Debugging shaders is hard. Without printlines or a proper debugger, shader
-developers often resort to using the fragment shader's output to see what's
-going on. This way of debugging is slow and unproductive. Most people find it
-hard to make sense of per-pixel color output.
+Debugging shaders is a tricky business, especially when you can't use
+printlines or a proper debugger. This makes preventing shader bugs a better 
+strategy than trying to track them down and fix them.
 
-Since debugging is so hard, it'd be nice not to need to debug your shaders in
-the first place, if it can be helped ;). This post focuses on preventing the
-most common shader programming mistake: mixing up your transformations.
+This post is about preventing the most common shader bug: mixing up your 
+transformations. Shaders with this type of bug usually look right (or almost
+right) from one point of view, but do something weird as soon as things start
+moving around. One of the most common symptoms is lights always moving relative
+to the camera.
 
-## Symptoms
-
-You can get all sorts of bizarre behavior, depending on how your shader's
-transformations are wrong:
-
-* Lighting could be totally wrong or missing.
-* Lighting might look correct, but only from one point of view.
-* Lighting may look correct, but the lights might seem to follow the camera.
-
-To understand why this kind of thing happens, let's take a look at something a
-bit more grounded in reality.
+Preventing this bug requires a little discipline, but it's probably something
+you've done before. Let's start with something a bit more familiar.
 
 ## 'Transforming' Physical Units
 
 $5 + 2 = 7$. 
 That's clearly correct, right? Who would dispute that?
 
-Well, ...
+Well, it certainly works if every term uses the same unit:
+$5 m + 2 m = 7 m$.
 
-* The equation works if every term uses the same unit:
-  $5 m + 2 m = 7 m$
-* But if the units don't match, the equation is meaningless:
-  $5 m + 2 ft = 7 (...?)$
+But if the units don't match, the equation is meaningless:
+$5 m + 2 ft = 7 (...?)$
 
 In short, the math only makes sense if every term uses the same unit.
 In high school physics you probably learned what to do if your terms' units
-mismatch: convert (or _transform_) some of the terms to a different unit of
+mismatch: convert some of the terms to a different unit of
 measurement. Then the math works out fine.
 
 $5 m + 2 ft * \dfrac{0.3048 m}{ft} = 5 m + 0.6096 m = 5.6096 m$
 
 ## Vector Spaces are the Same
 
-You might say vector spaces are to vectors as units are to numbers. If you
-have an equation made of vector additions, subtractions, dot products, or
-what-have-you, the math only works out if the all vectors occupy the same
-vector space. 
+You might say vector spaces are to vectors as units are to numbers. Like with
+units, if you have an equation made of vector additions, subtractions, dot 
+products, or what-have-you, the math only works out if the all vectors occupy 
+the same vector space. 
 
-If you need to convert vectors to a different vector space, you can use a
-_transformation_. Then, once everything's in the same vector space, the math
-works out and your shaders are (hopefully) bug-free. Hooray!
+A vector space is just a meaning given to the coordinate axis. This meaning is
+chosen by convention. For example, we might define one vector space by saying
+the $X$ and $Z$ axes align with the ground plane, with $Y$ pointing toward the
+sky. We might define another vector space with $X$ and $Y$ being parallel to a
+camera's lens, with $Z$ pointing out of that lens.
 
-This is easier said than done, but it's quite doable if you understand how
+Vector transformations allow you to convert a vector from one vector space to
+another. To continue with our analogy, these transformations are like unit
+conversions. Math involving vectors only 'works'
+after you've transformed all the vectors to the same vector space. Once you've
+done that, your shaders will be (hopefully) bug-free!
+
+This is easier said than done, but it's manageable if you understand how
 these transformations work and how they tie into the graphics pipeline.
 
 ## How Transformations Work
 
-You've probably seen vector transforms before. They allow you to scale, rotate
-and translate the objects in your scene.
+You've probably seen vector transformations before. They allow you to 
+scale, rotate and translate the objects in your scene.
 
 Mathematically, each transformation is represented by a matrix. Say you have a
 vector in the vector space $A$ ("$A$-space" for short), and you'd like to
@@ -71,8 +70,8 @@ $M_{AB}$, you can simply multiply it with the $A$-space vector. The
 result is the $B$-space vector. So, $v_B = M_{AB} \times v_A$.
 
 Often $M_{AB}$ is simple. For example, if $B$-space is the same as $A$-space,
-except that everything in $B$-space is twice as large as in $A$-space, then
-$M_{AB}$ is just a scale matrix.
+$M_{AB}$ is the identity matrix. If objects in $A$-space are half as large as
+objects in $B$-space, $M_{AB}$ is just a scale matrix. 
 You can build complex $M_{AB}$'s by daisy-chaining the simpler ones.
 They are combined via matrix multiplication:
 
@@ -83,31 +82,46 @@ They are combined via matrix multiplication:
 Intuitively, you might say $M_{AC}$ transforms from $A$-space to $B$-space to
 $C$-space. 
 
-## Common Vector Spaces in Graphics
+If you have $M_{AB}$, which transforms from $A$-space to $B$-space, you can
+obtain $M_{BA}$, which goes in the opposite direction, by inverting $M_{AB}$.
+So $M_{BA} = (M_{AB})^{-1}$.
 
-Before we talk about how vector spaces and vector transforms play into the
-graphics pipeline, we should start by naming the spaces that appear over and
-over within the pipeline. 
+## Vector Spaces in Computer Graphics
+
+Objects in a 3D scene are composed of triangles, which in turn are composed 
+of three vertices. The position of each vertex is a three-dimensional vector.
+
+In order to render these objects on your screen, graphics programmers usually
+transform these objects' vertex positions through a standard sequence of vector
+spaces. We'll list these vector spaces below, and then figure out how to
+connect them together.
 
 ### Object Space
 
-Scenes are composed of primitives (like spheres and cylinders), models
-(triangle meshes), or some combination of the two. An "object" is simply one of
-these primitives or models. 
+Scenes are composed of triangles. When you render your scene, you're sending a
+lump of different triangles to the graphics card. While the graphics card just
+sees a bunch of triangles, we humans prefer to subdivide these triangles into
+logical things. 'These triangles form a beach ball,' we might say, 'while these
+triangles form a swing set.'
 
-Object space is a convenient coordinate system for defining an object in your
-scene. Consider a cylinder as our example object. We might define the object
-space for that cylinder as follows:
+Each one of these logical things is called an object. Object space, then, is
+just a convenient coordinate system for defining the positions of vertices in
+an object. Notice we said _an_ object: each object in your scene will likely
+have its own object space.
 
-* The origin is at the cylinder's center
-* The $Y$ axis is aligned with the cylinder's axis
-* The $XZ$ plane cuts the cylinder in half
-* One unit along the $X$, $Y$ or $Z$ axis corresponds to the radius of the
-  cylinder.
+Consider that hypothetical beach ball again. We might define the object space 
+for that beach ball like this:
 
-These choices were arbitrary, as we could have defined the same cylinder in a
-different coordinate system. This choice is just convenient for both the code 
-that creates the cylinder's vertices as well as the code that uses them.
+* The origin of the beach ball's object space coincides with the center of the
+  ball
+* The $Y$ axis aligns with the north and south poles of the beach ball
+* The unit length along any axis is the same as the radius of the beach ball
+
+These choices were arbitrary. For example, we might instead have decided to
+make the origin of our object space coincide with the north pole. Or the south
+pole. Or a random point on the ball. Or anywhere else outside the ball. We
+chose the space above just to make it convenient to specify the position of
+each vertex in the ball.
 
 ### World Space
 
@@ -122,22 +136,21 @@ helps the scene creator reason about the scene.
 
 ### Eye Space
 
-(also known as camera space, view space)
+(also known as camera space, or view space)
 
-The 'camera' is an abstract concept representing the viewer's position and
-orientation. Eye space is simply the camera's object space. It is defined so
-that the camera is at the origin, looking down the negative $Z$ axis, with $Y$
-pointing up.
+You've probably run into the camera by now. The camera allows us to visualize
+the viewer's position and orientation. Eye space is simply the camera's object
+space. It is defined so that the camera is at the origin, looking down the
+negative $Z$ axis, with $Y$ pointing up.
 
-It turns out representing the scene in eye space makes it easier to render
-(more on that later). Once objects have been transformed from object space to
-world space, we typically end up transforming them from world space to eye
-space.
+As we'll see later, eye space is important for rendering. Although scenes are
+easiest set up in world space, it is easiest to render said scene using eye
+space. Transformations to the rescue!
 
 ### Clip Space
 
 Clip space is defined as what the viewer sees. It defines exactly what geometry
-will be rendered to the display.
+will be rendered to the display. 
 
 * The origin of clip space is defined as the center of your monitor. 
 * $X = -1$ corresponds to the left boundary of your monitor.
@@ -145,69 +158,102 @@ will be rendered to the display.
 * $Y = -1$ corresponds to the bottom
 * $Y = 1$ corresponds to the top
 
-The $Z$ axis corresponds to depth buffering values. A vertex with $Z = 0$ in clip
-space is sitting on the near plane, and one with $Z = -1$ lies on the far plane
+The $Z$ axis corresponds to depth values. A vertex with $Z = 0$ in clip
+space is sitting on the near plane, closer than anything else. A vertex with 
+$Z = -1$ lies on the far plane, behind everything else. 
 
 Anything outside the bounds listed above will not be rendered. The graphics
 pipeline will remove geometry outside these bounds, in a process called
-_clipping_.
+_clipping_ (hence the name _clip space_).
 
 ### Screen Space
 
-Screen space is the only 2D space in this list. It is defined so that
+Screen space is defined to make it easy to work with pixels. It is an entirely
+2D space, with no notion of a $Z$ coordinate. 
+
+Let $w$ and $h$ be with width and height of your display, in pixels. In screen
+space,
 
 * $(0, 0)$ corresponds to the top-left corner of your display
 * $(w-1, 0)$ corresponds to the top-right
 * $(0, h-1)$ corresponds to the bottom-left
 * $(w-1, h-1)$ corresponds to the bottom-right
 
-$w$ and $h$ are respecitvely the width and height of your display in pixels.
 Thus every 2D coordinate $(i, j)$ is the index of a pixel. This is why
 screen-space coordinates are sometimes called pixel coordinates.
 
-## Transformations in the Graphics Pipeline
+## Transformations in Computer Graphics
 
-TODO talk about how vertex processing works, how transforms are combined into a
-single matrix, how this is a big win from a Big-O standpoint
+To recap, we listed five spaces above:
 
-Also, mention there's no notion of a camera.
+* __Object space__: A convenient coordinate system for defining vertex
+  positions in an object
+* __World space__: A convenient coordinate system for setting up a scene
+  composed of multiple objects
+* __Eye space__: The same as world space, but from the camera's point of view
+* __Clip space__: A coordinate system representing what will be rendered to the
+  scene
+* __Screen space__: Clip space, but with coordinates that correspond to pixels
+  on your screen
 
-Then segue into needing to compose transformations through all these vector
-spaces.
+A typical workflow using these spaces might work as follows:
 
-## Transforming Between the Spaces
+1. An artist uses a modeling tool like Maya to create a number of 3D models.
+   The artist chooses a convenient coordinate system that makes it easy to get
+   the dimensions right (object space).
 
-Recall that transformations between vector spaces are represented by
-matrices. One of the goals of rendering is to transform each triangle's
-vertices from their original object-space positions to their final screen-space
-pixel positions. The following transformation pipeline accomplishes this.
+2. The artist and the graphics programmer work together to decide how the
+   artist's objects should move around on the screen. The programmer writes
+   code that composes the artist's objects into a scene 60 times per second,
+   creating the illusion of an animation. She uses a coordinate
+   system that corresponds to physical reality, to make it easier to think
+   about how objects are being placed together (world space). Since the artist
+   gave her the objects in object space, the programmer's code uses 
+   transformations to put the objects in world space.
+
+3. The graphics programmer codes a camera, controlled by the user, to allow the
+   user to view the scene any vantage point. In order to render the scene, the
+   programmer writes additional code. After the code from step (2) converts
+   each object from object space to world space, the programmer inserts new
+   code to convert each world-space object to eye space.
+
+4. The programmer configures the camera's projection characteristics. These
+   characteristics determine how much the camera can see from its point of
+   view. The programmer, knowing the scale of the scene, picks a reasonable
+   field of view, along with some other parameters. Then the programmer
+   inserts new code to convert each eye-space object to clip space.
+
+5. Finally, the programmer passes the clip-space objects to the graphics card.
+   The graphics card takes care of the process of rendering these objects on
+   the screen. Since the objects are in clip space (which is defined in terms
+   of what the monitor can see), we've made the graphics card's job much
+   easier.
+
+## Graphics Matrices
+
+What we remains to talk about it how the programmer writes code to convert
+between each of these vector spaces. She will use a series of vector
+transformations encoded into matrices. These matrices, like the spaces they
+convert between, have some standard names. They are listed below.
 
 ### Object $\rightarrow$ World
 
-Called the *world* or *model* matrix. A composition of transformations
-(typically translations, rotations and scales) that defines the location of
-each object in the scene.
+Called the *world* or *model* matrix. A composition of transformations that
+define the position, size and orientation of each object in the scene.
 
 Since there is one object space for each object, there is also one world matrix
-for each object. World matrices can be one-off computations of the output of a
-specialized data structure like a 
-[scene graph](http://en.wikipedia.org/wiki/Scene_graph).
+for each object. World matrices can be computed manually, or may be the output 
+of a specialized data structure like a scene graph.
 
 ### World $\rightarrow$ Eye
 
-Called the *view* matrix. Typically a composition of translations and rotations
-that move the scene so the camera (which is placed within the scene) lies where
-eye space defines it to be.
+Called the *view* matrix. This matrix is used to translate and rotate each
+object in the scene so that the entire scene is defined in eye space, relative
+to the camera. This is the opposite of the sequence of steps that place the
+camera into the scene[^camera].
 
-That sound confusing? Here's another way to think about it. We mentioned before
-that eye space is just object space for the camera (i.e. we're treating the
-camera like an object). Since the camera is placed in the scene, we can 
-construct a world matrix for the camera.
-
-Such a world matrix would transform from the camera's object space (a.k.a.
-eye space) to world space. With the view matrix, we wanted to do the
-opposite: we wanted to transform the scene from world space to eye space.
-Thus the view matrix is the inverse of the camera's world matrix.
+[^camera]: Keep in mind the camera has no
+geometry -- it is just a tool that helps us think about vantage points.
 
 ### Eye $\rightarrow$ Clip
 
@@ -221,9 +267,25 @@ composition of a scaling operation followed by perspectivization:
 
 ### Clip $\rightarrow$ Screen
 
-Usually handled by the graphics package, not exposed to the programmer. Simply
-drops the $Z$ term and scales the $X$ and $Y$ terms appropriately to fill the
-screen.
+This does not have a name, because it's usually handled by the graphics card
+instead of the programmer. Simply drops the $Z$ term and scales the $X$ and $Y$
+terms appropriately to fill the screen.
+
+---
+
+## TODO
+
+* Talk about how these transformations are baked together, and how this is a
+  win from a Big-O standpoint
+* Talk about how these transformations entirely encapsulate the notion of a
+  camera. DirectX and OpenGL do not provide a camera abstraction because none
+  is needed, although it is useful for you to create your own.
+
+Everything else below is old. The OpenGL stuff should be split into a new post.
+Then change the title and rewrite the intro so we don't talk about shaders at
+all in this post.
+
+---
 
 ### Conclusion
 

@@ -1,6 +1,6 @@
 ---
 layout: post
-title: Working with Vector Spaces
+title: The Transformation Pipeline
 author: Dave
 draft: true
 ---
@@ -76,38 +76,74 @@ Intuitively, you might say $M_{AC}$ transforms from $A$-space to $B$-space to
 $C$-space. 
 
 If you have $M_{AB}$, which transforms from $A$-space to $B$-space, you can
-obtain $M_{BA}$, which goes in the opposite direction, by inverting $M_{AB}$.
+obtain $M_{BA}$, which goes from $B$-space to $A$-space, by inverting $M_{AB}$.
 If you had daisy-chained multiple transformations, you can obtain the inverse
-by reversing the order of the steps and inverting each. For example:
+by reversing the order of the steps and inverting each step. For example:
 
-* If $M_{AB} = M_{BC} \times M_{AB}$
+* If $M_{AC} = M_{BC} \times M_{AB}$
 * Then $M_{CA} = M_{BA} \times M_{CB} = (M_{AB})^{-1} \times (M_{BC})^{-1}$
 
-## Vector Spaces in Computer Graphics
+With this background out of the way, we can get a little more concrete.
 
-Objects in a 3D scene are composed of triangles, which in turn are composed 
-of three vertices. The position of each vertex is a three-dimensional vector.
+## Transforming Objects
 
-In order to render these objects on your screen, graphics programmers usually
-transform these objects' vertex positions through a standard sequence of vector
-spaces. We'll list these vector spaces below, and then figure out how to
-connect them together.
+Scenes are composed of triangles. When you render your scene, you're sending a
+lump of different triangles to the graphics system. While the graphics system just
+sees a bunch of triangles in the end, we humans prefer to subdivide these triangles into
+logical things. 'These triangles form a beach ball,' we might say, 'while these
+triangles form a swing set.' 
+
+Each one of these logical things is called an object. Graphics developers,
+being human, like to talk about objects instead of triangles, but keep in mind an
+object is just a bunch of triangles. Each triangle in an object is composed of
+three vertices. Each vertex has a position, which is a vector in some vector
+space.
+
+When we say an object is in $A$-space, we really mean the position of
+each vertex in the object is defined in $A$-space. When we say we transform an
+object form $A$-space to $B$-space, we mean we transform the position of
+every vertex in the object from $A$-space to $B$-space.
+
+A natural next question is: how do we transform objects?
+
+## The Transformation Pipeline
+
+We mentioned earlier that there are a few different things we use
+transformations for. There is a standard pipeline for doing all of these steps
+in a way that won't make you want to pull your hair out (lucky, huh?). We'll
+call this system the transformation pipeline. This pipeline is wholly separate
+from the rendering pipeline, which we'll get to near the end of this article.
+
+Here's a rough outline of the transformation pipeline:
+
+1. Start with a bunch of objects (a chair, a table, etc)
+2. Transform each object so that it appears in the right part of the scene
+3. Transform all objects in the scene as they would be seen from the point of
+   view of the camera
+4. Transform the view, so that things closer to the camera seem bigger than
+   things farther from the camera
+5. Now that vertices have been moved so they reside somewhere on the screen,
+   render the scene by connecting vertices together and filling in triangles.
+
+Each of the transformation steps has a common name, as do the vector
+spaces they transform between. All that's left to do now is list them!
+
+## Vector Spaces in the Transformation Pipeline
+
+There are five standard vector spaces in the pipeline. In theory, you can
+define these spaces however you like. Where possible, we'll give the concrete
+definitions that OpenGL uses.
 
 ### Object Space
 
-Scenes are composed of triangles. When you render your scene, you're sending a
-lump of different triangles to the graphics card. While the graphics card just
-sees a bunch of triangles, we humans prefer to subdivide these triangles into
-logical things. 'These triangles form a beach ball,' we might say, 'while these
-triangles form a swing set.'
-
-Each one of these logical things is called an object. Object space, then, is
-just a convenient coordinate system for defining the positions of vertices in
-an object. Notice we said _an_ object: each object in your scene will likely
+We mentioned that the positions of all the vertices in an object reside in some
+vector space. Object space, then, is just a convenient coordinate system for 
+defining those positions.
+Notice we said _an_ object: each object in your scene will likely
 have its own object space.
 
-Consider that hypothetical beach ball again. We might define the object space 
-for that beach ball like this:
+Consider that hypothetical beach ball from before. We might define the object 
+space for that beach ball like this:
 
 * The origin of the beach ball's object space coincides with the center of the
   ball
@@ -129,35 +165,32 @@ world space.
 
 World space is typically defined so the center of the scene is at the origin.
 Sometimes the unit length in world space corresponds to physical length. This
-helps the scene creator reason about the scene.
+helps the scene creator reason about world-space coordinates.
 
 ### Eye Space
 
 (also known as camera space, or view space)
 
-You've probably run into the camera by now. The camera allows us to visualize
+The camera allows us to conceptualize
 the viewer's position and orientation. Eye space is simply the camera's object
-space. It is defined so that the camera is at the origin, looking down the
-negative $Z$ axis, with $Y$ pointing up.
-
+space. In OpenGL, it is defined so that the camera is at the origin, looking 
+down the negative $Z$ axis, with $Y$ pointing up.
 As we'll see later, eye space is important for rendering. Although scenes are
-easiest set up in world space, it is easiest to render said scene using eye
-space. Transformations to the rescue!
+easiest set up in world space, it is easiest to render the scene after
+transforming all the objects in the scene to eye space.
+Transformations to the rescue!
 
 ### Clip Space
 
-Clip space is defined as what the viewer sees. It defines exactly what geometry
-will be rendered to the display. 
+Clip space defines vertices relative to where they appear on your screen. In
+OpenGL ...
 
-* The origin of clip space is defined as the center of your monitor. 
-* $X = -1$ corresponds to the left boundary of your monitor.
-* $X = 1$ corresponds to the right boundary
-* $Y = -1$ corresponds to the bottom
-* $Y = 1$ corresponds to the top
-
-The $Z$ axis corresponds to depth values. A vertex with $Z = 0$ in clip
-space is sitting on the near plane, closer than anything else. A vertex with 
-$Z = -1$ lies on the far plane, behind everything else. 
+* the origin of clip space is defined as the center of your monitor. 
+* $X = -1$ and $X = 1$ correspond to the left and right boundaries of your
+  monitor
+* $Y = 1$ and $Y = -1$ correspond to the top and bottom of your monitor
+* The $Z$ component determines visibility when triangles overlap. A vertex with
+  $Z = 0$ is in front of everything; a vertex with $Z = -1$ is behind everything.
 
 Anything outside the bounds listed above will not be rendered. The graphics
 pipeline will remove geometry outside these bounds, in a process called
@@ -165,8 +198,8 @@ _clipping_ (hence the name _clip space_).
 
 ### Screen Space
 
-Screen space is defined to make it easy to work with pixels. It is an entirely
-2D space, with no notion of a $Z$ coordinate. 
+Screen space is defined to make it easy to work with pixels. It's a 2D space,
+with no $Z$ coordinate.
 
 Let $w$ and $h$ be with width and height of your display, in pixels. In screen
 space,
@@ -179,94 +212,61 @@ space,
 Thus every 2D coordinate $(i, j)$ is the index of a pixel. This is why
 screen-space coordinates are sometimes called pixel coordinates.
 
-## Transformations in Computer Graphics
+## Fitting These Together
 
 To recap, we listed five spaces above:
 
-* __Object space__: A convenient coordinate system for defining vertex
-  positions in an object
-* __World space__: A convenient coordinate system for setting up a scene
-  composed of multiple objects
-* __Eye space__: The same as world space, but from the camera's point of view
-* __Clip space__: A coordinate system representing what will be rendered to the
-  scene
-* __Screen space__: Clip space, but with coordinates that correspond to pixels
-  on your screen
+* __Object space__: convenient for defining vertex positions in an object
+* __World space__: convenient for setting up those objects into one scene
+* __Eye space__: the same scene, but from the camera's point of view
+* __Clip space__: the final space containing what will be rendered
+* __Screen space__: clip space, but engineered for cloring pixels
 
 A typical workflow using these spaces might work as follows:
 
-1. An artist uses a modeling tool like Maya to create a number of 3D models.
-   The artist chooses a convenient coordinate system that makes it easy to get
-   the dimensions right (object space).
+1. An artist creates a mesh, defined in some object space that was convenient
+   for the artist when he created the mesh.
+2. A graphics programmer writes code to transform each object into world space,
+   creating a coherent scene.
+3. The graphics programmer writes code to let the user manipulate their
+   viewpoint, and uses that input to transform the scene to eye space.
+4. The graphics programmer uses a transformation to foreshorten the scene,
+   making nearby objects seem closer. This results in clip-space coordinates.
+5. The graphics programmer sends the object vertices and transformations to the
+   graphics system.
+6. The graphics system renders these vertices on the screen, in screen space.
 
-2. The artist and the graphics programmer work together to decide how the
-   artist's objects should move around on the screen. The programmer writes
-   code that composes the artist's objects into a scene 60 times per second,
-   creating the illusion of an animation. She uses a coordinate
-   system that corresponds to physical reality, to make it easier to think
-   about how objects are being placed together (world space). Since the artist
-   gave her the objects in object space, the programmer's code uses 
-   transformations to put the objects in world space.
+## Matrices in the Transformation Pipeline
 
-3. The graphics programmer codes a camera, controlled by the user, to allow the
-   user to view the scene any vantage point. In order to render the scene, the
-   programmer writes additional code. After the code from step (2) converts
-   each object from object space to world space, the programmer inserts new
-   code to convert each world-space object to eye space.
-
-4. The programmer configures the camera's projection characteristics. These
-   characteristics determine how much the camera can see from its point of
-   view. The programmer, knowing the scale of the scene, picks a reasonable
-   field of view, along with some other parameters. Then the programmer
-   inserts new code to convert each eye-space object to clip space.
-
-5. Finally, the programmer passes the clip-space objects to the graphics card.
-   The graphics card takes care of the process of rendering these objects on
-   the screen. Since the objects are in clip space (which is defined in terms
-   of what the monitor can see), we've made the graphics card's job much
-   easier.
-
-## Graphics Matrices
-
-What we remains to talk about it how the programmer writes code to convert
-between each of these vector spaces. She will use a series of vector
-transformations encoded into matrices. These matrices, like the spaces they
-convert between, have some standard names. They are listed below.
+Now that we've finished naming spaces, it's time to name the transformation matrices.
+There are four transformation steps in our pipeline, but only three of them are
+implemented using matrices. 
 
 ### Object $\rightarrow$ World
 
 Called the *world* or *model* matrix. A composition of transformations that
 define the position, size and orientation of each object in the scene.
-
 Since there is one object space for each object, there is also one world matrix
-for each object. World matrices can be computed manually, or may be the output 
-of a specialized data structure like a scene graph.
+for each object. 
 
 ### World $\rightarrow$ Eye
 
 Called the *view* matrix. This matrix is used to translate and rotate each
 object in the scene so that the entire scene is defined in eye space, relative
 to the camera. This is the opposite of the sequence of steps that place the
-camera into the scene[^camera].
-
-[^camera]: Keep in mind the camera has no
-geometry -- it is just a tool that helps us think about vantage points.
+camera into the scene (think back to matrix inversions).
 
 ### Eye $\rightarrow$ Clip
 
-Called the *projection* matrix. The projection matrix is usually the
-composition of a scaling operation followed by perspectivization:
-
-* The scale operation scales down the scene so the visible range spans from -1
-  to 1 on the $x$ and $y$ axes, as defined by clip space.
-* The perspectivization operation "unhinges" the scene, making closer objects
-  seem bigger. This simulates visual perspective.
+Called the *projection* matrix. This step usually includes perspectivization,
+which makes closer objects seem bigger. This simulates visual perspective.
 
 ### Clip $\rightarrow$ Screen
 
-This does not have a name, because it's usually handled by the graphics card
-instead of the programmer. Simply drops the $Z$ term and scales the $X$ and $Y$
-terms appropriately to fill the screen.
+This does not have a name, because it's usually handled by the graphics system
+instead of the programmer. The graphics system implements this step by dropping
+the $Z$ term and scaling the $X$ and $Y$ terms by the width and height of the
+screen, in pixels.
 
 ## Putting It Together
 

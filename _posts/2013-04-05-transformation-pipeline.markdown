@@ -339,7 +339,7 @@ idea remains the same.
 ## Where to Next?
 
 If you're developing shaders, you may be interested in the OpenGL-based
-followup article, [Shader Transformations](/04/05/shader-transforms.html),
+followup article [Shader Transformations](/04/05/shader-transforms.html),
 which builds on what you learned in this article.
 Otherwise, onward to your next graphics programming adventure! :D
 

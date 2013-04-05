@@ -1,47 +1,26 @@
 ---
 layout: post
-title: How Shader Transformations Work
+title: Working with Vector Spaces
 author: Dave
 draft: true
 ---
 
-Debugging shaders is a tricky business, especially when you can't use
-printlines or a proper debugger. This makes preventing shader bugs a better 
-strategy than trying to track them down and fix them.
+If you've been playing with a real-time graphics package (like DirectX or
+OpenGL) for a while, you've probably noticed how important transformations are.
+They're used for several different purposes, like moving objects and 
+positioning the viewer (i.e. the 'camera'). 
 
-This post is about preventing the most common shader bug: mixing up your 
-transformations. Shaders with this type of bug usually look right (or almost
-right) from one point of view, but do something weird as soon as things start
-moving around. One of the most common symptoms is lights always moving relative
-to the camera.
+Things can get confusing when you start using the same tool for different
+tasks! To deal with this, graphics developers over the years have converged
+on a fairly simple system for naming different types of transformations.
+This post will be an overview of vector spaces and transformations: what they
+are, what they're called, and how they fit together into a pipeline. While it
+seems everyone has their own naming system for spaces and transforms, the
+basic ideas carry over universally.
 
-Preventing this bug requires a little discipline, but it's probably something
-you've done before. Let's start with something a bit more familiar.
+We'll start with vector spaces. 
 
-## 'Transforming' Physical Units
-
-$5 + 2 = 7$. 
-That's clearly correct, right? Who would dispute that?
-
-Well, it certainly works if every term uses the same unit:
-$5 m + 2 m = 7 m$.
-
-But if the units don't match, the equation is meaningless:
-$5 m + 2 ft = 7 (...?)$
-
-In short, the math only makes sense if every term uses the same unit.
-In high school physics you probably learned what to do if your terms' units
-mismatch: convert some of the terms to a different unit of
-measurement. Then the math works out fine.
-
-$5 m + 2 ft * \dfrac{0.3048 m}{ft} = 5 m + 0.6096 m = 5.6096 m$
-
-## Vector Spaces are the Same
-
-You might say vector spaces are to vectors as units are to numbers. Like with
-units, if you have an equation made of vector additions, subtractions, dot 
-products, or what-have-you, the math only works out if the all vectors occupy 
-the same vector space. 
+## Vector Spaces
 
 A vector space is just a meaning given to the coordinate axis. This meaning is
 chosen by convention. For example, we might define one vector space by saying
@@ -49,16 +28,29 @@ the $X$ and $Z$ axes align with the ground plane, with $Y$ pointing toward the
 sky. We might define another vector space with $X$ and $Y$ being parallel to a
 camera's lens, with $Z$ pointing out of that lens.
 
+Vector spaces work on vectors a lot like how units work on numbers. For
+example, the equation $5 + 2 = 7$ ...
+
+* is correct when all the terms have the same unit: $5m + 2m = 7m$
+* makes no sense when the units don't match: $5m + 2ft = 7(...?)$
+
+For an equation with scalar numbers to make sense, the units attached to these
+numbers must match. If you have different units on your terms, you can convert
+some terms to a different unit of measurement. Once you're done converting,
+the equation will make sense again:
+
+$5 m + 2 ft * \dfrac{0.3048 m}{ft} = 5 m + 0.6096 m = 5.6096 m$
+
+Vector spaces do more or less the same thing with vectors. If you have a vector
+equation (with vector additions, dot products, or what-have-you), the math only
+works if every vector is in the same vector space.
 Vector transformations allow you to convert a vector from one vector space to
 another. To continue with our analogy, these transformations are like unit
-conversions. Math involving vectors only 'works'
-after you've transformed all the vectors to the same vector space. Once you've
-done that, your shaders will be (hopefully) bug-free!
+conversions. 
 
-This is easier said than done, but it's manageable if you understand how
-these transformations work and how they tie into the graphics pipeline.
+You might ask, then, how to transform vectors between vector spaces ...
 
-## How Transformations Work
+## Transformations
 
 You've probably seen vector transformations before. They allow you to 
 scale, rotate and translate the objects in your scene.
@@ -70,8 +62,9 @@ $M_{AB}$, you can simply multiply it with the $A$-space vector. The
 result is the $B$-space vector. So, $v_B = M_{AB} \times v_A$.
 
 Often $M_{AB}$ is simple. For example, if $B$-space is the same as $A$-space,
-$M_{AB}$ is the identity matrix. If objects in $A$-space are half as large as
-objects in $B$-space, $M_{AB}$ is just a scale matrix. 
+$M_{AB}$ is the identity matrix. If the origins of both spaces are the same,
+but one unit in $A$ space equals two units in $B$ space, then $M_{AB}$ is a
+scale matrix.
 You can build complex $M_{AB}$'s by daisy-chaining the simpler ones.
 They are combined via matrix multiplication:
 
@@ -84,7 +77,11 @@ $C$-space.
 
 If you have $M_{AB}$, which transforms from $A$-space to $B$-space, you can
 obtain $M_{BA}$, which goes in the opposite direction, by inverting $M_{AB}$.
-So $M_{BA} = (M_{AB})^{-1}$.
+If you had daisy-chained multiple transformations, you can obtain the inverse
+by reversing the order of the steps and inverting each. For example:
+
+* If $M_{AB} = M_{BC} \times M_{AB}$
+* Then $M_{CA} = M_{BA} \times M_{CB} = (M_{AB})^{-1} \times (M_{BC})^{-1}$
 
 ## Vector Spaces in Computer Graphics
 
@@ -271,12 +268,17 @@ This does not have a name, because it's usually handled by the graphics card
 instead of the programmer. Simply drops the $Z$ term and scales the $X$ and $Y$
 terms appropriately to fill the screen.
 
+## Putting It Together
+
 ---
 
 ## TODO
 
 * Talk about how these transformations are baked together, and how this is a
-  win from a Big-O standpoint
+  win from a Big-O standpoint. Start with some pseudocode for how you might
+  do this naively by transforming objects in stages, then move on to the more
+  efficient formulation the graphics pipeline uses today.
+
 * Talk about how these transformations entirely encapsulate the notion of a
   camera. DirectX and OpenGL do not provide a camera abstraction because none
   is needed, although it is useful for you to create your own.
@@ -284,6 +286,23 @@ terms appropriately to fill the screen.
 Everything else below is old. The OpenGL stuff should be split into a new post.
 Then change the title and rewrite the intro so we don't talk about shaders at
 all in this post.
+
+---
+
+## The old intro
+
+Debugging shaders is a tricky business, especially when you can't use
+printlines or a proper debugger. This makes preventing shader bugs a better 
+strategy than trying to track them down and fix them.
+
+This post is about preventing the most common shader bug: mixing up your 
+transformations. Shaders with this type of bug usually look right (or almost
+right) from one point of view, but do something weird as soon as things start
+moving around. One of the most common symptoms is lights always moving relative
+to the camera.
+
+Preventing this bug requires a little discipline, but it's probably something
+you've done before. Let's start with something a bit more familiar.
 
 ---
 

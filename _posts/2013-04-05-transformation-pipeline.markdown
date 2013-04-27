@@ -2,23 +2,24 @@
 layout: post
 title: The Transformation Pipeline
 author: Dave
-draft: true
+draft: false
 ---
 
-If you've been playing with a real-time graphics package (like DirectX or
-OpenGL) for a while, you've probably noticed how important transformations are.
-They're used for several different purposes, like moving objects and 
-positioning the viewer (i.e. the 'camera'). 
+If you've used a real-time graphics package (like DirectX or OpenGL), you've 
+probably noticed how pervasive transformations are. These packages use 
+transformations for all sorts of things! 
 
-Things can get confusing when you start using the same tool for different
-tasks! To deal with this, graphics developers over the years have converged
-on a fairly simple system for naming different types of transformations.
-This post will be an overview of vector spaces and transformations: what they
-are, what they're called, and how they fit together into a pipeline. While it
-seems everyone has their own naming system for spaces and transforms, the
-basic ideas carry over universally.
+Although using transformations for all these things is mathematically elegant,
+it also makes reasoning about transformations a little complex. To make things
+easier, graphics developers invented a system for classifying and combining the
+different types of graphics transformations. This sytem is called the
+transformation pipeline. It's accepted nearly universally, even though many
+people have their own twist on it.
 
-We'll start with vector spaces. 
+This post will be about both of these aspects of the transformation pipeline.
+We'll start with classification, and then move on to combination. 
+
+Our first topic will be vector spaces.
 
 ## Vector Spaces
 
@@ -26,7 +27,7 @@ A vector space is just a meaning given to the coordinate axis. This meaning is
 chosen by convention. For example, we might define one vector space by saying
 the $X$ and $Z$ axes align with the ground plane, with $Y$ pointing toward the
 sky. We might define another vector space with $X$ and $Y$ being parallel to a
-camera's lens, with $Z$ pointing out of that lens.
+camera's lens, with $Z$ pointing into that lens.
 
 Vector spaces work on vectors a lot like how units work on numbers. For
 example, the equation $5 + 2 = 7$ ...
@@ -73,7 +74,8 @@ They are combined via matrix multiplication:
 * Then $M\_{AC} = M_{BC} \times M_{AB}$ transforms from $A$-space to $C$-space.
 
 Intuitively, you might say $M_{AC}$ transforms from $A$-space to $B$-space to
-$C$-space. 
+$C$-space. But keep in mind $M_{AB}$ and $M_{AC}$ have the same dimensions.
+Multiplying either by some vector requires an equal amount of computation.
 
 If you have $M_{AB}$, which transforms from $A$-space to $B$-space, you can
 obtain $M_{BA}$, which goes from $B$-space to $A$-space, by inverting $M_{AB}$.
@@ -109,24 +111,23 @@ A natural next question is: how do we transform objects?
 ## The Transformation Pipeline
 
 We mentioned earlier that there are a few different things we use
-transformations for. There is a standard pipeline for doing all of these steps
-in a way that won't make you want to pull your hair out (lucky, huh?). We'll
-call this system the transformation pipeline. This pipeline is wholly separate
-from the rendering pipeline!
+transformations for, and there's a system for classifying and combining these
+transformations. This system is called the transformation pipeline, and it's
+not to be confused with the rendering pipeline!
 
 Here's a rough outline of the transformation pipeline:
 
 1. Start with a bunch of objects (a chair, a table, etc)
 2. Transform each object so that it appears in the right part of the scene
-3. Transform all objects in the scene as they would be seen from the point of
-   view of the camera
-4. Transform the view, so that things closer to the camera seem bigger than
-   things farther from the camera
-5. Now that vertices have been moved so they reside somewhere on the screen,
-   render the scene by connecting vertices together and filling in triangles.
+3. Transform all objects in the scene, so they're positioned as they would
+   be seen from the point of view of the camera.
+4. Transform all the objects again, this time making things closer to the
+   camera seem bigger than things farther from the camera.
+5. Drop the $Z$ coordinate of all the vertices that have been transformed
+   so far, and then stitch them together to create triangles on the screen.
 
 Each of the transformation steps has a common name, as do the vector
-spaces they transform between. All that's left to do now is list them!
+spaces each transforms between. All that's left to do now is list them!
 
 ## Vector Spaces in the Transformation Pipeline
 
@@ -216,11 +217,11 @@ screen-space coordinates are sometimes called pixel coordinates.
 
 To recap, we listed five spaces above:
 
-* __Object space__: convenient for defining vertex positions in an object
-* __World space__: convenient for setting up those objects into one scene
+* __Object space__: convenient for defining vertex positions of an object
+* __World space__: convenient for setting up those objects in one scene
 * __Eye space__: the same scene, but from the camera's point of view
 * __Clip space__: the final space containing what will be rendered
-* __Screen space__: clip space, but engineered for cloring pixels
+* __Screen space__: a pixel-friendly coordinate system for clip space
 
 A typical workflow using these spaces might work as follows:
 
@@ -300,21 +301,25 @@ render the scene. Here's a simple algorithm:
             graphicsSystem.drawTriangle(object[i].triangle[j])
 
 No graphics system (or at least none known to the author) is set up to work
-this way. This is because you can save space by swapping the two loops. That
-is, the above snippet basically does this:
+this way. This is because you can speed things up by swapping the two loops. 
+That is, the above snippet transforms objects like this:
 
     for each transformation step
         for each object
             transform the object
 
-Whereas we can save memory by doing this:
+Whereas we can speed things up by doing this:
 
     for each object
         for each transformation step
             transform the object
 
-We save space by not needing to store the intermediate object vertices. The
-resulting snippet looks something like this:
+We save space by not needing to store the intermediate object vertices. We can
+also have the graphics card do all our matrix-vector multiplications. The
+latter is significantly faster than CPU-based matrix-vector multiplications,
+since the GPU is massively parallel.
+
+The snippet resulting from swapping the loops looks like this:
 
     // Start in object space
     objects := load_objects()
@@ -322,9 +327,9 @@ resulting snippet looks something like this:
     // Render the objects
     for i in (0 -> objects.length):
         objectToClip := identityMatrix()
-        objectToClip *= objects[i].getWorldMatrix()
-        objectToClip *= camera[i].getViewMatrix()
-        objectToClip *= camera[i].getProjectionMatrix()
+                      * objects[i].getWorldMatrix()
+                      * camera.getViewMatrix()
+                      * camera.getProjectionMatrix()
 
         for j in (0 -> objects[i].numTriangles);
             graphicsSystem.transformAndDrawTriangle(
@@ -332,14 +337,29 @@ resulting snippet looks something like this:
                 objectToClip
             )
 
-This is the basic 'accepted' implementation of the transformation pipeline.
-Each graphics pipeline has its own separate twist on this pipeline, but the
-idea remains the same.
+And that's really all there is to it! Of course, the logic behind
+`getWorldMatrix`, `getViewMatrix` and `getProjectionMatrix` is likely
+might be complex.
+
+## One Final Aside
+
+We mentioned the transformation pipeline is distinct from the
+rendering pipeline. How do the two work together? 
+
+* The transformation pipeline runs on the CPU. It takes in the application's
+  state and produces a single transformation matrix for each object in the
+  scene. We outlined it in the pseudocode above.
+
+* The rendering pipeline runs on the GPU. It takes a triangle and a
+  transformation matrix, and draws that triangle on the screen. We invoked the
+  rendering pipeline in the pseudocode above when we called
+  `graphicsSystem.transformAndDrawTriangle`.
+
 
 ## Where to Next?
 
 If you're developing shaders, you may be interested in the OpenGL-based
-followup article [Shader Transformations](/04/05/shader-transforms.html),
+followup article [Shader Transformations](/2013/04/05/shader-transforms.html),
 which builds on what you learned in this article.
 Otherwise, onward to your next graphics programming adventure! :D
 

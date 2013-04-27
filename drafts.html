@@ -11,21 +11,23 @@ layout: default
     <hr/>
 
     {% for post in site.posts %}
+        {% if post.draft %}
+            <div class="post-blurb">
+                <div style="margin: 0; padding: 0; max-width: 700px">
+                    <header style="padding-bottom: 1em">
+                        <h1><a href="{{ post.url }}">{{ post.title }}</a></h1>
+                        <h6>{{ post.date | date_to_long_string }}</h6>
+                        {% if post.draft %}
+                        <h5 style="color:#a22">
+                            This post is marked as a draft. Content may be incomplete or missing.
+                        </h5>
+                        {% endif %}
+                    </header>
+                </div>
+            </div>
 
-    <div class="post-blurb">
-        <div style="margin: 0; padding: 0; max-width: 700px">
-            <header style="padding-bottom: 1em">
-                <h1><a href="{{ post.url }}">{{ post.title }}</a></h1>
-                <h6>{{ post.date | date_to_long_string }}</h6>
-                {% if post.draft %}
-                    <h5 style="color:#a22">This post is marked as a draft. Content may be incomplete or missing.</h5>
-                {% endif %}
-            </header>
-        </div>
-    </div>
-
-    <hr/>
-
+            <hr/>
+        {% endif %}
     {% endfor %}
 
     <a href="/">(hide draft posts)</a>

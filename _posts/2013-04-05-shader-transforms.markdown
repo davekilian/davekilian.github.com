@@ -1,8 +1,102 @@
 ---
 layout: post
-title: Shader Transformations
+title: OpenGL Shader Transformations
 author: Dave
 draft: true
+---
+
+OpenGL is a complex system. In my 8 semesters of undergrad study, I spent about
+6 of them working with OpenGL in some respect. Only about halfway through that 
+did I finally start to feel like things were starting to make sense!
+
+One of the bigger stumbling blocks I ran into was figuring out how to properly
+use transformations with GLSL shaders. It turns out there's just about one
+'correct' way to set up a shader-based OpenGL app, and plenty of ways to mess
+up. The result of messing up is usually something plausible-looking yet 
+bizarrely broken -- like a scene that seems fine until you realize moving the 
+camera moves the lights with it.
+
+These mistakes are all too common, and I've never found a single resource that
+covers the issue end to end. In this post, I'll try to rectify that! We'll
+be talking about transformations quite a bit, so if you're a bit rusty, or if
+the terms don't seem familiar, I'd recommend reading about the
+[Transformation Pipeline](http://www.davekilian.com/2013/04/27/transformation-pipeline.html).
+
+## A History Lesson (Optional)
+
+OpenGL's shader story is, admittedly, a little messed up.
+
+OpenGL was born in the heydey of fixed-function hardware. Fixed-function
+graphics cards, unlike modern cards, had 'hardcoded' circuitry for performing
+just about any graphics-related task. The graphics programmer simply toggled
+specific features on or off, and then sent some vertices to the card to be
+rendered.
+
+Nowadays pretty much all graphics cards are shader-based. These cards don't
+know a ton about rendering; instead, they just execute shader programs.
+These shaders contain the actual rendering logic. 
+
+Back in the fixed-function days, only graphics card manufacturers (like ATI and
+NVIDIA) were able to add new rendering features to their cards. Developers had 
+to wait for new cards to support new features, and users had to upgrade to the 
+newest cards to use the newest features. With the advent of shaders, it's now 
+possible for developers to invent new rendering features and run them on 
+existing hardware. 
+
+OpenGL was originally invented to be a common bridge between different
+fixed-function systems. As long as each graphics manufacturer implented OpenGL
+for its fixed-function hardware, any OpenGL-based app could run on any
+OpenGL-compatible hardware, even if the individual cards worked vastly
+differently. 
+
+As the tides turned from fixed-function to shader-based graphics, OpenGL
+needed to evolve. OpenGL 2.0 added support for a GL shading language (GLSL).
+While this opened up a wide range of possibilities to graphics developers, the
+choice to keep shaders alongside the older functionality limited shaders'
+flexibility. OpenGL 3.0 deprecated most of this older
+functionality, and OpenGL 3.1 removed it. Nowadays, OpenGL 4.x (the latest 
+version at the time of writing) is more or less a thin wrapper for loading 
+shaders and graphics data (basically, vertices and textures) onto the graphics 
+card and executing the shaders. However, in some cases developers have access
+to the OpenGL Compatibility Profile, which implements the older functionality
+removed in GL 3.x.
+
+The Khronos Group (which develops and maintains OpenGL) only intended for the
+compatibility profile to allow older OpenGL apps to continue working; however,
+a lot of courses and tutorials still use the compatibility profile for
+teaching, since it requires less boilerplate to write an OpenGL 'Hello World'
+app. Unfortunately, the compatibility profile retains the confusing and
+poorly-documented interaction between the fixed-function API and shaders, which
+confuses students when said tutorials move on to GLSL.
+
+The goal of this post, then, is to explain how the fixed-function API interacts
+with the shader system in the OpenGL compatibility profile. We'll develop a
+correctly-formed shader-based 'Hello World' and explain why it works, and how
+small changes cause completely diffrent behavior.
+
+## TODO
+
+* Talk about how vertex shaders play into the pipeline, what their role is,
+  what code they replace, `ftransform()`
+
+* Do everything in eye space
+
+* The matrix stack is a stack -- remember to perform your operations in reverse
+  order
+
+* The modelview / projection split (the projection matrix is not the camera
+  matrix!)
+
+* Getting eye-space coordinates in shaders
+
+* A minimal working example of blinn-phong or something
+
+---
+
+# Old Stuff
+
+The stuff below was trimmed off an older draft of the transformations post
+
 ---
 
 Debugging shaders is a tricky business, especially when you can't use

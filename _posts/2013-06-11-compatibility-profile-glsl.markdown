@@ -1,6 +1,6 @@
 ---
 layout: post
-title: OpenGL Shader Transformations
+title: Writing Shaders in the OpenGL Compatibility Profile
 author: Dave
 draft: true
 ---

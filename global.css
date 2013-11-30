@@ -92,3 +92,8 @@ dd
 {
     margin-bottom: 1em;
 }
+
+pre code
+{
+    font-size: 120%;
+}

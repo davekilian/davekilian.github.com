@@ -349,44 +349,34 @@ instead, you can just directly call the session description/ICE methods
 directly.
 This is what many [WebRTC examples](http://simpl.info/rtcdatachannel/) do.
 
-However, to make sure your code is robust, it's probably more prudent to create
-a 'local' broker like the one below for use during development:
-
 ```js
-function LocalBroker() { }
+var caller = new RTCPeerConnection(...);
+var callee = new RTCPeerConnection(...);
 
-LocalBroker.prototype.sendOffer = function(desc) {
-    if (this.onoffer) {
-        this.onoffer(desc);
-    }
-}
+// ... (set ICE callbacks, etc)
 
-LocalBroker.prototype.sendAnswer = function(desc) {
-    if (this.onanswer) {
-        this.onanswer(desc);
-    }
-}
+// Establish the connection
+caller.createOffer(function(desc) {
 
-LocalBroker.prototype.sendIce = function(candidate) {
-    if (this.onice) {
-        this.onice(candidate);
-    }
-}
+// Set the caller's session description
+caller.setLocalDescription(desc, function() {
+callee.setRemoteDescription(desc, function() {
 
-var __singleton = new LocalBroker();
-function myConnectToBroker() {
-    return __singleton;
-}
+// Accept the connection
+callee.createAnswer(function (desc) {
+
+// Set the callee's session description
+callee.setLocalDescription(desc, function() {
+caller.setRemoteDescription(desc, function() { 
+
+}, myLogError);
+}, myLogError);
+}, myLogError);
+}, myLogError);
+}, myLogError);
+}, myLogError);
+
 ```
-
-This broker object acts like our 'real' broker object, but doesn't require a
-real broker server to be running anywhere. Instead, you can create two WebRTC
-peers in the same window, using the same `LocalBroker` instance to connect the 
-two.
-When you're ready to switch to the 'real' broker server, you can swap out the
-`LocalBroker` broker implementation for a real one, and then separate the 
-caller and callee into separate browser windows.
-The actual caller/callee code can remain the same!
 
 ## Using the Connection
 
@@ -401,11 +391,12 @@ In all three cases, the model is the same:
 * The other peer receives a matching stream via an event from its
   `RTCPeerConnection` (`onaddstream` for audio/video, `ondatachannel` for data)
 
-Note that it's legal to add a stream or create a data channel before the
-connection has been fully established. In this case, any writes to the channel
-will be queued until the connection is up. Soon after the connection goes up,
-`onaddstream` or `ondatachannel` will be fired to create the stream object on
-the other peer.
+Since these streams are part of the session description,
+your app _must_ have called `addStream()`/`createDataChannel()` before
+`createOffer()`.
+Otherwise the stream won't be part of the connection
+description, and the `onaddstream`/`ondatachannel` event won't get called on
+the other peer!
 
 ## Reference
 

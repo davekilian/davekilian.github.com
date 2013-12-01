@@ -9,7 +9,7 @@ plugins:     ./_plugins
 
 future:      true
 lsi:         false
-pygments:    false
+pygments:    true
 markdown:    redcarpet
 permalink:   date
 
@@ -37,3 +37,7 @@ kramdown:
     coderay_tab_width: 4
     coderay_bold_every: 10
     coderay_css: style
+
+redcarpet:
+  extensions: ["no_intra_emphasis", "fenced_code_blocks", "autolink", "strikethrough", "superscript", "with_toc_data"]
+

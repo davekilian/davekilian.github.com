@@ -2,7 +2,6 @@
 layout: post
 title: Setting Up WebRTC The Hard Way
 author: Dave
-draft: true
 ---
 
 It may not immediately sound like it, but setting up a connection with WebRTC

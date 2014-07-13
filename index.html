@@ -2,21 +2,23 @@
 layout: default
 ---
 <section class="content">
+    <h1>Dave Kilian's Blog &ndash; Index</h1>
+
+    <hr/>
+
     {% for post in site.posts %}
         {% unless post.draft %}
-        <div class="post-blurb">
-            <div style="margin: 0; padding: 0; max-width: 700px">
-                <header style="padding-bottom: 1em">
-                    <h1><a href="{{ post.url }}">{{ post.title }}</a></h1>
-                    <h6>{{ post.date | date_to_long_string }}</h6>
-                </header>
+            <div class="post-blurb">
+                <div style="margin: 0; padding: 0; background-color: {% cycle '#fff', '#eee' %}">
+                    <header style="padding-top: 1em; padding-bottom: 1em; padding-left: 1em">
+                        <h1><a href="{{ post.url }}">{{ post.title }}</a></h1>
+                    </header>
+                </div>
             </div>
-        </div>
-
-        <hr/>
         {% endunless %}
     {% endfor %}
 
+    <hr/>
     <a href="drafts.html">(show draft posts)</a>
 </section>
 

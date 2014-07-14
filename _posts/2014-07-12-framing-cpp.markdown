@@ -29,7 +29,13 @@ tutorial, to get a feel for the basic syntax.
 Finally, consider taking each section one at a time, with some time in between
 to mull things over and wait for them to click.
 
-## Idea 1: Bare-Metal Memory and Data Types
+## Table of Contents
+
+1. [Bare-Metal Memory and Data Types](#part1)
+2. [Resource Lifetimes](#part2)
+3. [Compilation Model](#part3)
+
+## <a name="part1"></a> Idea 1: Bare-Metal Memory and Data Types
 
 One of the commonly cited reasons people use C++ is that it provides 'low-level
 memory access.'
@@ -355,9 +361,19 @@ The key takeaways are as follows:
 > Variables are always initialized using a byte copy,
 > but you can pass a pointer by value to share a reference._
 
-## Idea 2: Resource Lifetime
+## <a name="part2"></a> Idea 2: Resource Lifetime
 
-## Idea 3: Compilation Model
+You may have heard before that C++ has no automatic memory management.
+There is no garbage collector to clean up memory after you're done with it:
+whenever you use `new` to allocate an object, you must later use `delete` on
+that object to release its memory, once you're done with it.
+That's not to say that C++ doesn't help you manage your memory at all!
+But to understand how C++ helps you manage memory, first we'll need to talk
+about the types of memory that need managing.
+There are two types of memory available to you when writing in C++:
+stack memory and heap memory.
+
+## <a name="part3"></a> Idea 3: Compilation Model
 
 C++ supports a different compilation model than you may be familiar with.
 Namely, C++ is designed to work with single-pass compilers,

@@ -1,6 +1,6 @@
 ---
 layout: post
-title: Framing C++ with 3 Core Ideas
+title: 3 Core Ideas Behind C++
 author: Dave
 draft: true
 ---
@@ -24,18 +24,343 @@ To get the most out of this guide, you'll need some background in a more modern
 object-oriented language with C-style syntax.
 Examples include Java, C# and Go.
 No prior knowledge of C is required, nor will we cover C at all in this guide.
-We also recommend doing a cursory tutorial to get a feel for the basic syntax.
+Before starting this guide, we recommend cursory completion of a basic C++
+tutorial, to get a feel for the basic syntax.
 Finally, consider taking each section one at a time, with some time in between
 to mull things over and wait for them to click.
 
-## 1: Typing with Bare-Metal Memory
+## Idea 1: Bare-Metal Memory and Data Types
 
-## 2: Resource Lifetimes
+One of the commonly cited reasons people use C++ is that it provides 'low-level
+memory access.'
+To understand what that means, let's reflect for a moment on programming type
+systems.
 
-## 3: Compilation Model
+You've probably heard before that everything stored by a computer, whether in
+RAM, on a hard disk, in a CPU register, or barreling down an Ethernet cable, is
+just bytes.
+One of the chief jobs of a programming language is to insulate you from this.
+To you, `int`s are just mathematical integers, on which you can perform
+arithmetic.
+`string`s are just bits of text that can be sliced, diced and spliced.
+But every time you manipulate a variable, you're really just changing a number
+that's stored as binary in some cell in RAM.
+Different 'types' are just different ways of interpreting these numbers.
+
+Like many programming languages, C++ provides an abstraction over bytes as
+primitive types, and objects composed of primitive types.
+Unlike many programming languages, C++ provides a very thin abstraction, and
+makes it easy to drop into the actual byte representation.
+
+For starters, C++ makes some guarantees about the byte representation for its
+primitive types.
+It provides a range of numeric types, which differ only by the number of bytes
+it takes to represent them:
+
+* `char` is always 1 byte (for this reason, programmers often use `char`s to
+  manipulate byte buffers)
+* `short` is larger than `char`, but smaller than a standard `int` (typically
+  16 bits)
+* `int` is typically 32 bits
+* `long` is typically 64 bits
+* and so on.
+
+For user defined types (`class`es and `struct`s), C++ simply concatenates the
+byte representation for each field in the type.
+So the following struct:
+
+```cpp
+struct MyData
+{
+    int SomeData;
+    int MoreData;
+};
+```
+
+gets represented in memory somewhat like this:
+
+```
+|-0-|-1-|-2-|-3-|-4-|-5-|-6-|-7-| byte offsets
+|-- SomeData ---|-- MoreData ---| field names
+```
+
+If you had an instance of `MyData` and set its `MoreData` field to some value
+(say, 7), the compiler would generate machine code that says:
+
+* Start at the byte address of the `MyData` instance
+* Skip forward 4 bytes
+* Set the next 4 bytes to `0x00 0x00 0x00` and `0x07`, respectively.
+
+One consequence of this model is that type information is known only at compile
+time:
+the compiler generates machine code that, at runtime, uses a fixed offset and
+byte count to correctly assign a value to a variable.
+Since type information is no longer available at runtime, C++ has rather
+primitive (if any) reflection capabilities.
+Another consequence is looking up a field is dirt-cheap: contrast this
+fixed-offset technique with languages that look up properties in a hash table
+keyed by property name!
+
+Note that this representation works recursively in the case of nested 
+user-defined types.
+So if we nested struct as follows:
+
+```cpp
+struct Complex
+{
+    int Before;
+    MyData Data;
+    int After;
+};
+```
+
+the byte representation would be similarly nested:
+
+```
+|-0-|-1-|-2-|-3-|-4-|-5-|-6-|-7-|-8-|-9-|-A-|-B-|-C-|-D-|-E-|-F-|
+|--- Before ----| Data.SomeData | Data.MoreData |---- After ----|
+```
+
+Now if you set `Complex.Data.MoreData = 7`, the compiler would start at the
+address of the `Complex` instance, jump 8 bytes forward, and set that 32-bit
+integer to 7.
+
+You can test everything we said above using C++'s built-in `sizeof` operator,
+which takes in a type and evaluates to the number of bytes needed to represent
+that type:
+
+```cpp
+unsigned int numBytes = sizeof(char); // always 1
+numBytes = sizeof(int); // usually 4, rarely 2 or 8
+numBytes = sizeof(MyData); // 8, possibly with extra padding space
+```
+
+Since every type in C++ has a well-defined byte structure, and even a
+programmer-friendly byte size, C++ treats both primitive and user-defined data
+types as value types.
+This means, when you assign one instance of a certain type to another, the
+compiler simply does a byte-by-byte copy from the source instance to the
+destination instance.
+Similarly, each time you call a function, C++ copies in each argument by value,
+using this byte-by-byte copy technique.
+One side effect of this: a function can modify the argument it receives from
+the caller, without affecting the caller's instance.
+
+```cpp
+void fiddleWithData(MyData data)
+{
+    data.SomeData = 1234;
+    data.MoreData = 5678;
+}
+
+// ...
+
+MyData data;
+data.SomeData = 4321;
+data.MoreData = 8765;
+
+fiddleWidthData(data);
+
+assert(data.SomeData == 4321);
+assert(data.MoreData == 8765);
+```
+
+Contrast this with newer languages, where primitives are often passed by value,
+but objects are passed by reference.
+
+Like function arguments, function return values are passed back to the caller
+by value, using a byte copy.
+This means that modifying the return value of a function doesn't modify the
+original value that was returned:
+
+```cpp
+class Container
+{
+private:
+    MyData data;
+
+public:
+    Container() { data.SomeData = 1234; data.MoreData = 5678; }
+    MyData getData() { return data; }
+};
+
+// ...
+
+Container container;
+MyData data = container.getData();
+data.SomeData = 4321;
+data.MoreData = 8765;
+
+assert(container.getData().SomeData == 1234);
+assert(container.getData().MoreData == 5678);
+```
+
+Of course, all this copying isn't free.
+It's not too difficult to create large C++ objects, hundreds of bytes long.
+This is especially true if one or more fields is an array.
+Passing around huge objects can be a source of _uniform slowness_, a
+performance problem where your program has no specific bottleneck to optimize,
+because as a whole it wastes time doing basic things like passing arguments to
+function.
+The fix for excessive copying is the ability to pass instances around by
+reference.
+To do that, we'll need to start using _pointers_.
+
+Among other things, pointers a way to reference objects in C++.
+At the byte level, a pointer is just an integer.
+In fact, you can do a lot of `int`-like things to a pointer, like assigning it
+an arbitrary numeric value and doing arithmetic on it.
+Unlike `int`s, though, pointers can be _dereferenced_.
+
+When you dereference a pointer, the compiler treats the pointer's value as a
+byte address in memory.
+So if you picture all of RAM as a giant array of bytes (regardless of how your
+program is using these bytes), a pointer is just an index into this byte array.
+C++ provides the pointer-dereferencing operator `*` to allow you to read or
+write the value in RAM at the byte address stored in the pointer:
+
+```cpp
+void pointerTest(int *numPtr, MyData *dataPtr)
+{
+    int num = *numPtr;
+    num += 1;
+    *numPtr = num;
+
+    MyData data = *dataPtr;
+    data.SomeData = 4321;
+    *dataPtr = data;
+}
+```
+
+C++ also provides field deferencing operator `->`
+
+```cpp
+void pointerTest2(MyData *data)
+{
+    (*data).SomeData = 4321; // This syntax is equivalent
+    data->SomeData = 4321; // to this syntax
+}
+```
+
+Let's reconsider the example near the beginning of this section, where we
+walked through how the compiler would set `data.MoreData = 7`.
+Let's do the same thing with a pointer to a `MyData` instance:
+what does the compiler do with `data->MoreData = 7`?
+The answer, is basically the same, except for the first step:
+
+* Start at the byte address stored in the `data` pointer
+* Skip forward 4 bytes
+* Set the next 4 bytes to `0x00 0x00 0x00` and `0x07`, respectively.
+
+What's important to realize is that _we never actually checked that what we're
+doing makes sense_.
+When you say `data->MoreData = 7`, the compiler generates machine code that
+does some basic arithmetic and then copies some byte values.
+It does not, and in fact cannot, verify that the address you're writing to is
+really an instance of `MyData`, or that the memory address is valid at all!
+In other words, the snippet `data->MoreData = 7` does exactly the same thing
+as the following snippet:
+
+```cpp
+char *bytes = (char*)data;
+int *moreData = (int*)(bytes + 4);
+*moreData = 7;
+```
+
+These semantics for referencing memory and dealing with types are what makes
+C++ so 'close to the metal'.
+The entire type system is basically syntactic sugar on top of byte assets that
+get hardcoded into machine code by the comipler.
+Although this is about as fast as you can get, it also comes with the caveat
+that you can't be sure the pointer contains a meaningful memory address.
+If you're lucky, a buggy pointer will contain an invalid address, and attempts
+to dereference it will crash the program.
+If you're unlucky, a buggy pointer will actually point back into data your
+program is using, returning bogus data when read from and corrupting memory 
+when written to!
+
+To help prevent this kind of bug, C++ has reference types.
+Reference types are just pointers in disguise.
+They also come with additional semantics: unlike pointers, references must
+always be initialized to the address of an existing object.
+You also cannot do arithmetic on references as you can with pointers.
+This makes reference types safer than pointers for referencing object
+instances, but less powerful than pointers overall.
+
+Back to our original discussion about passing function arguments by value, we
+can now use pointer types to pass a `MyData` instance by reference.
+Note that, internally, what actually happens is the compiler copies in the
+pointer itself by value; but since both copies of the pointer contain the same
+memory address, the same object gets modified when either copy of the pointer
+is dereferenced:
+
+```cpp
+void acceptPointer(MyData *data)
+{
+    // ...
+}
+```
+
+We can accomplish the same thing using reference types instead of pointers:
+
+```cpp
+void acceptReference(MyData &data)
+{
+    // ...
+}
+```
+
+For performance reasons, it's often advantageous to pass in a reference to an
+object to a function rather than the object itself by value, to reduce the
+overhead needed to copy in the object.
+In fact, this is true pretty much any time `sizeof(Object) > sizeof(Object*)`.
+However, passing the object by reference comes with the downside that it's now
+possible for the function to have a side effect of modifying the object you
+passed in.
+Thus, a common idiom C++ is to accept a `const` reference to an object as the
+input to a function:
+
+```cpp
+void acceptConstRef(const MyData &data)
+{
+    // ...
+}
+```
+
+With this idiom, we can reap the benefits of passing an object by reference,
+while also guaranteeing that calling the function will not modify the original
+object (if any code inside `acceptConstRef()` attempted to modify `data`
+itself, the compiler would throw an error and stop compiling).
+
+Note that a function that takes a const reference can still make internal
+by-value copies of an object and modify the internal copies:
+
+```cpp
+void makesInternalCopy(const MyData &data)
+{
+    MyData dataCopy = data;
+}
+```
+
+This is possible because, in order to copy `data` to `dataCopy`, the compiler
+only needs to read from `data` in order to copy its bytes into `dataCopy`.
+Of course, in doing so, the function pays the full performance penalty of
+copying the object byte-by-byte, which is onerous if the object is large.
+
+That wraps up our discussion of types, pointers and memory addressing!
+The key takeaways are as follows:
+
+> _Types are an interpretation of byte offsets relative to a starting byte.
+> Pointers are integers which store a starting byte.
+> Variables are always initialized using a byte copy,
+> but you can pass a pointer by value to share a reference._
+
+## Idea 2: Resource Lifetime
+
+## Idea 3: Compilation Model
 
 C++ supports a different compilation model than you may be familiar with.
-Namely, C++ is design to work with single-pass compilers,
+Namely, C++ is designed to work with single-pass compilers,
 whereas modern languages tend to rely on multiple-pass compilation.
 To understand what this means, we'll have to take a tiny peek at compiler 
 internals.
@@ -502,14 +827,20 @@ int main(int argc, const char *argv[])
 
 Once again, here are the three core concepts this guide boils down to:
 
-> 1. _TODO_
+> 1. _Types are an interpretation of byte offsets relative to a starting byte.
+>    Pointers are integers which store a starting byte.
+>    Variables are always initialized using a byte copy,
+>    but you can pass a pointer by value to share a reference._
 >
-> 2. _TODO_
+> 2. _You control when memory is allocated and freed.
+>    Use language features to tie memory lifetime to execution scope
+>    for maximum convenience.
+>    Explicitly define in your program logic who owns which object(s)._
 >
-> 3. _C++ requires every symbol you reference to be declared or defined prior to
-> the time you use it. 
-> Publish declarations in header files, so that any definition in a source file
-> can reference the symbols it needs._
+> 3. _C++ requires every symbol you reference to be declared or defined prior
+>    to the time you use it.
+>    Publish declarations in header files, so that any definition in a source
+>    file can reference the symbols it needs._
 
 Having grokked the concepts above, we hope you now have enough of a working
 framework to fit in all the small details about writing C++ code.

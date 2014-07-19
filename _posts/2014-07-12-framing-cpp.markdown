@@ -275,8 +275,8 @@ int *moreData = (int*)(bytes + 4);
 
 These semantics for referencing memory and dealing with types are what makes
 C++ so 'close to the metal'.
-The entire type system is basically syntactic sugar on top of byte assets that
-get hardcoded into machine code by the comipler.
+The entire type system is basically syntactic sugar on top of byte offsets that
+get hardcoded into machine code by the compiler.
 Although this is about as fast as you can get, it also comes with the caveat
 that you can't be sure the pointer contains a meaningful memory address.
 If you're lucky, a buggy pointer will contain an invalid address, and attempts

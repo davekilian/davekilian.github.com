@@ -363,15 +363,140 @@ The key takeaways are as follows:
 
 ## <a name="part2"></a> Idea 2: Resource Lifetime
 
-You may have heard before that C++ has no automatic memory management.
-There is no garbage collector to clean up memory after you're done with it:
-whenever you use `new` to allocate an object, you must later use `delete` on
-that object to release its memory, once you're done with it.
-That's not to say that C++ doesn't help you manage your memory at all!
-But to understand how C++ helps you manage memory, first we'll need to talk
-about the types of memory that need managing.
-There are two types of memory available to you when writing in C++:
-stack memory and heap memory.
+One common description of C++ is that it has no automatic memory management.
+Whenever you use `new` to allocate an object, you must later call `delete` to
+free the memory when you're done with it.
+If you forget to delete this memory, it stays marked as allocated, but your
+program stops using it.
+The memory gets _leaked_.
+If you leak enough memory, eventually your program will run out.
+And once it runs out, it basically has two options: fail out or crash.
+
+Of course, all but the smallest programs require frequent memory allocation.
+So why don't C++ programmers all go crazy trying to track their `new`s and
+`delete`s?
+The answer is simple: C++ doesn't require you to manage _all_ of your memory.
+In fact, you can have C++ handle almost all the memory you use;
+there are only a few cases where you need to manage memory yourself.
+
+If you've been following this guide so far, you've already made plenty of
+automatically managed allocations.
+To have the compiler manage a variable's memory, just declare it directly:
+
+```cpp
+void stackAllocation()
+{
+    int value;   // Allocates sizeof(int) bytes on the stack
+    MyClass obj; // Allocates sizeof(MyClass) bytes
+}
+```
+
+These allocations are local to the _scope_ in which they appear.
+In C++, a scope is defined by the `{ }` characters: `{` denotes the beginning
+of a scope, and `}` marks the end of the matching scope:
+
+```cpp
+void aFunction()
+{
+    // function-level scope
+
+    while (true) {
+        // sub-scope
+    }
+}
+```
+
+This type of allocation is often called _stack allocation_, because the
+compiler allocates this memory on the _call stack_.
+The call stack is a very low-level data structure:
+even your CPU is designed around it.
+It's called the _call_ stack because it tracks program state between function 
+calls:
+it allows a callee function to 'return' to the context of the caller.
+The call stack is called the call _stack_ because the last bytes allocated are
+always the first bytes freed.
+
+The call stack is made up of a series of _stack frames_.
+Each stack frame can have a different size.
+Stack frames store two things:
+
+* All local variables in the current scope
+* Information the CPU needs to 'return' to the calling function
+
+When you call a function, the compiler sets up a new stack frame and then
+begins executing the subroutine.
+When that function allocates objects on the stack, the compiler expands that
+stack frame to hold those variables.
+When each of those objects goes out of scope, the compiler shrinks the stack
+frame to reclaim the variables.
+Finally, when the function returns, the compiler destroyes the stack frame
+altogether.
+
+There are some nice benefits to this allocation system:
+
+1. The compiler knows exactly when a stack-allocated variable will go out of
+   scope, so it can dellocate them for you without needing any help.
+2. Allocating on the stack is _fast_, because the compiler can make room by
+   expanding the current stack frame.
+   This amounts to a single instruction on modern CPUs.
+
+Unfortunately ...
+
+1. The compiler _always_ dellocates stack-allocated objects when they go out of
+   scope.
+   There's no way to return them to the caller without a full byte-by-byte
+   copy.
+2. The stack has a fixed size (usually a handful of megabytes).
+   If you try to allocate a lot of memory on the stack at once, you will end up
+   _overflowing_ the stack, thereby crashing the program.
+
+The takeaway is that if you can allocate memory on the stack, you probably
+should; but you won't always be able to.
+
+_Heap allocation_ is a different form of allocation that was invented to
+address these drawbacks.
+Heap allocation has pretty much the opposite pros and cons.
+The pros:
+
+1. The compiler _never_ deallocates heap-allocated objects without being told
+   to, so it's possible to return heap-allocated memory without copying.
+2. The size of the heap is more or less constrained by the amount of physical
+   storage your computer has.
+
+The cons:
+
+1. The compiler doesn't know when heap-allocated memory goes out of scope,
+   so it can't help you clean it up.
+2. Allocating on the heap is comparatively slower than allocating on the stack,
+   since the heap allocator much run a complex algorithm to find a free spot.
+
+To allocate an object on the heap, you use the `new` operator;
+to then deallocate it, you use the `delete` operator:
+
+```cpp
+void heapAllocation()
+{
+    MyClass *obj = new MyClass;
+    delete obj;
+}
+```
+
+There are two allocations in the function above: can you spot them both?
+The first allocation is probably the trickier one to spot:
+the compiler allocates a `MyClass *` on the stack.
+Second, when you use the `new` operator, `new` allocates a `MyClass` on the
+heap, and returns the `MyClass *` that points to that instance.
+The stack-allocated `MyClass *` is initialized to a reference to the
+heap-allocated `MyClass`.
+
+TODO destructors link heap allocation to scope
+
+In summary,
+
+> _You control when memory is allocated and freed.
+> Use destructors to tie memory lifetime to execution scope for maximum 
+> convenience.
+> Explicitly define in your program logic who owns which object(s)._
 
 ## <a name="part3"></a> Idea 3: Compilation Model
 
@@ -849,8 +974,8 @@ Once again, here are the three core concepts this guide boils down to:
 >    but you can pass a pointer by value to share a reference._
 >
 > 2. _You control when memory is allocated and freed.
->    Use language features to tie memory lifetime to execution scope
->    for maximum convenience.
+>    Use destructors to tie memory lifetime to execution scope for maximum 
+>    convenience.
 >    Explicitly define in your program logic who owns which object(s)._
 >
 > 3. _C++ requires every symbol you reference to be declared or defined prior

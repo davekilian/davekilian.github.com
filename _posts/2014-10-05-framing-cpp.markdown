@@ -4,7 +4,7 @@ title: 3 Big Ideas Behind C++
 author: Dave
 ---
 
-Learning C++ as a beginner can seem daunting, given the enormous size of the
+Learning C++ as a beginner can seem daunting given the enormity of the
 language.
 However, as C++ is both old and ubiquitous, there's already tons of material
 online to help you get started.
@@ -24,7 +24,7 @@ The aim of this guide is to ground you so that, afterward, you should be able
 read up on nitty-gritty details and work them into the bigger picture.
 
 The only requirements are some background in a more modern object-oriented
-language with C-style syntax (Java, C# and Go all qualifty), and completion of
+language with C-style syntax (Java, C# and Go all qualify), and completion of
 a basic syntax-oriented tutorial for C++. 
 You don't need to know C, nor will we cover C.
 
@@ -85,10 +85,22 @@ struct MyData
 
 ends up stored something like this in memory:
 
-```
-|-0-|-1-|-2-|-3-|-4-|-5-|-6-|-7-| byte offsets
-|-- SomeData ---|-- MoreData ---| field names
-```
+<table style="width:100%">
+    <tr>
+        <td style="border: 1px solid #777; text-align: center">0</td>
+        <td style="border: 1px solid #777; text-align: center">1</td>
+        <td style="border: 1px solid #777; text-align: center">2</td>
+        <td style="border: 1px solid #777; text-align: center">3</td>
+        <td style="border: 1px solid #777; text-align: center">4</td>
+        <td style="border: 1px solid #777; text-align: center">5</td>
+        <td style="border: 1px solid #777; text-align: center">6</td>
+        <td style="border: 1px solid #777; text-align: center">7</td>
+    </tr>
+    <tr>
+        <td style="border: 1px solid #777; text-align: center" colspan="4">SomeData</td>
+        <td style="border: 1px solid #777; text-align: center" colspan="4">MoreData</td>
+    </tr>
+</table>
 
 If you had an instance of `MyData` and set its `MoreData` field to some value
 (say, 7), the compiler would generate machine code that says:
@@ -121,10 +133,32 @@ struct Complex
 
 the byte representation would be similarly nested:
 
-```
-|-0-|-1-|-2-|-3-|-4-|-5-|-6-|-7-|-8-|-9-|-A-|-B-|-C-|-D-|-E-|-F-|
-|--- Before ----| Data.SomeData | Data.MoreData |---- After ----|
-```
+<table style="width:100%">
+    <tr>
+        <td style="border: 1px solid #777; text-align: center; width: 6.25%">0</td>
+        <td style="border: 1px solid #777; text-align: center; width: 6.25%">1</td>
+        <td style="border: 1px solid #777; text-align: center; width: 6.25%">2</td>
+        <td style="border: 1px solid #777; text-align: center; width: 6.25%">3</td>
+        <td style="border: 1px solid #777; text-align: center; width: 6.25%">4</td>
+        <td style="border: 1px solid #777; text-align: center; width: 6.25%">5</td>
+        <td style="border: 1px solid #777; text-align: center; width: 6.25%">6</td>
+        <td style="border: 1px solid #777; text-align: center; width: 6.25%">7</td>
+        <td style="border: 1px solid #777; text-align: center; width: 6.25%">8</td>
+        <td style="border: 1px solid #777; text-align: center; width: 6.25%">9</td>
+        <td style="border: 1px solid #777; text-align: center; width: 6.25%">A</td>
+        <td style="border: 1px solid #777; text-align: center; width: 6.25%">B</td>
+        <td style="border: 1px solid #777; text-align: center; width: 6.25%">C</td>
+        <td style="border: 1px solid #777; text-align: center; width: 6.25%">D</td>
+        <td style="border: 1px solid #777; text-align: center; width: 6.25%">E</td>
+        <td style="border: 1px solid #777; text-align: center; width: 6.25%">F</td>
+    </tr>
+    <tr>
+        <td style="border: 1px solid #777; text-align: center" colspan="4">Before</td>
+        <td style="border: 1px solid #777; text-align: center" colspan="4">Data.SomeData</td>
+        <td style="border: 1px solid #777; text-align: center" colspan="4">Data.MoreData</td>
+        <td style="border: 1px solid #777; text-align: center" colspan="4">After</td>
+    </tr>
+</table>
 
 Now if you set `Complex.Data.MoreData = 7`, the compiler would start at the
 address of the `Complex` instance, jump 8 bytes forward, and set that 32-bit

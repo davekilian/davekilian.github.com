@@ -44,7 +44,8 @@ div.post-blurb:hover
 div.post-content
 {
     font-family: "Source Sans Pro", "Helvetica", "Arial", sans-serif;
-    line-height: 1.5em;
+    font-size: 13.5pt;
+    line-height: 140%;
 }
 
 div.post-content strong, b
@@ -90,7 +91,9 @@ ul
 
 dd
 {
+    margin-top: .5em;
     margin-bottom: 1em;
+    line-height: 1.25em;
 }
 
 pre code

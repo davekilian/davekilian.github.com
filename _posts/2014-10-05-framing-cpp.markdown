@@ -2,7 +2,6 @@
 layout: post
 title: 3 Big Ideas Behind C++
 author: Dave
-draft: true
 ---
 
 Learning C++ as a beginner can seem daunting, given the enormous size of the
@@ -823,9 +822,8 @@ However, you can only define a symbol once.
 
 So far we've only been talking about compiling a single file,
 but only the smallest of programs consist of just one source file.
-The natural next step is to wonder: how would a C++ compiler compile multiple
-files into a single program?
-C++ programs are compiled in two steps:
+How can we compile multiple files into a single program?
+In C++, programs are compiled in two steps:
 
 * First, the compiler compiles each source file individually.
   For each source file, it produces a corresponding _object file_ containing
@@ -963,8 +961,8 @@ Counter::incrementField()
 ```
 
 Why doesn't this work?
-Because the full preprocessed text of this file is as follows.
-We've already discussed why the compiler will choke on this:
+The fully preprocessed text of this file is as follows, and we've already
+discussed why this doesn't compile:
 
 ```cpp
 Counter::Counter()
@@ -1019,60 +1017,60 @@ Let's walk through the compilation process.
 1. We (or our IDE) invokes the compiler on `counter.cpp`.
    The compiler loads this file into memory:
 
-```cpp
-#include "counter.h" 
+    ```cpp
+    #include "counter.h" 
 
-Counter::Counter()
-{
-    field = 0;
-}
+    Counter::Counter()
+    {
+        field = 0;
+    }
 
-Counter::getNext() 
-{
-    std::cout << "Somebody called getNext()\n";
-    incrementField();
-    return field;
-}
+    Counter::getNext() 
+    {
+        std::cout << "Somebody called getNext()\n";
+        incrementField();
+        return field;
+    }
 
-Counter::incrementField()
-{
-    field += 1;
-}
-```
+    Counter::incrementField()
+    {
+        field += 1;
+    }
+    ```
 
 2. The compiler preprocesses the in-memory file.
    Upon finding `#include "counter.h"`, the preprocessor loads it in.
    After preprocessing, the in-memory file looks like this:
 
-```cpp
-class Counter
-{
-private:
-    int field;
-    int incrementField();
+    ```cpp
+    class Counter
+    {
+    private:
+        int field;
+        int incrementField();
 
-public:
-    Counter();
-    int getNext();
-};
+    public:
+        Counter();
+        int getNext();
+    };
 
-Counter::Counter()
-{
-    field = 0;
-}
+    Counter::Counter()
+    {
+        field = 0;
+    }
 
-Counter::getNext() 
-{
-    std::cout << "Somebody called getNext()\n";
-    incrementField();
-    return field;
-}
+    Counter::getNext() 
+    {
+        std::cout << "Somebody called getNext()\n";
+        incrementField();
+        return field;
+    }
 
-Counter::incrementField()
-{
-    field += 1;
-}
-```
+    Counter::incrementField()
+    {
+        field += 1;
+    }
+    ```
 
 3. The compiler walks through the file.
 
@@ -1090,31 +1088,31 @@ Counter::incrementField()
 4. We repeat step (2.) on `main.cpp`.
    The preprocessed result looks like this:
 
-```cpp
-class Counter
-{
-private:
-    int field;
-    int incrementField();
+    ```cpp
+    class Counter
+    {
+    private:
+        int field;
+        int incrementField();
 
-public:
-    Counter();
-    int getNext();
-};
+    public:
+        Counter();
+        int getNext();
+    };
 
-int main(int argc, const char *argv[])
-{
-    Counter myCounter;
+    int main(int argc, const char *argv[])
+    {
+        Counter myCounter;
 
-    for (int i = 0; i < 10; ++i) {
-        int num = myCounter.getNext();
-        bool debug = (i == myCounter.getNext());
-            // debug should always be true
+        for (int i = 0; i < 10; ++i) {
+            int num = myCounter.getNext();
+            bool debug = (i == myCounter.getNext());
+                // debug should always be true
+        }
+
+        return 0;
     }
-
-    return 0;
-}
-```
+    ```
 
 5. We repeat step (5.) on `main.cpp`.
    The resulting object file is either `main.o` or `main.obj`,
@@ -1133,7 +1131,7 @@ int main(int argc, const char *argv[])
 
 ## Recap
 
-Once again, here are the three core concepts this guide boils down to:
+In summary, here are the three core concepts this guide boils down to:
 
 > 1. _Types are an interpretation of byte offsets relative to a starting byte.
 >    Pointers are integers which store a starting byte.
@@ -1154,9 +1152,4 @@ Having grokked the concepts above, we hope you now have enough of a working
 framework to fit in all the small details about writing C++ code.
 You're not done with your journey, but you're off to a good start.
 Best of luck!
-
-_Find this guide helpful? harmful? Did you find a bug?
-Please give any feedback by opening an issue on 
-[this blog's git repo](https://github.com/davekilian/davekilian.github.com).
-Or feel free to fix it yourself and open a pull request :)_
 

@@ -1,41 +1,41 @@
 ---
 layout: post
-title: 3 Core Ideas Behind C++
+title: 3 Big Ideas Behind C++
 author: Dave
 draft: true
 ---
 
-C++ is an enormous language, with dozens upon dozens of language features.
-Beginning can seem daunting at times, but luckily C++ is old and ubiquitous,
-which means there's tons of information online to help you get started.
+Learning C++ as a beginner can seem daunting, given the enormous size of the
+language.
+However, as C++ is both old and ubiquitous, there's already tons of material
+online to help you get started.
+So then why write another guide?
 
-In that case, why write another guide?
 This one aims to be a little different from most C++ intros.
-We won't spend much time on language features or syntax - you can find all that
-stuff easily and better-documented elsewhere
+We won't spend much time on syntax - you can find all that better-documented
+elsewhere
 [(1)](http://en.wikipedia.org/wiki/C%2B%2B)
 [(2)](http://www.cplusplus.com)
 .
-Instead this guide will cover the Big Ideas behind C++.
-The aim is that, once you finish this guide, you should be able to read about
-specifics and understand why each feature works the way it does.
+Instead, this guide is a fast-paced lecture-style treatment of the 'Big Ideas'
+behind C++.
+These ideas are the fundamental reasons C++ is still widely used today, despite
+all the progress that has been made in the field of programming languages.
+The aim of this guide is to ground you so that, afterward, you should be able
+read up on nitty-gritty details and work them into the bigger picture.
 
-To get the most out of this guide, you'll need some background in a more modern
-object-oriented language with C-style syntax.
-Examples include Java, C# and Go.
-No prior knowledge of C is required, nor will we cover C at all in this guide.
-Before starting this guide, we recommend cursory completion of a basic C++
-tutorial, to get a feel for the basic syntax.
-Finally, consider taking each section one at a time, with some time in between
-to mull things over and wait for them to click.
+The only requirements are some background in a more modern object-oriented
+language with C-style syntax (Java, C# and Go all qualifty), and completion of
+a basic syntax-oriented tutorial for C++. 
+You don't need to know C, nor will we cover C.
 
-## Table of Contents
+Without further ado, here are the big ideas:
 
-1. [Bare-Metal Memory and Data Types](#part1)
-2. [Resource Lifetimes](#part2)
-3. [Compilation Model](#part3)
+1. [Close-to-the-Metal Type System](#part1)
+2. [Resource Lifetimes Tied to Execution Flow](#part2)
+3. [Single-Pass Compilation Model](#part3)
 
-## <a name="part1"></a> Idea 1: Bare-Metal Memory and Data Types
+## <a name="part1"></a> 1: Close-to-the-Metal Type System
 
 One of the commonly cited reasons people use C++ is that it provides 'low-level
 memory access.'
@@ -44,7 +44,7 @@ systems.
 
 You've probably heard before that everything stored by a computer, whether in
 RAM, on a hard disk, in a CPU register, or barreling down an Ethernet cable, is
-just bytes.
+just binary.
 One of the chief jobs of a programming language is to insulate you from this.
 To you, `int`s are just mathematical integers, on which you can perform
 arithmetic.
@@ -53,7 +53,7 @@ But every time you manipulate a variable, you're really just changing a number
 that's stored as binary in some cell in RAM.
 Different 'types' are just different ways of interpreting these numbers.
 
-Like many programming languages, C++ provides an abstraction over bytes as
+Like most programming languages, C++ provides an abstraction over bytes as
 primitive types, and objects composed of primitive types.
 Unlike many programming languages, C++ provides a very thin abstraction, and
 makes it easy to drop into the actual byte representation.
@@ -68,7 +68,8 @@ it takes to represent them:
 * `short` is larger than `char`, but smaller than a standard `int` (typically
   16 bits)
 * `int` is typically 32 bits
-* `long` is typically 64 bits
+* `long` is typically 32-64 bits, depending on your processor architecture
+* `long long` is typically 64 bits
 * and so on.
 
 For user defined types (`class`es and `struct`s), C++ simply concatenates the
@@ -83,7 +84,7 @@ struct MyData
 };
 ```
 
-gets represented in memory somewhat like this:
+ends up stored something like this in memory:
 
 ```
 |-0-|-1-|-2-|-3-|-4-|-5-|-6-|-7-| byte offsets
@@ -97,19 +98,18 @@ If you had an instance of `MyData` and set its `MoreData` field to some value
 * Skip forward 4 bytes
 * Set the next 4 bytes to `0x00 0x00 0x00` and `0x07`, respectively.
 
-One consequence of this model is that type information is known only at compile
+One result of this strategy is that type information is only known at compile
 time:
-the compiler generates machine code that, at runtime, uses a fixed offset and
-byte count to correctly assign a value to a variable.
-Since type information is no longer available at runtime, C++ has rather
-primitive (if any) reflection capabilities.
-Another consequence is looking up a field is dirt-cheap: contrast this
-fixed-offset technique with languages that look up properties in a hash table
-keyed by property name!
+the compiler generates machine code that, at runtime, used a fixed offset and
+byte count to assign a value to some variable.
+Since the type information is gone at runtime, C++ has very primitive
+reflection abilities.
+Another result of this strategy is accessing some field of an object is dirt
+cheap, especially compared to those modern languages which must look up every
+field in a hash table!
 
-Note that this representation works recursively in the case of nested 
-user-defined types.
-So if we nested struct as follows:
+C++'s object representation works recursively for nested user-defined types.
+So if we nested the struct above in another one as follows:
 
 ```cpp
 struct Complex
@@ -131,26 +131,41 @@ Now if you set `Complex.Data.MoreData = 7`, the compiler would start at the
 address of the `Complex` instance, jump 8 bytes forward, and set that 32-bit
 integer to 7.
 
-You can test everything we said above using C++'s built-in `sizeof` operator,
-which takes in a type and evaluates to the number of bytes needed to represent
-that type:
+Since every C++ object has a well-defined byte structure, C++ treats both
+primitives and user-defined data types as _value types_; that is, when you
+assign one instance of a certain object to another instance, the compiler
+simply does a byte-by-byte copy from one instance to the other.
+Subsequently modifying either of those objects does not affect the other.
 
 ```cpp
-unsigned int numBytes = sizeof(char); // always 1
-numBytes = sizeof(int); // usually 4, rarely 2 or 8
-numBytes = sizeof(MyData); // 8, possibly with extra padding space
+MyData a;
+MyData b;
+
+a.SomeData = 1234;
+a.MoreData = 5678;
+
+assert(a.SomeData == 1234);
+assert(a.MoreData == 5678);
+
+b = a;
+
+assert(b.SomeData == 1234);
+assert(b.MoreData == 5678);
+
+a.SomeData = 4321;
+a.SomeData = 8765;
+
+assert(a.SomeData == 4321);
+assert(a.MoreData == 8765);
+
+assert(b.SomeData == 1234); // Important: b has not changed,
+assert(b.MoreData == 5678); // even though a has been changed.
 ```
 
-Since every type in C++ has a well-defined byte structure, and even a
-programmer-friendly byte size, C++ treats both primitive and user-defined data
-types as value types.
-This means, when you assign one instance of a certain type to another, the
-compiler simply does a byte-by-byte copy from the source instance to the
-destination instance.
 Similarly, each time you call a function, C++ copies in each argument by value,
-using this byte-by-byte copy technique.
-One side effect of this: a function can modify the argument it receives from
-the caller, without affecting the caller's instance.
+using the same byte-by-byte copy technique.
+As a result of this, a function which modifies one of its arguments does not
+affect the value that the caller passed in:
 
 ```cpp
 void fiddleWithData(MyData data)
@@ -171,11 +186,8 @@ assert(data.SomeData == 4321);
 assert(data.MoreData == 8765);
 ```
 
-Contrast this with newer languages, where primitives are often passed by value,
-but objects are passed by reference.
-
-Like function arguments, function return values are passed back to the caller
-by value, using a byte copy.
+And, like arguments passed into the function, return values are passed out of
+the function using a byte copy as well.
 This means that modifying the return value of a function doesn't modify the
 original value that was returned:
 
@@ -202,35 +214,34 @@ assert(container.getData().MoreData == 5678);
 ```
 
 Of course, all this copying isn't free.
-It's not too difficult to create large C++ objects, hundreds of bytes long.
-This is especially true if one or more fields is an array.
-Passing around huge objects can be a source of _uniform slowness_, a
-performance problem where your program has no specific bottleneck to optimize,
-because as a whole it wastes time doing basic things like passing arguments to
-function.
-The fix for excessive copying is the ability to pass instances around by
-reference.
+One common criticism of C++ is the difficulty of diagnosing performance
+problems caused by excessive copying.
+It's not too unusual for objects to be dozens of bytes long.
+A program that is constantly passing hundreds of bytes into every function call
+is liable to be _uniformly slow_: there is no obvious bottleneck, because CPU
+time is being wasted every time a function is called.
+The fix for excessive copying is to pass objects by reference instead.
 To do that, we'll need to start using _pointers_.
 
-Among other things, pointers a way to reference objects in C++.
-At the byte level, a pointer is just an integer.
-In fact, you can do a lot of `int`-like things to a pointer, like assigning it
-an arbitrary numeric value and doing arithmetic on it.
-Unlike `int`s, though, pointers can be _dereferenced_.
-
+Like all data types, a pointer is just some binary with a special meaning.
+C++ pointers work a lot like integers: you can assign them arbitrary numeric
+values and do arithmetic on them.
+Unlike `int`s though, pointers can be _dereferenced_.
 When you dereference a pointer, the compiler treats the pointer's value as a
 byte address in memory.
-So if you picture all of RAM as a giant array of bytes (regardless of how your
+If you picture all of RAM as a giant array of bytes (regardless of how your
 program is using these bytes), a pointer is just an index into this byte array.
-C++ provides the pointer-dereferencing operator `*` to allow you to read or
-write the value in RAM at the byte address stored in the pointer:
+
+C++ provides the pointer-dereferencing operator `*` to allow you to dereference
+a pointer, in order to read or write the value at the RAM address stored in
+that pointer:
 
 ```cpp
-void pointerTest(int *numPtr, MyData *dataPtr)
+void pointerTest(int *intPtr, MyData *dataPtr)
 {
-    int num = *numPtr;
+    int num = *intPtr;
     num += 1;
-    *numPtr = num;
+    *intPtr = num;
 
     MyData data = *dataPtr;
     data.SomeData = 4321;
@@ -252,17 +263,17 @@ Let's reconsider the example near the beginning of this section, where we
 walked through how the compiler would set `data.MoreData = 7`.
 Let's do the same thing with a pointer to a `MyData` instance:
 what does the compiler do with `data->MoreData = 7`?
-The answer, is basically the same, except for the first step:
+The answer is basically the same; only the first step is different:
 
 * Start at the byte address stored in the `data` pointer
 * Skip forward 4 bytes
 * Set the next 4 bytes to `0x00 0x00 0x00` and `0x07`, respectively.
 
 What's important to realize is that _we never actually checked that what we're
-doing makes sense_.
+doing makes sense_ :-).
 When you say `data->MoreData = 7`, the compiler generates machine code that
-does some basic arithmetic and then copies some byte values.
-It does not, and in fact cannot, verify that the address you're writing to is
+does some pointer arithmetic and then copies some bytes.
+It does not (and, in fact, cannot) verify that the address you're writing to is
 really an instance of `MyData`, or that the memory address is valid at all!
 In other words, the snippet `data->MoreData = 7` does exactly the same thing
 as the following snippet:
@@ -276,9 +287,9 @@ int *moreData = (int*)(bytes + 4);
 These semantics for referencing memory and dealing with types are what makes
 C++ so 'close to the metal'.
 The entire type system is basically syntactic sugar on top of byte offsets that
-get hardcoded into machine code by the compiler.
-Although this is about as fast as you can get, it also comes with the caveat
-that you can't be sure the pointer contains a meaningful memory address.
+get hardcoded by the compiler.
+Although this is about as fast as you can get, you also can't be sure that the
+pointer contains a meaningful memory address.
 If you're lucky, a buggy pointer will contain an invalid address, and attempts
 to dereference it will crash the program.
 If you're unlucky, a buggy pointer will actually point back into data your
@@ -293,8 +304,8 @@ You also cannot do arithmetic on references as you can with pointers.
 This makes reference types safer than pointers for referencing object
 instances, but less powerful than pointers overall.
 
-Back to our original discussion about passing function arguments by value, we
-can now use pointer types to pass a `MyData` instance by reference.
+Back to our original discussion about passing function arguments, we can now
+use pointer types to pass a `MyData` instance by reference.
 Note that, internally, what actually happens is the compiler copies in the
 pointer itself by value; but since both copies of the pointer contain the same
 memory address, the same object gets modified when either copy of the pointer
@@ -303,7 +314,8 @@ is dereferenced:
 ```cpp
 void acceptPointer(MyData *data)
 {
-    // ...
+    data->SomeData = 1234;
+    data->MoreData = 5678;
 }
 ```
 
@@ -312,46 +324,43 @@ We can accomplish the same thing using reference types instead of pointers:
 ```cpp
 void acceptReference(MyData &data)
 {
-    // ...
+    data.SomeData = 1234;
+    data.MoreData = 5678;
 }
 ```
 
-For performance reasons, it's often advantageous to pass in a reference to an
-object to a function rather than the object itself by value, to reduce the
-overhead needed to copy in the object.
+When calling functions, it's often better performance-wise to pass in a pointer
+or reference to an object rather than copying the whole object by value. 
 In fact, this is true pretty much any time `sizeof(Object) > sizeof(Object*)`.
-However, passing the object by reference comes with the downside that it's now
-possible for the function to have a side effect of modifying the object you
-passed in.
-Thus, a common idiom C++ is to accept a `const` reference to an object as the
-input to a function:
+Copying a reference rather than the full object reduces the overhead induced in
+calling the function.
+Unfortunately, though, passing by reference opens the door to functions
+modifying the caller's passed-in objects as a side effect.
+To work around this, a common idiom in C++ is to accept a `const` reference to
+an object as the input to a function:
 
 ```cpp
 void acceptConstRef(const MyData &data)
 {
-    // ...
+    // data.SomeData = 1234; <-- causes a compilation error
+
+    MyData localCopy = data;
+    localCopy.SomeData = 4321;
 }
 ```
 
-With this idiom, we can reap the benefits of passing an object by reference,
-while also guaranteeing that calling the function will not modify the original
-object (if any code inside `acceptConstRef()` attempted to modify `data`
-itself, the compiler would throw an error and stop compiling).
+With this idiom, we can reap the performance benefits of passing an object by 
+reference, while also guaranteeing that calling the function will not modify 
+the original object.
 
-Note that a function that takes a const reference can still make internal
-by-value copies of an object and modify the internal copies:
-
-```cpp
-void makesInternalCopy(const MyData &data)
-{
-    MyData dataCopy = data;
-}
-```
-
-This is possible because, in order to copy `data` to `dataCopy`, the compiler
-only needs to read from `data` in order to copy its bytes into `dataCopy`.
-Of course, in doing so, the function pays the full performance penalty of
-copying the object byte-by-byte, which is onerous if the object is large.
+Note that a function that takes a const reference to an object can still make a
+local copy of the object (see `localCopy` in the example above).
+This is allowed because all that's needed to initialize `localCopy` is to read
+`data` byte by byte - no modification occurs.
+Even though creating a local copy of an object negates any performance benefit
+we gained by passing in the original argument by reference, it's rarely
+necessary to make local copies, as functions tend to only read most of their
+input arguments.
 
 That wraps up our discussion of types, pointers and memory addressing!
 The key takeaways are as follows:
@@ -361,16 +370,15 @@ The key takeaways are as follows:
 > Variables are always initialized using a byte copy,
 > but you can pass a pointer by value to share a reference._
 
-## <a name="part2"></a> Idea 2: Resource Lifetime
+## <a name="part2"></a> 2: Resource Lifetimes Tied to Execution Flow
 
 One common description of C++ is that it has no automatic memory management.
 Whenever you use `new` to allocate an object, you must later call `delete` to
 free the memory when you're done with it.
 If you forget to delete this memory, it stays marked as allocated, but your
-program stops using it.
-The memory gets _leaked_.
+program stops using it (in other words, the memory gets _leaked_).
 If you leak enough memory, eventually your program will run out.
-And once it runs out, it basically has two options: fail out or crash.
+And once it fully runs out, it basically has one option: crash.
 
 Of course, all but the smallest programs require frequent memory allocation.
 So why don't C++ programmers all go crazy trying to track their `new`s and
@@ -406,72 +414,68 @@ void aFunction()
 }
 ```
 
-This type of allocation is often called _stack allocation_, because the
-compiler allocates this memory on the _call stack_.
-The call stack is a very low-level data structure:
-even your CPU is designed around it.
-It's called the _call_ stack because it tracks program state between function 
-calls:
-it allows a callee function to 'return' to the context of the caller.
-The call stack is called the call _stack_ because the last bytes allocated are
-always the first bytes freed.
+This type of allocation is known as _stack allocation_, because the compiler
+allocates memory for variables on the _call stack_.
 
-The call stack is made up of a series of _stack frames_.
-Each stack frame can have a different size.
-Stack frames store two things:
+The call stack is a data structure implemented in your computer's hardware.
+It's called the _call_ stack because it keeps track of function calls, allowing
+a callee function to return the context of the caller.
+It's called the call _stack_ because the last bytes allocated are the first
+bytes freed.
+This is in line with function calling, where the last function called must be
+the first function to return.
 
-* All local variables in the current scope
-* Information the CPU needs to 'return' to the calling function
+In C++, usage of the call stack roughly corresponds to program scope.
+Memory for a variable within a `{ }` pair is allocated allocated when control
+flow reaches the beginning of the scope (`{`), and is deallocated when control
+reaches the end of the scope (`}`).
 
-When you call a function, the compiler sets up a new stack frame and then
-begins executing the subroutine.
-When that function allocates objects on the stack, the compiler expands that
-stack frame to hold those variables.
-When each of those objects goes out of scope, the compiler shrinks the stack
-frame to reclaim the variables.
-Finally, when the function returns, the compiler destroyes the stack frame
-altogether.
+It might seem strange to mix a function's local variables with the bookkeeping
+information needed to return from a function, but doing so has some nice
+benefits.
+For example, when a variable is allocated on the stack, the compiler knows
+exactly when the variable is and is not accessible, and can thus allocate and
+deallocate memory for that variable by itself:
 
-There are some nice benefits to this allocation system:
+```cpp
+void someFunction()
+{
+    // (A)
 
-1. The compiler knows exactly when a stack-allocated variable will go out of
-   scope, so it can dellocate them for you without needing any help.
-2. Allocating on the stack is _fast_, because the compiler can make room by
-   expanding the current stack frame.
-   This amounts to a single instruction on modern CPUs.
+    if (true) { // (B)
+        int num = 1;
+    } // (C)
 
-Unfortunately ...
+    // (D)
+}
+```
 
-1. The compiler _always_ dellocates stack-allocated objects when they go out of
-   scope.
-   There's no way to return them to the caller without a full byte-by-byte
-   copy.
-2. The stack has a fixed size (usually a handful of megabytes).
-   If you try to allocate a lot of memory on the stack at once, you will end up
-   _overflowing_ the stack, thereby crashing the program.
+At point (A) in the example above, the variable `num` is not yet accessible, so
+no memory needs to be allocated for it yet.
+At point (B), we enter the scope in which `num` is declared.
+At this point, the compiler will allocate `sizeof(num)` bytes on the call
+stack to hold the value for `num`.
+THen, at point (C), we exit the scope that contains `num`.
+At this point, the compiler deallocates the memory for `num`.
+At point (D), `num` is no longer accessible, and there is no longer memory
+allocated for `num`.
 
-The takeaway is that if you can allocate memory on the stack, you probably
-should; but you won't always be able to.
+There's a second benefit to stack allocation as well: on modern CPU
+architectures, the compiler can allocate room on the stack with just one
+instructions.
+This is about as fast as memory allocation can get :-)
 
-_Heap allocation_ is a different form of allocation that was invented to
-address these drawbacks.
-Heap allocation has pretty much the opposite pros and cons.
-The pros:
+Unfortunately, there are some drawbacks to stack allocation.
+The compiler _always_ deallocates memory once its parent scope exits.
+If you need to return a value to a caller outside that scope, you have to incur
+the cost a full byte-by-byte copy.
+Also, the call stack generally has a fixed size (usually a handful of
+megabytes).
+If you try to stack-allocate more memory than the stack has room for, you end
+up _overflowing_ the stack, which crashes the program.
 
-1. The compiler _never_ deallocates heap-allocated objects without being told
-   to, so it's possible to return heap-allocated memory without copying.
-2. The size of the heap is more or less constrained by the amount of physical
-   storage your computer has.
-
-The cons:
-
-1. The compiler doesn't know when heap-allocated memory goes out of scope,
-   so it can't help you clean it up.
-2. Allocating on the heap is comparatively slower than allocating on the stack,
-   since the heap allocator much run a complex algorithm to find a free spot.
-
-To allocate an object on the heap, you use the `new` operator;
-to then deallocate it, you use the `delete` operator:
+_Heap allocation_ addresses the shortcomings of stack allocation.
+You can allocate on the heap using `new` and `delete`, as previously mentioned:
 
 ```cpp
 void heapAllocation()
@@ -481,15 +485,178 @@ void heapAllocation()
 }
 ```
 
-There are two allocations in the function above: can you spot them both?
-The first allocation is probably the trickier one to spot:
-the compiler allocates a `MyClass *` on the stack.
-Second, when you use the `new` operator, `new` allocates a `MyClass` on the
-heap, and returns the `MyClass *` that points to that instance.
+The primary difference between the stack and the heap is that memory allocated
+on the heap is not freed until your program uses the `delete` operator on a
+`new`-allocated pointer.
+This has more or less the inverse pros and cons as stack allocation:
+
+* Unlike the stack, the heap makes it easy to return memory from a local scope
+  to the parent scope.
+  In stack allocation, this was impossible without a byte-by-byte copy.
+
+* The size of the heap is more or less unlimited, constrained only by the
+  amount of physical storage your machine has.
+  In stack allocation, we were limited to a handful of megabytes.
+
+* The compiler does not know when you're done with heap memory; you have to
+  tell it explicitly using the `delete` oeprator.
+  In stack allocation, we let the compiler clean up automatically.
+
+* Allocating on the heap is relatively slow, since the heap allocator must run
+  a complex algorithm to find a free spot.
+  In stack allocation, we could allocate with a single instruction.
+
+The key takeaway is that allocating on the stack is both fast and hard to mess
+up.
+You want to use the stack whenever possible.
+You only want to allocate on the heap if the object must survive after its
+original scope ends, and/or if the object is very large.
+
+Let's take another look at the heap allocation snippet we showed earlier:
+
+```cpp
+void heapAllocation()
+{
+    MyClass *obj = new MyClass;
+    delete obj;
+}
+```
+
+There are two allocations in the function above.
+Can you spot them both?
+The answer is in the next paragraph.
+
+The first allocation (chronologically speaking) is the trickier of the two to
+spot.
+The compiler first stack-allocates a `MyClass *` (a pointer to a `MyClass`
+object).
+Second, the `new` operator allocates a `MyClass` instance on the heap, and
+returns a `MyClass *` that points to that instance.
 The stack-allocated `MyClass *` is initialized to a reference to the
 heap-allocated `MyClass`.
 
-TODO destructors link heap allocation to scope
+When the `delete` operator is used in the example above, the `MyClass` instance
+on the heap gets deallocated.
+It's important to note that the `MyClass *` on the stack is still allocated, 
+and now points to an invalid memory address!
+The `MyClass *` gets automatically cleaned up once `heapAllocation()` returns,
+ending the scope in which `obj` is defined.
+
+The following rewrite of the example above makes it a little clearer what's
+going on:
+
+```cpp
+void heapAllocation()
+{
+    MyClass *obj; // Stack-allocate MyClass *
+    obj = new MyClass; // Heap-allocate MyClass
+    delete obj; // Heap-deallocate MyClass
+} // Stack-deallocate MyClass *
+```
+
+So far we've discussed 'use-after-free' bugs with heap-allocation, a class of
+bug where a program continues to dereference a pointer after the value the
+pointer contained has already been freed.
+There is another similar type of bug in heap allocation called a _double-free_. 
+C++ requires that any pointer returned by `new` must be `delete`d exactly once.
+A double-free occurs when the program tries to `delete` a pointer whose value
+has already been `deleted`.
+
+C++ programmers deal with the risk of double-frees by employing the concept of
+'ownership'.
+C++ itself does not have a notion of ownership; instead, ownership rules are
+usually communicated through function-level documentation comments.
+The function or object which 'owns' a pointer is responsible for freeing it.
+This can be done either by directly calling `delete`, or by transferring
+ownership to another function or object, which will then take on the onus of
+deleting it later.
+
+A common ownership pattern is for an object to own a pointer.
+The pointer is a member of the object, and gets deleted by the object in its
+destructor.
+That way, whenever the object gets deleted, the data it owns also gets deleted.
+Refer to the following example:
+
+```cpp
+class Owner
+{
+private:
+    MyData *m_data;
+
+public:
+    Owner() 
+        : m_data(NULL)
+    { }
+
+    ~Owner()
+    {
+        if (m_data != NULL) {
+            delete m_data;
+            m_data = NULL;
+        }
+    }
+
+    // Returns the MyData object tracked by this Owner.
+    // The caller does not own the MyData * returned and must
+    // not release its memory.
+    MyData *getData()
+    {
+        return m_data;
+    }
+
+    // Sets the MyData object tracked by this Owner.
+    // This object will take ownership of the given MyData instance.
+    void setData(MyData *data)
+    {
+        if (m_data != NULL) {
+            delete m_data;
+        }
+
+        m_data = data;
+    }
+};
+```
+
+In the example above, the `Owner` object 'owns' the `m_data` pointer by
+convention.
+The `getData()` method is documented as not transferring ownership to the
+caller, meaning the caller must not `delete` the return value.
+The `setData()` method is documented as transferring ownership of the pointer
+to the `Owner` object, meaning the `Owner` is taking on the onus of
+calling `delete` in the future, and that, again, the caller must not `delete`
+the value being passed in.
+
+The `Owner` object above lets us do something interesting: even though `Owner`
+owns a heap-allocated pointer to a `MyData` object, `Owner` itself can be stack
+allocated:
+
+```cpp
+void someFunction()
+{
+    Owner own;
+    own.setData(new MyData);
+}
+```
+
+When control flow reaches the `}` at the end of `someFunction()` above, `own`
+(which is stack allocated) goes out of scope.
+This causes the destructor `own.~Owner()` to get called, which in turn
+heap-deallocates `own`'s `m_data` instance _before_ the `own` itself is
+stack-deallocated.
+Thus, even though the `MyData` instance in the example above is heap-allocated,
+we're still able to tie its lifetime to control flow, just like stack-allocated
+variables!
+
+The `Owner` object above exhibits the basis for a type of C++ object called a
+_smart pointer_.
+Smart pointers are typically stack-allocated, but track a single heap-allocated
+'inner' pointer.
+When the outer object goes out of scope, C++ calls the smart pointer's
+destructor, which in turn heap-deallocates the inner pointer.
+This is the pattern exhibited by the `Owner` object above.
+Unlike `Owner`, real smart pointer objects typically use advanced features like
+templates and operator overloading so that the smart pointer object behaves as
+much as possible like the inner pointer type.
 
 In summary,
 
@@ -498,7 +665,7 @@ In summary,
 > convenience.
 > Explicitly define in your program logic who owns which object(s)._
 
-## <a name="part3"></a> Idea 3: Compilation Model
+## <a name="part3"></a> 3: Single-Pass Compilation Model
 
 C++ supports a different compilation model than you may be familiar with.
 Namely, C++ is designed to work with single-pass compilers,

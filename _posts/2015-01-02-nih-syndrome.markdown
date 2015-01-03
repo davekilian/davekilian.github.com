@@ -1,6 +1,6 @@
 ---
 layout: post
-title: "Not Invented Here" Syndrome
+title: Not Invented Here Syndrome
 author: Dave
 draft: true
 ---

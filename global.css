@@ -16,13 +16,23 @@ ul.nav li
     margin-bottom:10px
 }
 
+ul.nav h4
+{
+    font-weight: bold;
+}
+
 div.sidebar
 {
     background-color:#eee; 
-    padding: 1em; 
+    padding: 2em; 
     position: fixed; 
     right: 0px; 
     height: 100%;
+}
+
+div.sidebar h1,h5
+{
+    font-weight: bold;
 }
 
 h2
@@ -34,6 +44,8 @@ div.post-blurb
 {
     display: block;
     color: #888;
+    margin: 0;
+    padding: 0;
 }
 
 div.post-blurb:hover
@@ -98,5 +110,5 @@ dd
 
 pre code
 {
-    font-size: 120%;
+    font-size: 110%;
 }

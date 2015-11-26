@@ -3,16 +3,15 @@ layout: default
 ---
 <div style="padding: 1em">
     <div class="post-container">
-        <header>
-            <h1>{{ page.title }}</h1>
-            {% if page.draft %}
-                <h5 style="color:#a22">This post is marked as a draft. Content may be incomplete or missing.</h5>
-            {% endif %}
-        </header>
+        <div style="margin-bottom: 6em">
+            <center>
+                <h1>{{ page.title }}</h1>
+                {% if page.draft %}
+                    <h5 style="color:#a22">This post is marked as a draft. Content may be incomplete or missing.</h5>
+                {% endif %}
+            </center>
+        </div>
         <div class="post-content">
-            {% comment %} Force the first paragraph not to indent {% endcomment %}
-            <h2 style="display: block; height: 0px">&nbsp;</h2>
-
             {{ content }}
         </div>
         <hr />

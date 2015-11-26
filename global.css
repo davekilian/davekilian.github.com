@@ -72,9 +72,15 @@ div.post-content strong, b
     font-weight: 600;
 }
 
-div.post-content h1, h2, h3, h4, h5, h6
+div.post-content h1,
+div.post-content h2,
+div.post-content h3,
+div.post-content h4,
+div.post-content h5,
+div.post-content h6
 {
     font-family: sans-serif;
+    text-align: center;
 }
 
 body
@@ -90,11 +96,6 @@ p
     margin-bottom: 1.25em;
     text-align: left;
     text-indent: 1.5em;
-}
-
-h1+p, h2+p, h3+p, h4+p, h5+p, h6+p, li p
-{
-    text-indent: 0em;
 }
 
 li

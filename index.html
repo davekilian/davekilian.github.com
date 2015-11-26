@@ -2,18 +2,18 @@
 layout: default
 ---
 <div style="padding: 1em">
-    <h1>Dave Kilian's Blog</h1>
+    <center><h1>Dave Kilian's Blog</h1></center>
     <hr/>
 
     {% for post in site.posts %}
         {% unless post.draft %}
             <div class="post-blurb">
-                <h2 style=""><a href="{{ post.url }}">{{ post.title }}</a></h2>
+                <h2 style="text-align: center"><a href="{{ post.url }}">{{ post.title }}</a></h2>
             </div>
         {% endunless %}
     {% endfor %}
 
     <hr/>
-    <a style="font-size: 150%" href="drafts.html">(show draft posts)</a>
+    <center><a style="font-size: 150%" href="drafts.html">(show draft posts)</a></center>
 </div>
 

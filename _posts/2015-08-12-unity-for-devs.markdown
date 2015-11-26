@@ -1,67 +1,83 @@
 ---
 layout: post
-title: Developer Quickstart for Unity
+title: Unity Programmer Quickstart
 author: Dave
 ---
 
-I recently took a closer look at using the editor and game engine [Unity](http://unity3d.com) for some personal projects.
-Unity is a nice tool, but its target audience is primarily artists and designers, over software engineers.
-Although this is probably for the best (:D), one unfortunate consequence is there aren't many great resources to help developers get started with Unity, even though there's tons of great stuff for the pure beginner and for other disciplines.
+Recently I had the chance to take a closer look at the editor and game engine [Unity](http://unity3d.com) for some personal projects.
+Unity is different from traditional game engines.
+As is typical, Unity comes bundled with an editor; atypically, Unity's balance of power favors the editor over the engine.
+Unity is designed for artists and designers first, programmers second.
 
-This guide is my attempt to distill the Unity manual into what the typical software developer needs to know to get started with Unity.
-Some prior game programming experience is presumed.
+As a programmer, I honestly think this is a great idea.
+Unfortunately, this attitude is also reflected in Unity's documentation, which is clearly written for designers and artists, not developers.
+As a programmer, all the info you need *is* in Unity's manual, but the manual isn't structured to make it easy to to find.
 
-## Entity-component systems
+Consider this guide the lost "overview for programmers" page for programmers getting started with Unity.
+This post will focus on the big picture.
+Once you have that, I still recommend thumbing through the manual and picking out the parts that are useful to you.
 
-Unity is an implementation of an [entity-component system](https://en.wikipedia.org/wiki/Entity_component_system).
-If you're not familiar with entity-component systems, here's a quick overview.
+## Entity/component systems
+
+At its core, Unity implements an [entity/component system](https://en.wikipedia.org/wiki/Entity_component_system).
+In case that term is new to you, we'll recap here.
 
 Imagine you're building a game.
-As a good developer, you want to make sure your game code is simple, but flexible and maintainable, so you can easily tweak behavior without having to make costly changes to your code or track down difficult bugs.
-After all, being able to tweak behavior easily and effectively is a harbinger of fun gameplay.
+You know the faster you can iterate on your game design, the faster you can experiment your way into fun and compelling gameplay.
+To accomplish this, you want simple, flexible and maintainable code.
+You don't want refactoring code or tracking down nasty bugs to get in the way of experimenting.
 
-An obvious strategy to go about this is to model each of the 'things' in your game as classes, and instantiate those classes at runtime.
-However, when you start coding this up, you notice you're running into some code duplication problems.
-A lot of things in your game share similar behavior, but rarely are two different objects fundamentally the same.
-_Most_ game props in the scene are rigid bodies which support collision detection, but only some can move, and only some can take damage or be destroyed, and only some are both.
-Other props might fall into one of these categories, but may also trigger special game logic under certain conditions.
+An obvious design for coding a game is to model each of the 'things' in your game as classes.
+To build the game world, you just make the right instances of the right classes.
 
-So you end up addressing this complexity with degenerate strategies like creating 'uber-objects,' which change behavior drastically based on which flags are set, or you set up long, complex inherientance chains to share your behavior optimally, or you end up just duplicating logic all over the place.
-All of these strategies end up hurting your ability to experiment in the long run, as even small changes are liable to create far-reaching bugs.
+So you get started coding up a game this way.
+However, part of the way through you start to notice a problem:
+a bunch of your game 'things' are similar and share behaviors, but no two 'things' are exactly the same.
+You can't easily make your game types inherit from each other.
+This is leaving you with only a handful of options, and they're all bad:
 
-All this and we haven't even started talking about objects interacting!
+* You can just outright duplicate code between game classes, but this makes bugfixes very expensive
+* You can create 'uber-objects' with conditional behavior controlled by flags, but this makes code hard to understand and tweak
+* You can may be able to construct inheritance chains, but this is hard to refactor.
 
-The entity-component pattern is an attempt to address some of the shortcomings of this strategy without losing the object-oriented structure for our game code.
-The main idea is to factor all game state and behavior into small, self-contained units called 'components.'
-Then, each object (a.k.a. "entity") in our game is just a generic container for one or more component instances.
+The entity/component pattern addresses some of these shortcomings without losing the object-oriented structure for our game code.
+The main idea is to build each entity in the game world out of smaller self-contained units called components.
+Each component tracks some game state and performs logic on that state as the game runs.
+An entity is a generic container which groups components together.
+Each entity represents one object in the game world.
 
-This is to address two major shortcomings from the strategy above:
+This addresses two major shortcomings from the strategy above:
 
-* Components are a straightforward way to implement a behavior once and share it across multiple semantically-different types of game entities.
+1. **Components implement a behavior once and share it across multiple types of game entities.**
+You can add or remove components from an entity and see an instant effect, without needing to refactor anything.
 When designed well, components make changes and bugfixes less likely to cause undesired side effects elsewhere.
 
-* Object interaction is greatly simplified: when components handle interaction between entities, they don't need to understand 'what' each entity is semantically.
-As long as two objects have a 'rigid body physics' component, for example, then they can both detect and respond to collisions in a physically realistic way.
+2. **Components simply entity interaction.**
+When components handle interaction between entities, they can examine each entity without worrying about what 'type' of entity it is.
+A component in one entity can talk directly to another instance of that component in a different entity.
 
-Of course, like anything else, entity-component systems come with tradeoffs.
-A well-designed entity-component system needs to strike a balance for component size.
-If components are made too specific, each entity won't need to have many components, but the components will be hard to share between entities.
-On the flip side, if components are overbroad, they're easy to share, but each object may need to have lots of interacting components.
-The need to strike this balance can make development more of a headache, especially in the beginning.
-That said, for the types of problems game developers need to solve, the entity-component pattern is often an apt solution.
+As always though, there are no silver bullets.
+Components systems have their downsides too.
+A well-designed entity/component system needs to strike a good balance for component size:
+
+* If your components start to get too specific, you can't share them between entities, and they're hard to understand.
+
+* If your components get too broad, you can share them easily, but the interaction between them becomes hard to understand.
+
+Generally, you want components to be as general as possible while also minimizing how much they interact.
 
 Anyways, that's the gist.
-If you're interested, there's much more in-depth discussion just a few searches away online.
-So without further ado, let's return to developing games in Unity.
+If you're interested, there's much more in-depth discussion just a few queries away online.
+So without further ado, let's go back to talking about Unity.
 
-## In a nutshell
+## Unity in a nutshell
 
 Unity provides an editor and a game engine, which are tightly integrated with each other.
 You use the editor to build an initial game state (a Scene), and then compile one or more Scenes into a game.
 In essence, the editor builds your game by first compiling your code, and then packaging the binaries with your game art/assets and Unity's own game engine binaries.
 When you run the resulting game, the program starts Unity's game engine, which loads the Scene and runs the game's main loop.
 
-As previously mentioned, Unity implements an entity-component system.
+As previously mentioned, Unity implements an entity/component system.
 The editor is a drag-and-drop GUI which aids in building a scene based on entities.
 Each Scene in Unity is a hierarchy of entities (which Unity calls GameObjects).
 Each GameObject can be assigned one or more Components which define the entity's state and behaviors.
@@ -143,3 +159,11 @@ That said, I find it much easier to skip unnecessary details in text docs than i
 
 Other than that, the best way to learn is to just start prototyping whatever it was that brought you to Unity in the first place.
 Happy coding!
+
+---
+
+TODO
+
+One note to add if it's not already up there somewhere: I strongly believe Unity also has a far-flung dream to commoditize programming in gamedev.
+Unity does a lot of work to take the code and box it into little pieces that designers pick up as part of their game.
+By adding components to the store, they're continuing on the path to having a universal library of 'game code' for most types of games.

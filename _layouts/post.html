@@ -1,24 +1,22 @@
 ---
 layout: default
 ---
-<div style="background-color: #ddd">
-    <div style="padding: 1em; background-color: #ddd">
-        <div class="post-container">
-            <header>
-                <h1>{{ page.title }}</h1>
-                {% if page.draft %}
-                    <h5 style="color:#a22">This post is marked as a draft. Content may be incomplete or missing.</h5>
-                {% endif %}
-            </header>
-            <div class="post-content">
-                {% comment %} Force the first paragraph not to indent {% endcomment %}
-                <h2 style="display: block; height: 0px">&nbsp;</h2>
+<div style="padding: 1em">
+    <div class="post-container">
+        <header>
+            <h1>{{ page.title }}</h1>
+            {% if page.draft %}
+                <h5 style="color:#a22">This post is marked as a draft. Content may be incomplete or missing.</h5>
+            {% endif %}
+        </header>
+        <div class="post-content">
+            {% comment %} Force the first paragraph not to indent {% endcomment %}
+            <h2 style="display: block; height: 0px">&nbsp;</h2>
 
-                {{ content }}
-            </div>
-            <hr />
-            <a href="/">Back to Blog Index</a>
+            {{ content }}
         </div>
+        <hr />
+        <a style="font-size: 150%" href="/">Back to Blog Index</a>
     </div>
 </div>
 

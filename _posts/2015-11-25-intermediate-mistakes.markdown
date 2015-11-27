@@ -1,12 +1,12 @@
 ---
 layout: post
-title: Common Mistakes Made by Intermediate Programmers
+title: Intermediate Developer Hurtles
 author: Dave
 draft: true
 ---
 
-Some mistakes I've come across after reading a good bit of intermediate-level
-code, and some advice about how to avoid making the mistakes.
+Some common anti-patterns I've come across in code written by intermediate-level
+developers, and some advice about how to avoid making the mistakes.
 
 Each section should have a description of the mistake, an example, and a
 discussion of how to fix the example

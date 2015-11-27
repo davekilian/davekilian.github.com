@@ -4,13 +4,12 @@ title: Unity Programmer Quickstart
 author: Dave
 ---
 
-Recently I had the chance to take a closer look at the editor and game engine [Unity](http://unity3d.com) for some personal projects.
-Unity is different from traditional game engines.
-As is typical, Unity comes bundled with an editor; atypically, Unity's balance of power favors the editor over the engine.
-Unity is designed for artists and designers first, programmers second.
+Recently I had the chance to take a closer look at the editor and game engine [Unity](http://unity3d.com) for a personal project.
+Unlike traditional game engines, Unity tilts the balance of power in favor of its editor over the engine itself.
+It's designed for artists and designers first, programmers second.
 
-As a programmer, I honestly think this is a great idea.
-Unfortunately, this attitude is also reflected in Unity's documentation, which is clearly written for designers and artists, not developers.
+As a programmer, I think this is a great idea.
+However, this attitude is also reflected in Unity's documentation, which is clearly written for designers and artists, not developers.
 As a programmer, all the info you need *is* in Unity's manual, but the manual isn't structured to make it easy to to find.
 
 Consider this guide the lost "overview for programmers" page for programmers getting started with Unity.
@@ -33,36 +32,55 @@ To build the game world, you just make the right instances of the right classes.
 So you get started coding up a game this way.
 However, part of the way through you start to notice a problem:
 a bunch of your game 'things' are similar and share behaviors, but no two 'things' are exactly the same.
-You can't easily make your game types inherit from each other.
-This is leaving you with only a handful of options, and they're all bad:
+There isn't an easy way to share code between the 'things:' you have a handful of options, but they're all bad:
 
-* You can just outright duplicate code between game classes, but this makes bugfixes very expensive
-* You can create 'uber-objects' with conditional behavior controlled by flags, but this makes code hard to understand and tweak
-* You can may be able to construct inheritance chains, but this is hard to refactor.
+* You could just outright duplicate code between game classes, but this makes bugfixes very expensive
+* You could create 'uber-objects' with conditional behavior controlled by flags, but this makes code hard to understand and tweak
+* Even if you find yourself able to construct inheritance chains now, doing so locks in your design pretty much forever.
 
-The entity/component pattern addresses some of these shortcomings without losing the object-oriented structure for our game code.
-The main idea is to build each entity in the game world out of smaller self-contained units called components.
-Each component tracks some game state and performs logic on that state as the game runs.
-An entity is a generic container which groups components together.
-Each entity represents one object in the game world.
+How can we improve this?
+One key observation is usually the behaviors we want to share are mostly self-contained.
+For example, the code which makes a 'thing' react to physics doesn't need to interact with the code which determines how the thing looks, or what happens when the player tries to talk to the thing.
 
-This addresses two major shortcomings from the strategy above:
+So if all of these behaviors are roughly self-contained, could we implement them as standalone pieces?
+The answer is yes!
+This is the core underlying idea in the entity/component pattern.
+
+Unsurprisingly, an entity/component system consists of two major pieces:
+
+* **Components**, which are self-contained units for behavior.
+  Each component not only encapsulates some game logic, but also remembers any related state.
+
+* **Entities**, which are generic containers for components.
+  There is one entity for each 'thing' in your game world.
+
+One tricky bit is game state.
+Entities don't have any game state on their own; instead, they just have components.
+(You could literally make a simple entity with the declaration `class Entity : List<Component> { }`).
+Instead, each component tracks the relevant state *for the parent entity*.
+In other words, the component stores the state, but the state logically applies to the entity as a whole.
+For example, a `PhysicsComponent` might keep track of the parent entity's velocity/mass/momentum/etc.
+
+Why go through all this trouble?
+The component system we just set up addresses two major shortcomings from our class-based approach:
 
 1. **Components implement a behavior once and share it across multiple types of game entities.**
 You can add or remove components from an entity and see an instant effect, without needing to refactor anything.
 When designed well, components make changes and bugfixes less likely to cause undesired side effects elsewhere.
 
 2. **Components simply entity interaction.**
-When components handle interaction between entities, they can examine each entity without worrying about what 'type' of entity it is.
+When components handle interaction between entities, they can examine each entity without worrying about what type of game 'thing' it is.
 A component in one entity can talk directly to another instance of that component in a different entity.
 
 As always though, there are no silver bullets.
 Components systems have their downsides too.
 A well-designed entity/component system needs to strike a good balance for component size:
 
-* If your components start to get too specific, you can't share them between entities, and they're hard to understand.
+* If your components start to get too specific, they get long, complicated and hard to understand.
+  You can't share them between entities because the behaviors are too specific.
 
-* If your components get too broad, you can share them easily, but the interaction between them becomes hard to understand.
+* If your components get too broad, you can share them easily, but the interaction between them becomes complicated and hard to understand.
+  This might land you with some really nasty, hard to diagnose bugs.
 
 Generally, you want components to be as general as possible while also minimizing how much they interact.
 
@@ -72,15 +90,30 @@ So without further ado, let's go back to talking about Unity.
 
 ## Unity in a nutshell
 
-Unity provides an editor and a game engine, which are tightly integrated with each other.
-You use the editor to build an initial game state (a Scene), and then compile one or more Scenes into a game.
-In essence, the editor builds your game by first compiling your code, and then packaging the binaries with your game art/assets and Unity's own game engine binaries.
-When you run the resulting game, the program starts Unity's game engine, which loads the Scene and runs the game's main loop.
+As we just finished discussing, Unity is at its core an entity/component system.
+This assumption underlies both the game engine and the game editor.
+It's also how the editor and the engine integrate with each other.
 
-As previously mentioned, Unity implements an entity/component system.
-The editor is a drag-and-drop GUI which aids in building a scene based on entities.
-Each Scene in Unity is a hierarchy of entities (which Unity calls GameObjects).
-Each GameObject can be assigned one or more Components which define the entity's state and behaviors.
+To make a game, you open the Unity editor and create a *Scene*.
+A Scene is just an initial game state created from entities, their components, and the initial state variables for each component.
+Then you compile one or more of these Scenes into a full game.
+Internally, Unity compiles the game as follows:
+
+1. All your components are compiled into one or more binaries
+2. The Scene(s) you designed are serialized
+3. Unity packages the compiled component code, your serialized scenes, your game assets, and Unity's own engine binaries into a single executable package
+
+When you run the resulting game, the program starts Unity's game engine, which deserializes the first Scene and loads the Scene's art/assets.
+Then the engine enters the game's main loop, which in turn runs the game logic for each component of each entity.
+
+> **A note on terminology**
+>
+> So far, we've been using the term 'entity' extensively.
+> However, Unity developers typically use the Unity-specific term 'game object' instead.
+> In this context 'game object' means the same thing as 'entity.'
+> You'll rarely see anyone in the Unity community use the term 'entity.'
+>
+> To fall in line with standards, we'll switch to the term 'GameObject' for the rest of this article :)
 
 Unity provides a stock component called Transform, which defines a position, orientation and scale.
 Unity makes the Transform component mandatory for every GameObject, which means every GameObject has a position, orientation and scale.
@@ -88,25 +121,27 @@ The editor makes use of this information to render the GameObjects in a Scene, e
 It also tends to come in handy when you implement your own components.
 
 Unity's game engine infrastructure (Scene, GameObject, the main loop, etc) are closed source and are not extensible.
-Your only option for implementing game logic is to implement custom Components called Scripts.
+Your only option for implementing game logic is to implement custom components, called Scripts.
 
 ## Scripts
 
 Unity calls all the game code you write 'scripts.'
 You can 'script' in two languages: JavaScript and C# (via the [Mono project](http://mono-project.org)).
 
-Despite the mildly derogatory name ("what are ya, some kinda script kid?"), scripts can be arbitrarily complex.
+The name 'script' may imply scripts are expected to be simple/trivial bits of code to add behavior to a game.
+However, there's nothing stopping you from implementing complex systems in a 'script.'
 For example, you could implement a pathfinding system in C#, compile the whole thing into your game, and call into it at runtime to route some AI characters through a level.
-As previously mentioned, though, the only way to call into your code in the game is to expose it as a Component of some GameObject.
-In this example, you would need to expose your pathfinding system as a pathfinding component as follows:
 
-* Create a pathfinding component class which implements the Unity interface MonoBehavior, which is the base interface for all Unity Components
+As previously mentioned, though, the only way to call into your code in the game is to expose it as a Component of some GameObject.
+In this pathfinding example, you would need to expose your pathfinding system as a pathfinding component as follows:
+
+* Create a pathfinding component class which implements the Unity interface `MonoBehavior` (the base interface for all Unity Components)
 * Implement the pathfinding component class by calling into your pathfinding implementation
 * In the editor, create a new GameObject or choose an existing GameObject to add the pathfinding behavior to
 * Make an instance of the component on the GameObject
 
 This is the basic pattern for hooking up your own game logic to the scene.
-In practice you may actually need to define multiple components which call into your pathfinding code differently (e.g. you might need one component for the AI logic which uses pathfinding, and another for defining the paths themselves).
+In practice you may actually need to define multiple components which call into your pathfinding code differently (e.g. you might need one component for the AI logic which uses pathfinding, and another to define paths).
 
 Components (i.e. script classes which implement MonoBehavior) can publish properties to be exposed in the editor to the user.
 Unity makes this pretty simple: using reflection, Unity finds any public fields/properties on the object and displays an editor control for that property.
@@ -118,14 +153,15 @@ The Unity editor is ultimately a tool which helps you build a Scene out of GameO
 
 A Scene is just a hierarchy of GameObjects; each GameObject in the scene can optionally 'own' one or more child GameObjects.
 Unity calls this notion "parenting" a GameObject.
+In the broader industry, this pattern is usually referred to as building a *scene graph*.
 
 Although GameObjects themselves don't do anything with this hierarchy, Components attached to the GameObjects have the option of applying themselves recursively.
 For example, Unity's Transform component is defined as being relative to the parent GameObject's Transform.
 This means any change to the position, orientation or scale of a parent GameObject implicitly applies to all its child GameObjects recursively.
-When used correctly, this type of recursion can be a powerful tool for simplifying game logic.
+When used correctly, this type of recursion can be a powerful tool for binding entities together, or building big entities out of smaller sub-entities.
 
-In addition to using the GameObject hierarchy, Components can find other GameObjects in the scene in a couple different ways.
-As previously mentioned, Component scripts can define GameObject references set up by the user in the editor, allowing the Component to statically refer to other GameObjects in the scene.
+In addition the hierarchy, Components can find other GameObjects in the scene in a couple different ways.
+As previously mentioned, Component scripts can define GameObject references set up by the user in the editor, allowing the Component to statically refer to other GameObjects at runtime.
 As time passes, these Components can change the references or pass them on as needed.
 
 Another way Components can find GameObjects is via tagging.
@@ -135,35 +171,32 @@ Components can query the scene to get the GameObject(s) which match a particular
 
 ## The editor at the center of the universe
 
-The last note I wanted to touch on is a bit broader than what we've covered so far: Unity's design philosphy is try to remove code from game development as much as possible.
-De-emphasing code greatly simplifies life for designers, artists and new game developers, but it can also feel a little foreign to more seasoned developers who are used to controlling the entire flow of the program.
-Even so, in order to gel with Unity and its ecosystem, it's important to be mindful of this philosophy.
-It colors many aspects of Unity's design and ultimiately affects your designs for your systems.
+Now that we've conquered the basic concepts, I wanted to end on the same note I started out on:
+As a programmer, Unity cares about artists and designers more than it cares about yyou.
+Its design philosophy is trying to remove code from game development as much as possible.
+Unity wants to take code and box it up into components, which game designers can add to their toolbox like any other asset.
+
+De-emphasing code greatly simplifies life for designers, artists and new game developers, but if you're more seasoned and used to controlling the entire program flow, this can feel a little foreign.
+To gel with Unity and its ecosystem, it's worth being mindful of this philosophy, since this will color many aspects of Unity's design and ultimiately affects your designs for your systems.
 
 The editor-centric philosophy tends to manifest itself in two ways:
 
-1. When it's possible to remove custom code from a workflow, Unity will opt to do just that.
-The solution is usually to integrate the customization aspect into the editor, and implement the runtime aspect in the game engine.
-Unity provides editor extensibility points to allow you to follow a similar pattern with your own custom workflows (e.g. if you wanted to create custom animations for game cutscenes, you could build a custom UI in the editor to design the cutscene, and implement runtime components for playing the scene back).
+1. If it's possible to hide code from a designer-centric workflow, Unity will always opt to do that.
+   The solution is often to extend the editor with some customization UI, then implement the runtime aspect in the game engine.
+   Unity provides extensibility in the editor to allow you to follow a similar pattern with your own custom workflows.
+   For example, if you wanted to create a custom system for animating cutscenes, you can extend the editor UI to help build cutscenes, and write runtime components to play the cutscene.
 
-2. When it's not possible to remove custom code from the equation, Unity tends to compensate by boxing the code into component behaviors, which the user can then invoke a la carte via the editor.
-This way code itself can be exposed in the editor as a primitive.
+2. When it's not possible to remove custom code from the equation, Unity will try to box the code into component behaviors, which the user can then invoke a la carte via the editor.
+  This way code itself can be exposed in the editor like any other asset.
 
 In short, in Unity the editor is the center of the universe.
 
 ## Next steps
 
 From personal experience, I highly recommend going to Unity's documentation page, opening the manual, and then skimming through it in an evening or two.
-Note that the manual, being a manual, covers the material in a depth-first traversal, which is inconvenient when you're starting out and you're looking for overall concepts and breadth.
+The manual, being a manual, covers the material in a depth-first traversal, which is inconvenient when you're starting out and you're looking for overall concepts and breadth.
 That said, I find it much easier to skip unnecessary details in text docs than it is to skip through video tutorials, which are popular in the Unity landscape.
 
 Other than that, the best way to learn is to just start prototyping whatever it was that brought you to Unity in the first place.
 Happy coding!
 
----
-
-TODO
-
-One note to add if it's not already up there somewhere: I strongly believe Unity also has a far-flung dream to commoditize programming in gamedev.
-Unity does a lot of work to take the code and box it into little pieces that designers pick up as part of their game.
-By adding components to the store, they're continuing on the path to having a universal library of 'game code' for most types of games.

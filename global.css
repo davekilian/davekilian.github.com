@@ -98,6 +98,18 @@ p
     text-indent: 1.5em;
 }
 
+li p
+{
+    text-indent: 0;
+}
+
+blockquote p
+{
+    margin-top: 0;
+    text-indent: 0;
+    color: #444;
+}
+
 li
 {
     line-height: 1.5em;

@@ -1,30 +1,42 @@
 ---
 layout: post
-title: Commonly Abused "Best Practices"
+title: Best Practices Gone Wrong
 author: Dave
 draft: true
 ---
 
-Over time, every programmer accrues a repertoire of best practices and pitfalls to avoid when designing software.
-As you build yours, it's important to understand not only the rule itself, but also the reasoning behind it.
-Without understanding the reasoning, it's easy to apply perfectly good rules of thumb to the wrong situations, with disasterous effects.
+When you write a program, you usually have lots of options, even if only a few are good.
+Software 'best practices' are rules of thumb to help guide you to the good solutions, and avoid deceptive pitfalls.
+These are invaluable both for examining your past designs in retrospect, and informing your new designs as time goes on.
 
-Commonly, the problem lies in indirection.
-Most software best practices involve some form of indirection (as the old joke goes, "every problem in computer science can be solved with another layer of indirection.").
-Sadly, indirection is not free.
-It makes it harder to read code (since the code is spread across two or more locations instead of one).
-It also makes it harder to refactor (since now there's another internal code contract to maintain).
+But many well-accepted best practices come with caveats.
+When faced with a choice between competing designs, it's easy to invoke a rule of thumb to pick a design, with no further consideration.
+But invoking a best practice rule without considering the reasoning behind it can worsen your code.
+Do this too many times, and your designs can degrade to the point of ummaintainability.
 
-Sometimes indirection is worthwhile despite this -- but not always!
+The main culprit is indirection.
+Most software practices involve adding some type of indirection; as the old joke goes, "every problem in software design can be solved with another layer of indirection."
+Of course, adding indirection isn't free:
+
+* **Indirected code is harder to read.**
+  The reader has to jump around between multiple locations to get the full picture.
+  Jumping around breaks the reader's concentration, making it easier to miss subtle interactions.
+
+* **Indirected code is harder to refactor.**
+  Indirection adds an internal code contract between two or more parts of the implementation.
+  Maintaining or reworking an internal contract is harder than just adding one.
+
+Sometimes indirection is worthwhile despite these costs.
+But that's not always the case, even when you apply a rule commonly accepted as a best practice!
 In this post we'll go over a few common best practices, and note how they can backfire when applied to the wrong situation.
 
 ### Constants. Constants everywhere
 
-There are two good reasons to hide literals behind well-named constants:
+Constants hide a literal value behind a variable name.
+There are two good reasons to do this:
 
-1. Constants let you assign a more descriptive name to a 'magic' value which is otherwise inscrutable.
-
-2. Multiple functions can use the same constant, allowing you to change the constant once and reflect the change everywhere
+1. To assign a more descriptive name to an otherwise bizarre-looking value.
+2. To link all uses of a value to a single code location, to be tweaked later.
 
 Consider the following example:
 
@@ -42,10 +54,12 @@ In example (A), it isn't immediately clear where the number 1048576 came from.
 
 So, best practice: use constants to make it easier to read your code.
 
-One common mistake is to take this to mean _every_ literal should be hidden behind a constant.
-Using constants where they're not needed obfuscates code, and over time can lead to real bugs.
-Consider this example:
+One common mistake is to generalize to saying _every_ literal value should be tucked away behind a nicely-named constant.
+This isn't true.
+Using constants where they're not needed obfuscates your codebase.
+In fairly common cases, abusing constants can also read to real code bugs.
 
+Let's illustrate this an example.
 Say we want to write a parser which can read XML documents like this:
 
 ```xml
@@ -83,8 +97,8 @@ std::vector<book> parse_doc(xml_doc *doc)
 }
 ```
 
-The implementation above is fairly clean, minimal, and easy to understand in a single sitting.
-Have you ever ended up with something like this instead?
+Ick -- this code has some bare literals mixed in with the logic!
+Let's "improve" this code by hoisting those out as nicely-named constants:
 
 ```cpp
 #define BOOKS_NODE_NAME "Books"
@@ -111,7 +125,7 @@ std::vector<book> parse_doc(xml_doc *doc)
 }
 ```
 
-Or even this?
+We can even go all-out and make a 'constants' file which is global to the entire program:
 
 **constants.h**
 
@@ -144,19 +158,20 @@ std::vector<book> parse_doc(xml_doc *doc)
 }
 ```
 
-In the original example, you could look at a copy of books.xml and parser.cpp, and be sure parser.cpp was implemented correctly.
+In the first example, you could look at a copy of books.xml and parser.cpp, and be sure parser.cpp was implemented correctly.
 You could even reverse-engineer the structure of books.xml just by reading parser.cpp.
 In the last example, you can't -- you'd have to jump back and forth between parser.cpp and constants.h to fully get what's happening.
 
 Using constants in this way doesn't play to either of the strengths of constants:
 
-1. The string literals themseleves were already descriptive enough; adding a constant name didn't tell us anything we didn't already know.
+1. The strings were already descriptive; aliasing them with a constant name didn't tell us anything we didn't already know.
 
-2. Each string literal was only referenced once; if you want to change the name of a node, the cost is the same whether or not you used a constant.
+2. Each string literal was only referenced once to begin with.
+   Changing node names is an equally time-consuming task whether or not we employed constants.
 
-There's a more insidious flaw in the final example.
-Because the constants are declared globally to the entire program, you hazard someone later picking up those constants for an unrelated scenario.
-Changes to the constant then affects multiple scenarios, perhaps unintentionally.
+There's also a more insidious flaw lurking in the final example.
+Because the constants are declared globally to the entire program, there's a hazard someone might later pick up those constants for an unrelated scenario.
+Once unrelated scenarios are linked by the use of global constants, changes in either scenario can unintentionally break the other.
 
 To continue the example, say you wrote your book XML parser like in the final example above.
 Then later, a design requirement comes in for a movie XML parser.
@@ -165,9 +180,12 @@ Now both the book parser and the movie parser depend on `TITLE_ATTRIBUTE_NAME` h
 
 Later on, a design change comes in for the book parser, to rename the `Title` attribute to `Name`.
 Unfortunately, the title attribute for books and movies have been coupled together by the constant.
-The developer making this change will likely rename the title constnat, inadvertently breaking the unrelated movie parser.
-But whether or not they get bitten by this, either way they'll still have to do something awkward to decouple those constants.
-Something like this:
+The developer making this change will likely rename the title constant, inadvertently breaking the unrelated movie parser.
+
+Whether they already knew about the coupling or finds out about it due to a compile-time or runtime break, the developer making this change still has to decouple the two scenarios somehow.
+With the current design, the changes look awkward.
+
+They'll probably either look something like this:
 
 ```cpp
 #define BOOKS_NODE_NAME "Books"
@@ -189,20 +207,23 @@ or this:
 #define AUTHOR_ATTRIBUTE_NAME "Author"
 ```
 
-Two takeaways for this in closing:
+But we could have avoided all this trouble if the constants were never shared or made global in the first place.
+Really the book XML and movie XML parsers are separate, and should be maintained separately.
 
-1. Before you add a constant to your code, ask yourself whether you're making the literal value more descriptive, or whether you're going to use the constants in multiple contexts which need to be kept in sync, or if you have other extenuating circumstances.
-If it's none of the above, consider using the literal value directly instead.
+Two takeaways for this topic in closing:
 
-2. If you do decide to use a constant, scope it as tightly as possible.
-   The higher you hoist a constant, the greater risk you run of accidentally coupling unrelated code through the constant.
+1. Before you hoist a value to a constant, ask yourself: does this value need a better name?
+   Or am I going to reference it in multiple places?
+   If the answer is no for both, consider skipping the constant and just using the value directly.
+
+2. When you do decide to use constants in your code, scope them as tightly as possible.
+   The more globally you define the constant, the greater risk you run of leaking the constant into unrelated scenarios.
+   An necessary constant only reduces readability, but an overscoped constant can lead to real bugs.
 
 ---
 
-I rebranded this and flattended it a bit.
-Now it's an examination of commonly abused best practices.
+More topics:
 
-* Hiding every literal in a constant
 * The 'everything is an interface' anti-pattern
 * Abusing dependency injection/inversion of control
 * Hiding code instead of abstracting

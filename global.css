@@ -103,6 +103,11 @@ li p
     text-indent: 0;
 }
 
+blockquote
+{
+    border: 3px solid #eee;
+}
+
 blockquote p
 {
     margin-top: 0;

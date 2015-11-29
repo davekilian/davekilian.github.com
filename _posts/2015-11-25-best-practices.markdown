@@ -210,12 +210,12 @@ or this:
 But we could have avoided all this trouble if the constants were never shared or made global in the first place.
 Really the book XML and movie XML parsers are separate, and should be maintained separately.
 
-> **Aside: Really going overboard with constants**
+> ### Aside: Really going overboard with constants
 >
-> Once, in all my code-reading adventures, I stumbled upon a certain tool.
+> Once, in all my code-reading adventures, I stumbled upon a tool for generating constants.
 > With this tool, a programmer could write code using inlined literal values.
 > Then the programmer could run this tool on their source code.
-> The tool would find literal values, and replaced them with automatically-generated constants.
+> The tool would scan the code for bare literals, replacing each with an automatically-generated constant.
 >
 > For example, if your code had a string like this:
 >
@@ -223,13 +223,20 @@ Really the book XML and movie XML parsers are separate, and should be maintained
 >
 > The tool would replace the literal with a constant like this:
 >
->     __http_colon_slash_slash_www_dot_example_dot_com__
+>     __http_colon_fwdslash_fwdslash_www_period_example_period_com__
 >
-> Sure the generated name is just a harder-to-read version of the original value.
-> But what's truly awesome is, if the underlying value is ever changed, then the constant also needs to be changed, and all references need to be fixed!
+> This is super neat because it violates both of our reasons for using constants:
 >
-> By the time I found this, the author of this tool was long gone, with no way of being contacted.
-> I still haven't the foggiest what they thought they were getting out of this arrangement.
+> 1. **Use constants to assign a more descriptive name to an otherwise bizarre-looking value.**
+>    The automatically generated name is clearly harder to read than the plain value!
+>
+> 2. **Use constants to link all uses of a value to a single code location, to be tweaked later.**
+>    Since the name of the constant is a derivation of its value, if you change the value, you'd also need to rename the constant and fix all references.
+>    So you haven't saved yourself the trouble of sweeping the whole codebase for references.
+>
+> Really awesome stuff.
+> Unfortunately, by the time I found this, the author of this tool was several years gone, and had left no way of being contacted.
+> This tool was clearly a lot of work, and I would have loved to understand what their logic was for building it.
 
 In summary, here are two bits of advice for using constants in your future code:
 
@@ -253,9 +260,17 @@ Interfaces are a tool for making coupling explicit in your code.
 One of their nicer features is to be able to write a contract once, and couple multiple things to it.
 By writing the calling code against the interface, you can swap out the callee as desired.
 
-But as before, indirection strikes again.
+Upon learning about interfaces, many programmers are tempted to only use interfaces to couple their objects.
+There are two commonly-cited benefits for this:
 
-* **Interfaces make it hard to reason about specific flows**
+1. Extensibility: easy to swap out other implementations
+2. Testing: easy to inject a mock instance for testing
+
+But indirection strikes again:
+
+* **Interfaces make it ambiguous where control flow is going**.
+  The calling code could be calling any callee which implements the interface.
+  Without running the code under a debugger, it's not always clear which callee is being invoked.
 
 ---
 

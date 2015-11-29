@@ -248,36 +248,11 @@ In summary, here are two bits of advice for using constants in your future code:
    The more globally you define the constant, the greater risk you run of leaking the constant into unrelated scenarios.
    An necessary constant only reduces readability, but an overscoped constant can lead to real bugs.
 
-## Interfaces. Interfaces everywhere
-
-Linking two pieces of code together is called *coupling*.
-Most developers know that 'coupling' is a naughty word.
-However, when you write software, you expect all the code you write to be called at one point or another.
-That means one way or another, each method has to be coupled to something else.
-
-I'm going to assume you know what an interface is in object-oriented design, and skip the intro example :-).
-Interfaces are a tool for making coupling explicit in your code.
-One of their nicer features is to be able to write a contract once, and couple multiple things to it.
-By writing the calling code against the interface, you can swap out the callee as desired.
-
-Upon learning about interfaces, many programmers are tempted to only use interfaces to couple their objects.
-There are two commonly-cited benefits for this:
-
-1. Extensibility: easy to swap out other implementations
-2. Testing: easy to inject a mock instance for testing
-
-But indirection strikes again:
-
-* **Interfaces make it ambiguous where control flow is going**.
-  The calling code could be calling any callee which implements the interface.
-  Without running the code under a debugger, it's not always clear which callee is being invoked.
-
 ---
 
 More topics:
 
 * Speculative extensibility
-* Abusing dependency injection/inversion of control
 * Hiding code instead of abstracting
 * The minimum code spanning tree ^(TM)
 

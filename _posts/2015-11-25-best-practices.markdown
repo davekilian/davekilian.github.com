@@ -210,7 +210,28 @@ or this:
 But we could have avoided all this trouble if the constants were never shared or made global in the first place.
 Really the book XML and movie XML parsers are separate, and should be maintained separately.
 
-Two takeaways for this topic in closing:
+> **Aside: Really going overboard with constants**
+>
+> Once, in all my code-reading adventures, I stumbled upon a certain tool.
+> With this tool, a programmer could write code using inlined literal values.
+> Then the programmer could run this tool on their source code.
+> The tool would find literal values, and replaced them with automatically-generated constants.
+>
+> For example, if your code had a string like this:
+>
+>     "http://www.example.com"
+>
+> The tool would replace the literal with a constant like this:
+>
+>     __http_colon_slash_slash_www_dot_example_dot_com__
+>
+> Sure the generated name is just a harder-to-read version of the original value.
+> But what's truly awesome is, if the underlying value is ever changed, then the constant also needs to be changed, and all references need to be fixed!
+>
+> By the time I found this, the author of this tool was long gone, with no way of being contacted.
+> I still haven't the foggiest what they thought they were getting out of this arrangement.
+
+In summary, here are two bits of advice for using constants in your future code:
 
 1. Before you hoist a value to a constant, ask yourself: does this value need a better name?
    Or am I going to reference it in multiple places?
@@ -220,11 +241,27 @@ Two takeaways for this topic in closing:
    The more globally you define the constant, the greater risk you run of leaking the constant into unrelated scenarios.
    An necessary constant only reduces readability, but an overscoped constant can lead to real bugs.
 
+## Interfaces. Interfaces everywhere
+
+Linking two pieces of code together is called *coupling*.
+Most developers know that 'coupling' is a naughty word.
+However, when you write software, you expect all the code you write to be called at one point or another.
+That means one way or another, each method has to be coupled to something else.
+
+I'm going to assume you know what an interface is in object-oriented design, and skip the intro example :-).
+Interfaces are a tool for making coupling explicit in your code.
+One of their nicer features is to be able to write a contract once, and couple multiple things to it.
+By writing the calling code against the interface, you can swap out the callee as desired.
+
+But as before, indirection strikes again.
+
+* **Interfaces make it hard to reason about specific flows**
+
 ---
 
 More topics:
 
-* The 'everything is an interface' anti-pattern
+* Speculative extensibility
 * Abusing dependency injection/inversion of control
 * Hiding code instead of abstracting
 * The minimum code spanning tree ^(TM)

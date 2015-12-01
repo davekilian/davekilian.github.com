@@ -68,7 +68,7 @@ The component system we just set up addresses two major shortcomings from our cl
 You can add or remove components from an entity and see an instant effect, without needing to refactor anything.
 When designed well, components make changes and bugfixes less likely to cause undesired side effects elsewhere.
 
-2. **Components simply entity interaction.**
+2. **Components simplify entity interaction.**
 When components handle interaction between entities, they can examine each entity without worrying about what type of game 'thing' it is.
 A component in one entity can talk directly to another instance of that component in a different entity.
 

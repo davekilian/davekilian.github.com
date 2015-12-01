@@ -186,15 +186,14 @@ We would like to unite them under some common base class ourselves.
 And, since we don't control the implementation of `Cow`, `Pig` and `Dog`, it's
 not possible for us to simply change them to inherit from a base interface.
 
-Here's a basic strategy: we can build our own inheritance hierarchy after the
-fact, by employing wrapper objects.
-We would have a single interface type that captures the shared behavior we want
-to utilize (in `seeAndSay()`).
-For each concrete type we want to use, we'd derive that interface, and forward
-all the virtual methods/operator overloads to the underlying concrete type
-being wrapped.
+Here's a basic plan for fixing this: if we don't have the inheritance chain we
+want, and we can't change the objects to make them inherit, then we can build
+our own inheritance chain out of wrapper objects.
+That is, we define our own interface, and implement it multiple times.
+Each implementation of the interface wraps a `Cow`, `Dog` or `Pig`, and calls
+into that for all the virtual methods.
 
-For example, we could define a common interface:
+In this example, our common interface might be:
 
 ```cpp
 class MyAnimal
@@ -205,9 +204,8 @@ public:
 };
 ```
 
-Then we could define an inheritance hierarchy of wrapper objects.
-Each wrapper implementation inherits from the common interface and calls into
-the 'real' underlying object:
+Then we create wrapper objects which inherit from `MyAnimal`.
+Each wrapper does not except but call into the 'real' underlying object:
 
 ```cpp
 class MyCow : public MyAnimal
@@ -477,7 +475,7 @@ class SeeAndSay
         const T *m_animal;
 
     public:
-        AnimalWrapper(const T *animal)
+        AnimalModel(const T *animal)
             : m_animal(animal)
         { }
 
@@ -491,14 +489,14 @@ public:
     template <typename T>
     void addAnimal(T *animal)
     {
-        m_animals.push_back(new AnimalWrapper(animal));
+        m_animals.push_back(new AnimalModel(animal));
     }
 
     void pullTheString()
     {
         size_t index = rand() % m_animals.size();
 
-        MyAnimal *animal = m_animals[index];
+        AnimalConcept *animal = m_animals[index];
         printf("The %s says '%s!'", 
             animal->see(), 
             animal->say());

@@ -5,18 +5,13 @@ author: Dave
 draft: true
 ---
 
-When you write a program, you usually have lots of options, even if only a few are good.
-Software 'best practices' are rules of thumb to help guide you to the good solutions, and avoid deceptive pitfalls.
-These are invaluable both for examining your past designs in retrospect, and informing your new designs as time goes on.
+"Best practices" are rules to help avoid common pitfalls and design better software.
+When you apply a best practice to your designs, though, it's important to always keep in mind _why_ something is considered a best practice.
+When applied to the wrong problems, many of these solutions actually degrade the quality of your codebase.
 
-But many well-accepted best practices come with caveats.
-When faced with a choice between competing designs, it's easy to invoke a rule of thumb to pick a design, with no further consideration.
-But invoking a best practice rule without considering the reasoning behind it can worsen your code.
-Do this too many times, and your designs can degrade to the point of ummaintainability.
-
-The main culprit is indirection.
-Most software practices involve adding some type of indirection; as the old joke goes, "every problem in software design can be solved with another layer of indirection."
-Of course, adding indirection isn't free:
+There's an old saying that goes, "every problem in software design can be solved with another layer of indirection."
+Many best practices add some form of indirection to your codebase.
+But adding indirection to your code doesn't come for free:
 
 * **Indirected code is harder to read.**
   The reader has to jump around between multiple locations to get the full picture.
@@ -24,13 +19,13 @@ Of course, adding indirection isn't free:
 
 * **Indirected code is harder to refactor.**
   Indirection adds an internal code contract between two or more parts of the implementation.
-  Maintaining or reworking an internal contract is harder than just adding one.
+  Maintaining or reworking an internal contract is harder than simply adding one.
 
-Sometimes indirection is worthwhile despite these costs.
-But that's not always the case, even when you apply a rule commonly accepted as a best practice!
-In this post we'll go over a few common best practices, and note how they can backfire when applied to the wrong situation.
+People still add indirection to their designs all the time, because they deem the benefits to outweigh these costs.
+Sometimes, though, people take these penalties with no gain, in the name of "best practices."
+In this post we'll take a look at a couple anti-patterns which crop up from applying common best practices to the wrong problems.
 
-### Constants. Constants everywhere
+### Constant Obfuscation
 
 Constants hide a literal value behind a variable name.
 There are two good reasons to do this:
@@ -248,15 +243,11 @@ In summary, here are two bits of advice for using constants in your future code:
    The more globally you define the constant, the greater risk you run of leaking the constant into unrelated scenarios.
    An necessary constant only reduces readability, but an overscoped constant can lead to real bugs.
 
+## The Minimum Code Spanning Tree^(TM)
+
 ---
 
-More topics:
-
-* Speculative extensibility
-* Hiding code instead of abstracting
-* The minimum code spanning tree ^(TM)
-
-Takeaway:
+Takeaways:
 
 * Software should be stable first, and readable second. All else is ancillary
 * Simple software is readable

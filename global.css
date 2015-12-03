@@ -110,8 +110,14 @@ blockquote
 
 blockquote p
 {
+    color: #454545;
+    text-align: left;
     text-indent: 0;
-    color: #444;
+}
+
+blockquote p:first-child
+{
+    margin-top: 0;
 }
 
 li

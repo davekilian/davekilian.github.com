@@ -248,13 +248,14 @@ In summary, here are two bits of advice for using constants in your future code:
 
 ## Never Repeating Anything
 
-"[Don't repeat yourself](https://en.wikipedia.org/wiki/Don%27t_repeat_yourself)" is an often-quoted tenet of software engineering.
-The idea is to design software so fixing a bug or changing requirements changes few locations in the code (ideally one).
-The way to achieve this is usually some form of indirection.
+"[Don't repeat yourself](https://en.wikipedia.org/wiki/Don%27t_repeat_yourself)" is one of the better-known principles of software design.
+It states well-designed software should ideally require few changes to fix a bug or change a requirement.
+Ideally, each should require one isolated change.
 
-Consider this example.
-We're trying to parse some flags from command line arguments, using the Windows convention (i.e. we accept both `-flag` and `/flag` for each).
-A simple, clean first design might look something like this:
+The typical pattern is to add some indirection to hide some logic.
+Then we can use that abstraction to run the logic whenever needed.
+For example, say we're trying to parse some flags from command line arguments, using the Windows convention (i.e. we accept both `-flag` and `/flag` for each).
+Initially we might write this:
 
 ```cpp
 output.foo = false;
@@ -284,9 +285,9 @@ Now that we're sensing a pattern of changing requirements, we might choose to ad
 bool isFlag(const str &arg, const str &flag) {
     return arg == "-" + flag || arg == "/" + flag;
 }
+```
 
-...
-
+```cpp
 output.foo = false;
 output.bar = false;
 output.baz = false;
@@ -304,86 +305,47 @@ for (auto it = args.begin(); it != args.end(); ++it) {
 }
 ```
 
-After this refactor, adding Unix-style flags just means adding `|| arg == "--" + flag` to `isFlag()` to be done with it.
-We added a level of indirection (the `isFlag()` helper) to remove duplicated code (the `if` clauses) which wasn't truly necessary.
-Assuming there are future changes in this area, deduplicating benefits us by making fixes simpler and less error-prone.
-Not repeating ourselves was a good idea!
+Now we can just add a clause for `--flag` to `isFlag()` to finish up.
 
-It's possible to take DRY too far: sometimes code *should* be duplicated!
-Removing duplication in related code is usually a win, but removing duplication in unrelated code just links two unrelated scenarios.
-Today the code might be identical for both, but tomorrow you might get a bug or a requirement change which needs a fix to one scenario and not the other.
-Because the code was shared, the fix becomes tricky.
+In summary, we took the logic to determine whether a string is a command-line flag, and hid it behind a level of indirection (in this case a method call).
+Because a requirement change has already come in for flag parsing, we speculate more changes will come in for flag parsing in the future.
+Hopefully, `isFlag()` will help us respond to those feature requests cleanly and quickly.
 
-Consider this method:
+Of course, since we added indirection, we also incurred costs:
 
-```cpp
-void doWork(bool isFoo, bool isBar) { ... }
-```
+* **The new implementation is harder to read.**
+  Maintainers now need to jump back and forth between the parsing method and the definition of `isFlag()` to get the whole picture.
 
-The `isFoo` and `isBar` flags are a code smell.
-They indicate that when we created `doWork`, we were trying to link unrelated things together.
-Although `Foo` and `Bar` may have originally been identical, over time we realized each needs specific logic that the other doesn't.
-The flags are a hack to make this work quickly.
+* **The new implementation is harder to refactor.**
+  If a requirement ever comes in to handle more complicated types of arguments (maybe `--param=value`), the developer will likely need to chuck the `isFlag()` abstraction and write a totally new one.
+  In that case, adding `isFlag()` accidentally increased our future change cost and risk of regression.
 
-With a little more work, it's usually possible to refactor something like this:
+It's up to you as a developer to decide whether these costs are worthwhile.
+You can definitely go too far.
+Sometimes code duplication is natural; sometimes code duplication is actually beneficial!
+Overusing indirection to de-duplicate code can hork a project really quickly.
+Let's explore why!
 
-```cpp
-// @param isFoo: true for Foo scenario, false for Bar scenario
-void doWork(bool isFoo)
-{
-    // (A)
+Code with lots of abstractions isn't just hard to read; it's also brittle.
+Often a change in requirements requires refactoring a subsystem.
+In a project with lots and lots of abstraction and indirection, refactoring one abstraction can lead to cascading changes in other subsystems.
+Before you know it, even small feature requests require complicated, bug-prone reworking.
 
-    if (isFoo) {
-        // (B)
-    }
-    else {
-        // (C)
-    }
+Although we're talking macro effects, it's not too hard to see this at a smaller scale.
+Consider this example:
 
-    // (D)
+> I chucked the old example because I didn't like it.
+> Make a new one here.
+>
+> The goal is to start with some code and compress it down to a bare minimum.
+> Then take a small feature request.
+> Apply it to the original designed vs the minified design and compare headaches
+>
+> One simple way to handle this might be 'modes' of operation, where you construct an uber-function based on controller flags.
+> The uber function is just a orchestrator which calls into helper methods.
+> Then a requirement comes in for a new mode, and boom -- another controller flag and way-complicated refactors.
 
-    if (isFoo) {
-        // (E)
-    }
-}
-```
-
-to look more like this:
-
-```cpp
-void doA() { /* (A) */ }
-void doB() { /* (B) */ }
-void doC() { /* (C) */ }
-void doD() { /* (D) */ }
-void doE() { /* (E) */ }
-
-void doFoo() {
-    doA();
-    doB();
-    doD();
-    doE();
-}
-
-void doBar() {
-    doA();
-    doC();
-    doD();
-}
-```
-
-This nets you a few benefits:
-
-1. **Changes to `doFoo` and `doBar` are isolated.**
-   If you change `doFoo` and only `doFoo`, there's no way that change can possibly impact the `doBar` code path.
-   In the first example, and change to `doWork` could possibly impact either scenario, intended or no.
-
-2. **Fewer conditions to work with.**
-   Conditional code is harder to think about than unconditional code, especially if there are lots of conditions, or the conditions are complicated.
-   Unconditional code is also easier to cover with tests.
-
-3. **Scales with your feature set.**
-   If you already have scenarios for `Foo` and `Bar`, it might not be a stretch to think the requirement for `Baz` is just around the corner
-   The latter strategy makes it easy to add `Baz`: just make a `doBaz()` and pick the pieces which make sense for `Baz`.
-
-This example might look a little silly, but this can be tempting in practice, especially when sections `(A)` and `(D)` are long, and the others are short.
+In summary, it's possible to apply "Don't Repeat Yourself" until you end up Never Repeating Anything.
+But a codebase which Never Repeats Anything can't easily respond to new features or bug fixes.
+Even small changes require big refactors to remove newly introduced code repitition.
 

@@ -83,7 +83,7 @@ Assuming both the caller and callee have created their respective
 The caller starts by calling `createOffer` on its `RTCPeerConnection`, and
 sending the resulting `desc` object to the callee via the broker:
 
-```js
+~~~js
 var broker = myConnectToBroker();
 var pc = new RTCPeerConnection(...);
 
@@ -93,20 +93,20 @@ pc.createOffer(function(desc) {
     ...
     broker.sendOffer(desc);
 });
-```
+~~~
 
 The `desc` argument will be discussed in more detail below. 
 When the callee receives the message from the broker, it creates its own answer 
 to the caller's offer:
 
-```js
+~~~js
 var broker = myConnectToBroker();
 var pc = new RTCPeerConnection(...);
 
 ...
 
 pc.createAnwser(function(desc) { ... });
-```
+~~~
 
 ## Synchronizing Session Descriptions
 
@@ -125,9 +125,9 @@ During connection setup, WebRTC requires your app to set both.
 This is done by calling `setLocalDescription` and `setRemoteDescription`,
 both of which have the same type signature:
 
-```js
+~~~js
 set{Local|Remote}Description(desc, onsuccess, onfailure)
-```
+~~~
 
 * `desc` is the `RTCSessionDescription` object
 * `onsuccess()` is called if the operation suceeds
@@ -148,7 +148,7 @@ In this case, the app needs to do two things in the offer/answer callback:
 
 Integrating this with the offer/answer handshake, the caller looks like this:
 
-```js
+~~~js
 var broker = myConnectToBroker();
 var pc = new RTCPeerConnection(...);
 
@@ -163,11 +163,11 @@ pc.createOffer(function(desc) {
         broker.sendOffer(desc);
     }, myLogError);
 });
-```
+~~~
 
 While the callee looks like this:
 
-```js
+~~~js
 var broker = myConnectToBroker();
 var pc = new RTCPeerConnection(...);
 
@@ -182,7 +182,7 @@ broker.onoffer = function(desc) {
         }, myLogError);
     }, myLogError);
 }
-```
+~~~
 
 To unroll what's going above:
 
@@ -219,7 +219,7 @@ both the caller and the callee).
 
 caller:
 
-```js
+~~~js
 var broker = myConnectToBroker();
 var pc = new RTCPeerConnection(...);
 
@@ -244,11 +244,11 @@ pc.createOffer(function(desc) {
         broker.sendOffer(desc);
     }, myLogError);
 });
-```
+~~~
 
 callee:
 
-```js
+~~~js
 var broker = myConnectToBroker();
 var pc = new RTCPeerConnection(...);
 
@@ -273,7 +273,7 @@ broker.onoffer = function(desc) {
         }, myLogError);
     }, myLogError);
 }
-```
+~~~
 
 Once this negotiation is complete, WebRTC automatically connects to the remote
 peer using whatever connection mechanism was decided upon.
@@ -286,7 +286,7 @@ provided by a broker object.
 Turns out this broker object doesn't need to be very magical, but it's worth
 showing a sample implementation anyways...
 
-```js
+~~~js
 function Broker() {
     var ws = <create WebSocket connection to broker server>;
 
@@ -327,7 +327,7 @@ Broker.prototype.sendIce = function(candidate) {
 function myConnecToBroker() {
     return new Broker();
 }
-```
+~~~
 
 This example assumes the existence of some server at the other end of the
 WebSocket. 
@@ -348,7 +348,7 @@ instead, you can just directly call the session description/ICE methods
 directly.
 This is what many [WebRTC examples](http://simpl.info/rtcdatachannel/) do.
 
-```js
+~~~js
 var caller = new RTCPeerConnection(...);
 var callee = new RTCPeerConnection(...);
 
@@ -375,7 +375,7 @@ caller.setRemoteDescription(desc, function() {
 }, myLogError);
 }, myLogError);
 
-```
+~~~
 
 ## Using the Connection
 

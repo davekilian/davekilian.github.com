@@ -24,7 +24,7 @@ What we saw instead was much more strange.
 
 Let's say this was the crashing function:
 
-```cpp
+~~~cpp
  1 bool main()
  2 {
  3     mystruct *data = new mystruct;
@@ -39,7 +39,7 @@ Let's say this was the crashing function:
 12     delete data;
 13     return true;
 14 }
-```
+~~~
 
 In the debugger, we were seeing the app crash at line 8, while dereferencing `data->myvalue`.
 It turns out `data` was `nullptr` at that point.
@@ -91,7 +91,7 @@ Eventually, we found the problematic function call nested a half dozen function 
 The function we were calling had been loaded using Windows's `LoadLibrary` and `GetProcAddress` APIs, which allow you to manually load a DLL and extract a bare pointer to a specific function.
 The code looked something like this:
 
-```cpp
+~~~cpp
 typedef void (*MyFunction)(int arg1, int arg2);
 
 // ...
@@ -107,18 +107,18 @@ if (module) {
     }
 }
 
-```
+~~~
 
 Someone had recently changed the function being called, and someone else had handled a merge conflict from that change.
 The merge conflict was done incorrectly, causing the `typedef` to fall out of sync with the real implementation.
 Compare the `typedef` above with the definition below:
 
-```cpp
+~~~cpp
 void MyFunction(int arg)
 {
     // ...
 }
-```
+~~~
 
 Remember how we said in the standard C calling convention, the caller pushes the arguments and the callee pops them?
 In this case, the caller and the callee had different opinions about the number of arguments to manage:
@@ -147,24 +147,24 @@ However, we can link the two together using a shared header and the `decltype` k
 
 For example, we would first define **MyFunction.h**:
 
-```cpp
+~~~cpp
 void MyFunction(int arg1, int arg2);
-```
+~~~
 
 Then we could implement it in **MyFunction.cpp**:
 
-```cpp
+~~~cpp
 #include "MyFunction.h"
 
 void MyFunction(int arg1, int arg2)
 {
     // ...
 }
-```
+~~~
 
 Finally, we could load that API in **ExternalCaller.cpp** like this:
 
-```cpp
+~~~cpp
 #include "MyFunction.h"
 
 typedef decltype(&MyFunction) MyFunctionPtr;
@@ -185,21 +185,21 @@ bool main()
 
     return false;
 }
-```
+~~~
 
 If you haven't seen it before, `decltype` is a new C++ keyword defined in C++11.
 It is a language construct which evaluates to the type of the expression in parentheses.
 In this case, `&MyFunction` evaluates to the function pointer signature for `MyFunction`, which means:
 
-```cpp
+~~~cpp
 typedef decltype(&MyFunction) MyFunctionPtr;
-```
+~~~
 
 evaluates to just what we'd expect:
 
-```cpp
+~~~cpp
 typedef void (*MyFunctionPtr)(int arg1, int arg2);
-```
+~~~
 
 This way we've linked the caller's typedef with the callee's implementation: both must match the declaration in the shared header.
 If we decide to change the implementation, all the necessary changes become compiler breaks, which are much easier to find.

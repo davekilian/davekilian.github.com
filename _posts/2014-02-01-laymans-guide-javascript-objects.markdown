@@ -23,23 +23,23 @@ unsurprisingly named `Object`.
 values.
 You can specify `Object` literals using the notation below:
 
-```js
+~~~js
     function getValue(num) { ... }
     var obj = { 'first': getValue(1), 'second': getValue(2) };
-```
+~~~
 
 The variable `obj` above holds a reference to an object.
 The object it references has two properties: 'first' and 'second'.
 We can retrieve them two different ways:
 
-```js
+~~~js
     // The convenient way:
     var first = obj.first;
 
     // The long way (useful when the property name contains spaces or
     // punctuation):
     first = obj['first'];
-```
+~~~
 
 A quick note about semantics: the variable `obj` holds a reference to an
 _instance_ of `Object`, not a _subclass_.
@@ -59,9 +59,9 @@ corresponds to a certain type of literal in the language:
 Another built-in subtype of `Object` is `Function`, which is used for function
 definition literals:
 
-```js
+~~~js
     var func = function(a, b) { return a + b; }
-```
+~~~
 
 (Everything to the right-hand side of the `=` sign is a function literal)
 

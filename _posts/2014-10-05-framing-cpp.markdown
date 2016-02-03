@@ -75,13 +75,13 @@ For user defined types (`class`es and `struct`s), C++ simply concatenates the
 byte representation for each field in the type.
 So the following struct:
 
-```cpp
+~~~cpp
 struct MyData
 {
     int SomeData;
     int MoreData;
 };
-```
+~~~
 
 ends up stored something like this in memory:
 
@@ -122,14 +122,14 @@ field in a hash table!
 C++'s object representation works recursively for nested user-defined types.
 So if we nested the struct above in another one as follows:
 
-```cpp
+~~~cpp
 struct Complex
 {
     int Before;
     MyData Data;
     int After;
 };
-```
+~~~
 
 the byte representation would be similarly nested:
 
@@ -170,7 +170,7 @@ assign one instance of a certain object to another instance, the compiler
 simply does a byte-by-byte copy from one instance to the other.
 Subsequently modifying either of those objects does not affect the other.
 
-```cpp
+~~~cpp
 MyData a;
 MyData b;
 
@@ -193,14 +193,14 @@ assert(a.MoreData == 8765);
 
 assert(b.SomeData == 1234); // Important: b has not changed,
 assert(b.MoreData == 5678); // even though a has been changed.
-```
+~~~
 
 Similarly, each time you call a function, C++ copies in each argument by value,
 using the same byte-by-byte copy technique.
 As a result of this, a function which modifies one of its arguments does not
 affect the value that the caller passed in:
 
-```cpp
+~~~cpp
 void fiddleWithData(MyData data)
 {
     data.SomeData = 1234;
@@ -217,14 +217,14 @@ fiddleWidthData(data);
 
 assert(data.SomeData == 4321);
 assert(data.MoreData == 8765);
-```
+~~~
 
 And, like arguments passed into the function, return values are passed out of
 the function using a byte copy as well.
 This means that modifying the return value of a function doesn't modify the
 original value that was returned:
 
-```cpp
+~~~cpp
 class Container
 {
 private:
@@ -244,7 +244,7 @@ data.MoreData = 8765;
 
 assert(container.getData().SomeData == 1234);
 assert(container.getData().MoreData == 5678);
-```
+~~~
 
 Of course, all this copying isn't free.
 One common criticism of C++ is the difficulty of diagnosing performance
@@ -269,7 +269,7 @@ C++ provides the pointer-dereferencing operator `*` to allow you to dereference
 a pointer, in order to read or write the value at the RAM address stored in
 that pointer:
 
-```cpp
+~~~cpp
 void pointerTest(int *intPtr, MyData *dataPtr)
 {
     int num = *intPtr;
@@ -280,17 +280,17 @@ void pointerTest(int *intPtr, MyData *dataPtr)
     data.SomeData = 4321;
     *dataPtr = data;
 }
-```
+~~~
 
 C++ also provides field deferencing operator `->`
 
-```cpp
+~~~cpp
 void pointerTest2(MyData *data)
 {
     (*data).SomeData = 4321; // This syntax is equivalent
     data->SomeData = 4321; // to this syntax
 }
-```
+~~~
 
 Let's reconsider the example near the beginning of this section, where we
 walked through how the compiler would set `data.MoreData = 7`.
@@ -311,11 +311,11 @@ really an instance of `MyData`, or that the memory address is valid at all!
 In other words, the snippet `data->MoreData = 7` does exactly the same thing
 as the following snippet:
 
-```cpp
+~~~cpp
 char *bytes = (char*)data;
 int *moreData = (int*)(bytes + 4);
 *moreData = 7;
-```
+~~~
 
 These semantics for referencing memory and dealing with types are what makes
 C++ so 'close to the metal'.
@@ -344,23 +344,23 @@ pointer itself by value; but since both copies of the pointer contain the same
 memory address, the same object gets modified when either copy of the pointer
 is dereferenced:
 
-```cpp
+~~~cpp
 void acceptPointer(MyData *data)
 {
     data->SomeData = 1234;
     data->MoreData = 5678;
 }
-```
+~~~
 
 We can accomplish the same thing using reference types instead of pointers:
 
-```cpp
+~~~cpp
 void acceptReference(MyData &data)
 {
     data.SomeData = 1234;
     data.MoreData = 5678;
 }
-```
+~~~
 
 When calling functions, it's often better performance-wise to pass in a pointer
 or reference to an object rather than copying the whole object by value. 
@@ -372,7 +372,7 @@ modifying the caller's passed-in objects as a side effect.
 To work around this, a common idiom in C++ is to accept a `const` reference to
 an object as the input to a function:
 
-```cpp
+~~~cpp
 void acceptConstRef(const MyData &data)
 {
     // data.SomeData = 1234; <-- causes a compilation error
@@ -380,7 +380,7 @@ void acceptConstRef(const MyData &data)
     MyData localCopy = data;
     localCopy.SomeData = 4321;
 }
-```
+~~~
 
 With this idiom, we can reap the performance benefits of passing an object by 
 reference, while also guaranteeing that calling the function will not modify 
@@ -424,19 +424,19 @@ If you've been following this guide so far, you've already made plenty of
 automatically managed allocations.
 To have the compiler manage a variable's memory, just declare it directly:
 
-```cpp
+~~~cpp
 void stackAllocation()
 {
     int value;   // Allocates sizeof(int) bytes on the stack
     MyClass obj; // Allocates sizeof(MyClass) bytes
 }
-```
+~~~
 
 These allocations are local to the _scope_ in which they appear.
 In C++, a scope is defined by the `{ }` characters: `{` denotes the beginning
 of a scope, and `}` marks the end of the matching scope:
 
-```cpp
+~~~cpp
 void aFunction()
 {
     // function-level scope
@@ -445,7 +445,7 @@ void aFunction()
         // sub-scope
     }
 }
-```
+~~~
 
 This type of allocation is known as _stack allocation_, because the compiler
 allocates memory for variables on the _call stack_.
@@ -470,7 +470,7 @@ For example, when a variable is allocated on the stack, the compiler knows
 exactly when the variable is and is not accessible, and can thus allocate and
 deallocate memory for that variable by itself:
 
-```cpp
+~~~cpp
 void someFunction()
 {
     // (A)
@@ -481,7 +481,7 @@ void someFunction()
 
     // (D)
 }
-```
+~~~
 
 At point (A) in the example above, the variable `num` is not yet accessible, so
 no memory needs to be allocated for it yet.
@@ -510,13 +510,13 @@ up _overflowing_ the stack, which crashes the program.
 _Heap allocation_ addresses the shortcomings of stack allocation.
 You can allocate on the heap using `new` and `delete`, as previously mentioned:
 
-```cpp
+~~~cpp
 void heapAllocation()
 {
     MyClass *obj = new MyClass;
     delete obj;
 }
-```
+~~~
 
 The primary difference between the stack and the heap is that memory allocated
 on the heap is not freed until your program uses the `delete` operator on a
@@ -547,13 +547,13 @@ original scope ends, and/or if the object is very large.
 
 Let's take another look at the heap allocation snippet we showed earlier:
 
-```cpp
+~~~cpp
 void heapAllocation()
 {
     MyClass *obj = new MyClass;
     delete obj;
 }
-```
+~~~
 
 There are two allocations in the function above.
 Can you spot them both?
@@ -578,14 +578,14 @@ ending the scope in which `obj` is defined.
 The following rewrite of the example above makes it a little clearer what's
 going on:
 
-```cpp
+~~~cpp
 void heapAllocation()
 {
     MyClass *obj; // Stack-allocate MyClass *
     obj = new MyClass; // Heap-allocate MyClass
     delete obj; // Heap-deallocate MyClass
 } // Stack-deallocate MyClass *
-```
+~~~
 
 So far we've discussed 'use-after-free' bugs with heap-allocation, a class of
 bug where a program continues to dereference a pointer after the value the
@@ -610,7 +610,7 @@ destructor.
 That way, whenever the object gets deleted, the data it owns also gets deleted.
 Refer to the following example:
 
-```cpp
+~~~cpp
 class Owner
 {
 private:
@@ -648,7 +648,7 @@ public:
         m_data = data;
     }
 };
-```
+~~~
 
 In the example above, the `Owner` object 'owns' the `m_data` pointer by
 convention.
@@ -663,13 +663,13 @@ The `Owner` object above lets us do something interesting: even though `Owner`
 owns a heap-allocated pointer to a `MyData` object, `Owner` itself can be stack
 allocated:
 
-```cpp
+~~~cpp
 void someFunction()
 {
     Owner own;
     own.setData(new MyData);
 }
-```
+~~~
 
 When control flow reaches the `}` at the end of `someFunction()` above, `own`
 (which is stack allocated) goes out of scope.
@@ -715,7 +715,7 @@ In a compiled programming language, the compiler's job boils down to:
 Let's compare a multi-pass Java compilation to a single-pass C++ compilation.
 Consider this Java source file:
 
-```java
+~~~java
 public class Counter {
 
     private int field;
@@ -735,7 +735,7 @@ public class Counter {
         field += 1;
     }
 }
-```
+~~~
 
 Here's how Java handles this class:
 
@@ -755,7 +755,7 @@ This model is called _multi-pass_, because Java needs to scan each source file
 multiple times to compile it.
 Now let's take a look at the equivalent C++ class:
 
-```cpp
+~~~cpp
 class Counter
 {
 private:
@@ -782,7 +782,7 @@ Counter::incrementField()
 {
     field += 1;
 }
-```
+~~~
 
 C++ is designed to be compatible with single-pass compilation: a compiler
 should only need to walk through a C++ file once to completely compile it.
@@ -820,7 +820,7 @@ This file won't compile, since the compiler won't know about
 `incrementField()`, or even `class Counter`, by the time it gets to the 
 definition for `getNext()`:
 
-```cpp
+~~~cpp
 Counter::getNext() 
 {
     std::cout << "Somebody called getNext()\n";
@@ -848,7 +848,7 @@ public:
     Counter();
     int getNext();
 };
-```
+~~~
 
 One last note about forward declarations: the compiler allows you to declare a
 symbol as many times as you want, provided each declaration is the same.
@@ -889,7 +889,7 @@ For example, we can rewrite our example above as follows:
 
 **counter.h:**
 
-```cpp
+~~~cpp
 class Counter
 {
 private:
@@ -900,11 +900,11 @@ public:
     Counter();
     int getNext();
 };
-```
+~~~
 
 **counter.cpp:**
 
-```cpp
+~~~cpp
 #include "counter.h" 
 
 Counter::Counter()
@@ -923,7 +923,7 @@ Counter::incrementField()
 {
     field += 1;
 }
-```
+~~~
 
 Again, notice how `counter.h` only has declarations, and `counter.cpp` only has
 definitions.
@@ -931,7 +931,7 @@ Now we can write a `main()` method that uses the counter class:
 
 **main.cpp**
 
-```cpp
+~~~cpp
 #include "counter.h"
 
 int main(int argc, const char *argv[])
@@ -946,7 +946,7 @@ int main(int argc, const char *argv[])
 
     return 0;
 }
-```
+~~~
 
 One important thing of note: the compiler processes `#include` directive using
 a component called the _preprocessor_, and the preprocessor is pretty dumb.
@@ -973,7 +973,7 @@ That has a few important ramifications.
 One is that, even though the `counter.cpp` above compiles correctly,
 this one won't:
 
-```cpp
+~~~cpp
 Counter::Counter()
 {
     field = 0;
@@ -992,13 +992,13 @@ Counter::incrementField()
 }
 
 #include "counter.h" 
-```
+~~~
 
 Why doesn't this work?
 The fully preprocessed text of this file is as follows, and we've already
 discussed why this doesn't compile:
 
-```cpp
+~~~cpp
 Counter::Counter()
 {
     field = 0;
@@ -1026,7 +1026,7 @@ public:
     Counter();
     int getNext();
 };
-```
+~~~
 
 To recap, here's the core idea from this section:
 
@@ -1051,102 +1051,105 @@ Let's walk through the compilation process.
 1. We (or our IDE) invokes the compiler on `counter.cpp`.
    The compiler loads this file into memory:
 
-    ```cpp
-    #include "counter.h" 
+   ~~~cpp
+   #include "test"
 
-    Counter::Counter()
-    {
-        field = 0;
-    }
+   test
+   #include "counter.h" 
+   
+   Counter::Counter()
+   {
+     field = 0;
+   }
+ 
+   Counter::getNext() 
+   {
+     std::cout << "Somebody called getNext()\n";
+     incrementField();
+     return field;
+   }
 
-    Counter::getNext() 
-    {
-        std::cout << "Somebody called getNext()\n";
-        incrementField();
-        return field;
-    }
-
-    Counter::incrementField()
-    {
-        field += 1;
-    }
-    ```
+   Counter::incrementField()
+   {
+     field += 1;
+   }
+   ~~~
 
 2. The compiler preprocesses the in-memory file.
    Upon finding `#include "counter.h"`, the preprocessor loads it in.
    After preprocessing, the in-memory file looks like this:
 
-    ```cpp
-    class Counter
-    {
-    private:
-        int field;
-        int incrementField();
+   ~~~cpp
+   class Counter
+   {
+   private:
+       int field;
+       int incrementField();
 
-    public:
-        Counter();
-        int getNext();
-    };
+   public:
+       Counter();
+       int getNext();
+   };
 
-    Counter::Counter()
-    {
-        field = 0;
-    }
+   Counter::Counter()
+   {
+       field = 0;
+   }
 
-    Counter::getNext() 
-    {
-        std::cout << "Somebody called getNext()\n";
-        incrementField();
-        return field;
-    }
+   Counter::getNext() 
+   {
+       std::cout << "Somebody called getNext()\n";
+       incrementField();
+       return field;
+   }
 
-    Counter::incrementField()
-    {
-        field += 1;
-    }
-    ```
+   Counter::incrementField()
+   {
+       field += 1;
+   }
+   ~~~
 
 3. The compiler walks through the file.
 
-    1. At the top, it finds a definition for `class Counter`.
-    2. Walking through that definition, it finds forward declarations for the
-       constructor, `incrementField()`, and `getNext()`.
-    3. As it continues to walk the file, it finds definitions for those
-       methods.
-       It compiles each method as it encounters the definition.
-       The resulting compiled definition contains a stub wherever the
-       code referenced another definition.
-    4. The compiler saves all the compiled definitions in an object file for 
-       counter.cpp (usually `counter.o` on UNIXes, `counter.obj` on Windows).
+   1. At the top, it finds a definition for `class Counter`.
+   2. Walking through that definition, it finds forward declarations for the
+      constructor, `incrementField()`, and `getNext()`.
+   3. As it continues to walk the file, it finds definitions for those
+      methods.
+      It compiles each method as it encounters the definition.
+      The resulting compiled definition contains a stub wherever the
+      code referenced another definition.
+   4. The compiler saves all the compiled definitions in an object file for 
+      counter.cpp (usually `counter.o` on UNIXes, `counter.obj` on Windows).
 
 4. We repeat step (2.) on `main.cpp`.
    The preprocessed result looks like this:
 
-    ```cpp
-    class Counter
-    {
-    private:
-        int field;
-        int incrementField();
+   ~~~cpp
+   class Counter
+   {
+   private:
+       int field;
+       int incrementField();
 
-    public:
-        Counter();
-        int getNext();
-    };
+   public:
+       Counter();
+       int getNext();
+   };
 
-    int main(int argc, const char *argv[])
-    {
-        Counter myCounter;
+   int main(int argc, const char *argv[])
+   {
+       Counter myCounter;
 
-        for (int i = 0; i < 10; ++i) {
-            int num = myCounter.getNext();
-            bool debug = (i == myCounter.getNext());
-                // debug should always be true
-        }
+       for (int i = 0; i < 10; ++i) {
+           int num = myCounter.getNext();
+           bool debug = (i == myCounter.getNext());
+               // debug should always be true
+       }
 
-        return 0;
-    }
-    ```
+       return 0;
+   }
+   ~~~
 
 5. We repeat step (5.) on `main.cpp`.
    The resulting object file is either `main.o` or `main.obj`,
@@ -1154,11 +1157,11 @@ Let's walk through the compilation process.
 
 6. We invoke the linker on `counter.o[bj]` and `main.o[bj]`.
 
-    1. The linker concatenates each of the compiled definitions
-       into a single program binary.
-    2. The linker scans through the compiled definitions.
-       Whever it finds a stub for referencing another definition,
-       it fixes the stub to actually call into the referenced code.
+   1. The linker concatenates each of the compiled definitions
+      into a single program binary.
+   2. The linker scans through the compiled definitions.
+      Whever it finds a stub for referencing another definition,
+      it fixes the stub to actually call into the referenced code.
 
 7. The linker writes the final binary to disk.
    Now we can run it!

@@ -23,18 +23,18 @@ methods.
 As an example, let's implement [See 'n Say](http://www.amazon.com/Fisher-Price-See-Say-Farmer-Says/dp/B00JYCN84A).
 We start with an interface class:
 
-```cpp
+~~~cpp
 class Animal
 {
 public:
     virtual const char *see() const = 0;
     virtual const char *say() const = 0;
 };
-```
+~~~
 
 And add a few concrete implementations:
 
-```cpp
+~~~cpp
 class Cow : public Animal
 {
 public:
@@ -55,19 +55,19 @@ public:
     const char *see() const { return "dog"; }
     const char *say() const { return "woof"; }
 };
-```
+~~~
 
 Now we can use these implementations generically, by coding against the
 interface:
 
-```cpp
+~~~cpp
 void seeAndSay(Animal *animal)
 {
     printf("The %s says '%s!'", 
         animal->see(), 
         animal->say());
 }
-```
+~~~
 
 Not rocket science, right?
 
@@ -89,7 +89,7 @@ Even if the concrete types don't share a common base, if they conform to a
 common interface (that is, they can be used the same way by a caller), we can
 instead use a template to make the types polymorphic:
 
-```cpp
+~~~cpp
 template <typename T>
 void seeAndSay(T *animal)
 {
@@ -97,7 +97,7 @@ void seeAndSay(T *animal)
         animal->see(), 
         animal->say());
 }
-```
+~~~
 
 You can call this above method on `Cow`s, `Pig`s, `Dog`s, and anything else
 that has zero-argument `see()` and `say()` methods that return strings.
@@ -109,23 +109,23 @@ type (say, `Dog`), the template invocation is valid.
 
 To illustrate this, when you call:
 
-```cpp
+~~~cpp
 Dog dog;
 seeAndSay(&dog);
-```
+~~~
 
 The compiler compiles the method `seeAndSay<Dog>`, by more or less replacing
 `T` with `Dog`.
 The body of that method would look something like this:
 
-```cpp
+~~~cpp
 void seeAndSay<Dog>(Dog *animal)
 {
     printf("The %s says '%s!'", 
         animal->see(), 
         animal->say());
 }
-```
+~~~
 
 If you tried to pass in a type that doesn't conform to the 'interface' (say,
 `std::string`), the compiler would hit an error when you tried to compile the 
@@ -140,7 +140,7 @@ First, we can't shove disparate types into an array.
 When we were using interfaces, we could store an instance of each of `Cow`,
 `Pig` and `Dog` in an array of `Animal`:
 
-```cpp
+~~~cpp
 void pullTheString()
 {
     Animal *animals[] = { new Cow, new Pig, new Dog };
@@ -150,14 +150,14 @@ void pullTheString()
 
     seeAndSay(animals[index]);
 }
-```
+~~~
 
 However, with the template-based polymorphism approach, we couldn't create this
 array, because there is no common subtype for the array:
 
-```cpp
+~~~cpp
     ??? animals[] = { new Cow, new Pig, new Dog };
-```
+~~~
 
 The second drawback is a little more subtle. 
 Anybody who uses the template-based `seeAndSay()` method has two options:
@@ -195,19 +195,19 @@ into that for all the virtual methods.
 
 In this example, our common interface might be:
 
-```cpp
+~~~cpp
 class MyAnimal
 {
 public:
     virtual const char *see() const = 0;
     virtual const char *say() const = 0;
 };
-```
+~~~
 
 Then we create wrapper objects which inherit from `MyAnimal`.
 Each wrapper does not except but call into the 'real' underlying object:
 
-```cpp
+~~~cpp
 class MyCow : public MyAnimal
 {
     Cow m_cow;
@@ -234,12 +234,12 @@ public:
     const char *see() const { return m_dog.see(); }
     const char *say() const { return m_dog.say(); }
 };
-```
+~~~
 
 Now we can work with instances of `MyAnimal`, each of which wraps one of `Cow`,
 `Pig` or `Dog`:
 
-```cpp
+~~~cpp
 void pullTheString()
 {
     MyAnimal *animals[] = 
@@ -261,7 +261,7 @@ void seeAndSay(MyAnimal *animal)
         animal->see(), 
         animal->say());
 }
-```
+~~~
 
 This works, but there's a glaring drawback: we have to define one wrapper class
 (like `MyCow`) for every concrete type we want to wrap (like `Cow`).
@@ -270,7 +270,7 @@ Holy boilerplate, Batman!
 However, we've already seen an easy way to have the compiler do this work for
 us: by using templates for polymorphism ...
 
-```cpp
+~~~cpp
 template <typename T>
 class AnimalWrapper : public MyAnimal
 {
@@ -284,12 +284,12 @@ public:
     const char *see() const { return m_animal.see(); }
     const char *say() const { return m_animal.say(); }
 };
-```
+~~~
 
 Now we can use the single `AnimalWrapper` template in lieu of `MyCow`, `MyPig`
 and `MyDog`, to have the compiler generate the derived class for us:
 
-```cpp
+~~~cpp
 void pullTheString()
 {
     MyAnimal *animals[] = 
@@ -311,7 +311,7 @@ void seeAndSay(MyAnimal *animal)
         animal->see(), 
         animal->say());
 }
-```
+~~~
 
 ## The Type Erasure Idiom
 
@@ -319,7 +319,7 @@ What we built above is the basis of the 'type erasure' idiom.
 All that's left is to hide all this machinery behind a another class, so that
 callers don't have to deal with our custom interfaces and templates:
 
-```cpp
+~~~cpp
 class SeeAndSay
 {
     // The interface
@@ -365,7 +365,7 @@ public:
             animal->say());
     }
 };
-```
+~~~
 
 That's all there really is to it!
 
@@ -385,7 +385,7 @@ concrete types.
 For example, we could instead call `see()` '`getAnimalName()`', and `say()`
 '`getAnimalSound()`':
 
-```cpp
+~~~cpp
 class SeeAndSay
 {
     // The interface
@@ -438,7 +438,7 @@ public:
             animal->getAnimalSound());
     }
 };
-```
+~~~
 
 ## Naming
 
@@ -459,7 +459,7 @@ In parting, let's rewrite our original `SeeAndSay` type erasure example to use
 the standard parlance.
 Nothing needs to be changed except a few type names:
 
-```cpp
+~~~cpp
 class SeeAndSay
 {
     class AnimalConcept
@@ -502,7 +502,7 @@ public:
             animal->say());
     }
 };
-```
+~~~
 
 ## More Information
 

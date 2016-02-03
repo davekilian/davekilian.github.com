@@ -38,13 +38,13 @@ There are two good reasons to do this:
 
 Consider the following example:
 
-```cpp
+~~~cpp
 // (A)
 int size = 1048576 * getFileSize();
 
 // (B)
 int size = BYTES_PER_MEGABYTE * getFileSize();
-```
+~~~
 
 Clearly example (B) above is easier to read.
 In example (B), we can tell that getFileSize returns a size in megabytes, and that we intend for size to be expressed in bytes.
@@ -60,17 +60,17 @@ In fairly common cases, abusing constants can also read to real code bugs.
 Let's illustrate this an example.
 Say we want to write a parser which can read XML documents like this:
 
-```xml
+~~~xml
 <Books>
     <Book Title="A Game of Thrones" Author="George R. R. Martin" />
     <Book Title="American Gods" Author="Neil Gaiman" />
     <!-- ... and so on -->
 </Books>
-```
+~~~
 
 We can write a simple parser like this:
 
-```cpp
+~~~cpp
 struct book
 {
     std::string title;
@@ -93,12 +93,12 @@ std::vector<book> parse_doc(xml_doc *doc)
 
     return result;
 }
-```
+~~~
 
 Ick -- this code has some bare literals mixed in with the logic!
 Let's "improve" this code by hoisting those out as nicely-named constants:
 
-```cpp
+~~~cpp
 #define BOOKS_NODE_NAME "Books"
 #define BOOK_NODE_NAME  "Book"
 #define BOOK_XPATH "/" BOOKS_NODE_NAME "/" BOOK_NODE_NAME
@@ -121,23 +121,23 @@ std::vector<book> parse_doc(xml_doc *doc)
 
     return result;
 }
-```
+~~~
 
 We can even go all-out and make a 'constants' file which is global to the entire program:
 
 **constants.h**
 
-```cpp
+~~~cpp
 #define BOOKS_NODE_NAME "Books"
 #define BOOK_NODE_NAME  "Book"
 #define BOOK_XPATH "/" BOOKS_NODE_NAME "/" BOOK_NODE_NAME
 #define TITLE_ATTRIBUTE_NAME "Title"
 #define AUTHOR_ATTRIBUTE_NAME "Author"
-```
+~~~
 
 **parser.cpp**
 
-```cpp
+~~~cpp
 std::vector<book> parse_doc(xml_doc *doc)
 {
     std::vector<book> result;
@@ -154,7 +154,7 @@ std::vector<book> parse_doc(xml_doc *doc)
 
     return result;
 }
-```
+~~~
 
 In the first example, you could look at a copy of books.xml and parser.cpp, and be sure parser.cpp was implemented correctly.
 You could even reverse-engineer the structure of books.xml just by reading parser.cpp.
@@ -185,25 +185,25 @@ With the current design, the changes look awkward.
 
 They'll probably either look something like this:
 
-```cpp
+~~~cpp
 #define BOOKS_NODE_NAME "Books"
 #define BOOK_NODE_NAME  "Book"
 #define BOOK_XPATH "/" BOOKS_NODE_NAME "/" BOOK_NODE_NAME
 #define BOOK_TITLE_ATTRIBUTE_NAME "Name"
 #define MOVIE_TITLE_ATTRIBUTE_NAME "Title"
 #define AUTHOR_ATTRIBUTE_NAME "Author"
-```
+~~~
 
 or this:
 
-```cpp
+~~~cpp
 #define BOOKS_NODE_NAME "Books"
 #define BOOK_NODE_NAME  "Book"
 #define BOOK_XPATH "/" BOOKS_NODE_NAME "/" BOOK_NODE_NAME
 #define TITLE_ATTRIBUTE_NAME "Title"
 #define NAME_ATTRIBUTE_NAME "Name"
 #define AUTHOR_ATTRIBUTE_NAME "Author"
-```
+~~~
 
 But we could have avoided all this trouble if the constants were never shared or made global in the first place.
 Really the book XML and movie XML parsers are separate, and should be maintained separately.
@@ -257,7 +257,7 @@ Then we can use that abstraction to run the logic whenever needed.
 For example, say we're trying to parse some flags from command line arguments, using the Windows convention (i.e. we accept both `-flag` and `/flag` for each).
 Initially we might write this:
 
-```cpp
+~~~cpp
 output.foo = false;
 output.bar = false;
 output.baz = false;
@@ -275,19 +275,19 @@ for (auto it = args.begin(); it != args.end(); ++it) {
         output.baz = true;
     }
 }
-```
+~~~
 
 Later a requirement comes in to also support "Unix-style" flags (`--flag`).
 This is going to require cascading changes: every `if` is going to also need this flag.
 Now that we're sensing a pattern of changing requirements, we might choose to add indirection, in accordance with 'not repeating ourselves:'
 
-```cpp
+~~~cpp
 bool isFlag(const str &arg, const str &flag) {
     return arg == "-" + flag || arg == "/" + flag;
 }
-```
+~~~
 
-```cpp
+~~~cpp
 output.foo = false;
 output.bar = false;
 output.baz = false;
@@ -303,7 +303,7 @@ for (auto it = args.begin(); it != args.end(); ++it) {
         output.baz = true;
     }
 }
-```
+~~~
 
 Now we can just add a clause for `--flag` to `isFlag()` to finish up.
 

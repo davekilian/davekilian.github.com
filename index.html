@@ -5,15 +5,18 @@ layout: default
     <center><h1>Dave Kilian's Blog</h1></center>
     <hr/>
 
-    {% for post in site.posts %}
-        {% unless post.draft %}
-            <div class="post-blurb">
-                <h2 style="text-align: center"><a href="{{ post.url }}">{{ post.title }}</a></h2>
-            </div>
-        {% endunless %}
-    {% endfor %}
+    <div class="post-container" style="margin-top: 0; padding-top: 0">
+        {% for post in site.posts %}
+            {% unless post.draft %}
+                <div class="post-blurb">
+                    <h2 style="text-align: left"><a href="{{ post.url }}">{{ post.title }}</a></h2>
+                    <div class="post-date">{{ post.date | date: "%B %Y" }}</div>
+                </div>
+            {% endunless %}
+        {% endfor %}
 
-    <hr/>
-    <center><a style="font-size: 150%" href="drafts.html">(show draft posts)</a></center>
+        <hr/>
+        <a style="font-size: 150%" href="drafts.html">(show draft posts)</a>
+    </div>
 </div>
 

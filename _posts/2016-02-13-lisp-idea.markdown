@@ -1,0 +1,27 @@
+---
+layout: post
+title: Lisp's Big Idea
+author: Dave
+draft: true
+---
+
+Brain dump
+
+Inspired by that lisp article at the beginning of the hacker news top 50 post
+
+Lisp for the 'practical' developer
+
+Basically, lisp is all about conciseness. To lispers, power = the ability to banish boilerplate code. Ever ended up writing annoying boilerplate code in your favorite language? The reason you have boilerplate is because the language only gives you a finite set of programming constructs (i.e. 'fundamental' ways of manipulating memory) and it turns out those constructs don't map particularly well to the design you had in mind. You might be able to improve by either finding a better mapping with a different set of the language's constructs, or you can find a design which maps better to the constructs you have.
+
+Lisp throws up its hands and says fine, you win, I can't give you a set of constructs that make it easy to write your program. Instead, I'll just give you a minimal set of constructs that make it easy to make your own constructs. You design your own programming constructs and then write a program in those constructs. In theory, your program and your constructs can both be precise -- no boilerplate. The main tools are lists, functions and macros.
+
+Lispers believe this 'build your own lisp and then build your program in your own lisp' comes with a few benefits, including
+
+- less boilerplate
+- hide complex logic inside simple programming constructs
+- if you pick a good set of constructs, incorrect code will look wonky and/or won't be possible to express
+
+The trade off is you have to choose your macros well. If the constructs you create end up mapping poorly to your designs, you'll end up with spaghetti faster than if you had to spend time mapping your designs to the stock constructs you get in (e.g.) C
+
+Another way to look at it is, lisp programmers often say programs are data. One thing they mean by this is you can use code to generate boilerplate code the same way you can write code to generate boilerplate data. That's what macros give you.
+

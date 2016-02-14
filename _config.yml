@@ -8,6 +8,8 @@ source:      .
 destination: ./_site
 plugins_dir: ./_plugins
 
+permalink:   none
+
 markdown:    kramdown
 highlighter: rouge
 

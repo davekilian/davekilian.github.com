@@ -1,0 +1,15 @@
+---
+layout: post
+title: Using Patterns
+author: Dave
+draft: true
+---
+
+Brain dump
+
+Basic premise: patterns are good for inspiration and examples of how to solve problems
+
+But to find a good solution to your problem, think exclusively in your problem domain and your language/existing codebase
+
+Thinking in patterns only leads to unnecessary complexity. If a pattern fits your problem, the design will take the shape of that pattern on its own
+

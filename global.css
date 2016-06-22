@@ -57,7 +57,6 @@ div.post-container
     max-width: 650px;
     margin-left: auto;
     margin-right: auto;
-    padding: 2em;
 }
 
 div.post-date
@@ -67,14 +66,15 @@ div.post-date
 
 div.post-content
 {
-    font-family: "Source Sans Pro", "Helvetica", "Arial", sans-serif;
-    font-size: 13.5pt;
-    line-height: 140%;
+    font-family: "Merriweather", serif;
+    font-size: 17px;
+    line-height: 30px;
+    font-weight: 100;
 }
 
 div.post-content strong, b
 {
-    font-weight: 600;
+    font-weight: 700;
 }
 
 div.post-content h1,
@@ -91,7 +91,6 @@ div.post-content h6
 body
 {
     font-size: 100%;
-    line-height: 1.5em;
     word-spacing: .12em;
 }
 
@@ -100,7 +99,6 @@ p
     margin-top: 1.25em;
     margin-bottom: 1.25em;
     text-align: left;
-    text-indent: 1.5em;
 }
 
 li p
@@ -125,12 +123,7 @@ blockquote p:first-child
     margin-top: 0;
 }
 
-li
-{
-    line-height: 1.5em;
-}
-
-ul
+ul, ol
 {
     margin-top: 1em;
     margin-bottom: 1em;
@@ -138,12 +131,15 @@ ul
 
 dd
 {
-    margin-top: .5em;
     margin-bottom: 1em;
-    line-height: 1.25em;
 }
 
 pre code
 {
     font-size: 110%;
+}
+
+blockquote
+{
+    font-size: 100%;
 }

@@ -1,23 +1,25 @@
 ---
 layout: post
-title: When Best Practices Go Wrong
+title: Best Practices Can Lead You Astray
 author: Dave
 ---
 
-"Best practices" are rules to help design better software and avoid common pitfalls.
-When you apply a best practice to your designs, it's important to always keep in mind _why_ something is considered a best practice.
-Even "common sense" rules can degrade the quality of your codebase, when applied to the wrong problems. 
+Best practices are common learnings distilled into simple steps you can take to make your code better.
+But they're no substitute for thinking before you code :-)
 
-One commonly cited best practice is to hide literal values behind constants.
-In this post, we'll look at how this can end up doing more harm than help.
+It might seem surprising, but so-called "common sense" rules can lead to trouble if followed thoughtlessly.
+To apply a best practice, it's important to remember what makes that practice best, and decide whether that really applies to the situation at hand.
+
+In this post we'll take a look at one of the more universal best practices in programming: naming literal values with constants.
+We'll see how even the lowly constant can cause more harm than good.
 
 ## Constant Obfuscation
 
 Constants hide a literal value behind a variable name.
-There are two good reasons to do this:
+According to best practices, there are two good reasons to use a constant instead of the literal by itself:
 
-1. To assign a more descriptive name to an otherwise bizarre-looking value.
-2. To link all uses of a value to a single code location, to be tweaked later.
+1. To assign a more descriptive name to a value that isn't clear enough on its own.
+2. To link all uses of a value to a single code location, making the value easier to tweak later.
 
 Consider the following example:
 
@@ -33,12 +35,10 @@ Clearly example (B) above is easier to read.
 In example (B), we can tell that getFileSize returns a size in megabytes, and that we intend to convert that to a byte count.
 In example (A), it isn't immediately clear where the number 1048576 came from.
 
-So, best practice: use constants to make it easier to read your code.
-
-One common mistake is to generalize to saying _every_ literal value should be tucked away behind a nicely-named constant.
-This isn't true.
+One common mistake with this practice is to over-generalize, by saying _every_ value should be tucked behind a descriptively-named constant.
+This isn't a great idea!
 Using constants where they're not needed obfuscates your codebase.
-In fairly common cases, abusing constants can also read to real code bugs.
+And, in fairly common cases, abusing constants can also read to real code bugs.
 
 Let's illustrate this an example.
 Say we want to write a parser which can read XML documents like this:
@@ -207,7 +207,7 @@ Really the book XML and movie XML parsers are separate, and any constants relate
 > This is super neat, because it violates both of our reasons for using constants:
 >
 > 1. **Use constants to assign a more descriptive name to an otherwise bizarre-looking value.**
->    The automatically-generated name is clearly harder to read than the plain value!<br><br>
+>    The automatically-generated name is exactly as descriptive as the value itself, because the name is the value itself!<br><br>
 >    
 > 2. **Use constants to link all uses of a value to a single code location, to be tweaked later.**
 >    Since the name of the constant is a derivation of its value, if you change the value, you'd also need to rename the constant and fix all references.
@@ -242,7 +242,7 @@ But adding indirection to your code doesn't come for free:
   When the time comes to refactor, reworking an internal contract is harder than simply adding one.
 
 If applying indirection provides benefits which offset these costs, then it's the right thing to do.
-If it's highly beneifical, one might even call it elegant.
+In fact, if it's beneficial enough, we'd even call it elegant.
 But you have to consider costs and benefits on a case-by-case basis, "best practice" or not.
-Otherwise you can accidentally make your codebase a mess.
+Otherwise you can accidentally make your codebase messier than it needs to be.
 

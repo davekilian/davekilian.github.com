@@ -1,6 +1,6 @@
 ---
 layout: post
-title: Software Design by the Numbers
+title: Software Design with Math
 author: Dave
 draft: true
 ---
@@ -16,7 +16,7 @@ Here's some basic math to guide your decision-making process.
 If one thing's true in life, it's that there's never enough time.
 
 No matter the scale, whether we're looking at a small function or a huge codebase, whether to rewrite is a question of whether rewriting finishes the job faster than not rewriting.
-Finishing the job here means the whole job, beyond just getting the golden path working.
+By finishing the job we mean the whole job, with all the bells and whistles and future maintenance.
 
 Say if you don't rewrite, the time it'll take to do the feature is 
 
@@ -32,54 +32,74 @@ If you do rewrite, you're dealing with a longer lists of time costs:
 
 To make the decision of whether to rewrite, just sume both lists and choose whichever takes less time.
 
-## When to Add Infrastructure
+## Where to Add Infrastructure
+
+The number of bugs in your code is linearly proportional to how much code you have.
+So less code is always better, if you can manage it.
+
+Adding infrastructure to your code can mean faster turnaround times for changes you expect you'll need to make.
+But adding infrastructure also means more code and more bugs, so adding more isn't always great.
+Then when is it a good idea?
+
+One heuritic: the code that has had the most (bugs, requirement changes, feature requests) is the most likely to have more (bugs, requirement changes, feature requests) in the future.
+
+So it's okay to start with a 'simple' draft for everything, and add infrastructure as soon as you see a recurring pattern of bugs and changes in a particular area of your codebase.
+
+Beyond that, you just need some experience and some good judgment ;-)
 
 ## Design Speculation
 
----
+Adding infrastructure is actually speculating in your software design.
 
-Brain dump: let's unite all the semi-mathy posts under one banner
+You can design up front to accommodate change, but you can't accommodate every possible change.
+One way or another, you're going to need to make educated guesses about what changes are likely, to accommodate for them in advance.
+(That's why the 'senior' developers on your team or usually more heavily embroiled in the business and user scenarios, whereas more junior developers often stick to the code itself).
 
-## When to Add Infrastructure
+The thing about speculating is, once it comes time to make changes to the code:
 
-Basically, how to design a simple software codebase without unneeded complexity.
+* If you were right, the change will be easy
+* If you were wrong, the change will be very expensive
 
-One helpful heuristic: the code which has had the most (bugs | requirement changes) is the most likely to have future (bugs | requirement changes).
-So it's okay to start with a 'simple' draft for everything, and add infrastructure or abstraction or indirection or whatever as soon as you sense a pattern of recurring bugs and changes.
-Doing so helps you make quicker and more reliable bug fixes and requirement changes.
+For example, let's say if you speculate correctly, then when the time comes to make a change, it'll only take $\frac{1}{10}$th the time it would have taken had you not acommodated for the change up front.
+Let's also say if you're wrong, then when the time comes to make the change, it will take 10 times as long.
 
-Beyond that, you just need some experience and some good judgment!
+Then to break even, what's the necessary probability you speculated correctly?
 
-## Deisgn Speculation
+$p(\frac{1}{10}x) = (1 - p)(10x)$
 
-The one thing that makes software design hard is change. You can design up
-front to accommodate change, but you can't design up front to accommodate every
-possible change. So you have to speculate what changes will be likely and
-useful to accommodate for. THis is why your 'senior' developers are heavily
-embroiled in the business and user scenarios, where junior developers are often
-stuck looking just at the code.
+$\frac{1}{10}p = (1 - p)(10)$
 
-If you speculate and you're right, the change will be easy.
-If you speculate and you're wrong, the change will be very expensive.
-If you don't speculate and keep is straightforward instead, you can avoid very
-expensive reworks later on (they're not free, but they're less expensive).
+$\frac{1}{10}p = 10 - 10p$
 
-Experienced developers keep it simple by default and add complexity to futre
-work only when there's really good evidence to support that.
+$10.1p = 10$
 
-There's a fun little probability argument you could make here with
-expectations: say you're going to add an abstraction speculating on future
-work. If you're right, the future work takes 1/10 as long, and if you're wrong
-the twork takes 10x as long.
+$p = .99$ (roughly)
 
-To break even, what's the necessary probability you speculated correctly?
+So, you want to add infrastructure; are you 99% sure you're gonna need it?
 
-1x = p(1/10x) + (1 - p)(10x)
+Another facet to consider: the 10X slowdown from speculating wrong is a way bigger hit than the 10X speedup from speculating right.
+Using the numbers above,
 
-= p(1/10) + 10 - 10p
+* If making the change would take 1 hour had you not speculated,
+* Then the change would take 6 minutes if you had speculated (you saved 54 minutes)
+* And the change would take 10 hours if you had speculated wrong (you lost 9 hours!)
 
-9 = 9.9p
+In light of this, experienced developers often keep it simple by default and leave adding complexity to the future.
+This means future changes aren't free, but they usually don't require expensive reworks either.
 
-p = .90 (roughly)
+Over the long run, how often do you have to speculate correctly to break even with never speculating at all?
 
-So, are you 90% certain you're gonna need it?
+$1x = (\frac{1}{10}x)p + (10x)(1 - p)$
+
+$1 = (\frac{1}{10})p + (10)(1 - p)$
+
+$1 = (\frac{1}{10})p + 10 - 10p$
+
+$9 = 9.9p$
+
+$p = .90$ (roughly)
+
+So, do you speculate correctly 90% of the time?
+
+Keep it simple and avoid speculating if you can -- because the odds are against you!
+

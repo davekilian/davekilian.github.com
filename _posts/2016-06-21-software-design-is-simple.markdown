@@ -1,38 +1,74 @@
 ---
 layout: post
-title: Software Design with Math
+title: Software Design is Simple
 author: Dave
 draft: true
 ---
 
-Developing software involves a constant barrage of decision-making.
-We software developers make making these decisions way too complicated.
-Why not simplify our lives with some basic math?
+There's lots of great advice out there about how to design software, and it's all just a few keystrokes away.
+The only problem with all this information is there's way, way too much of it.
+Spend a few hours reading all that advice, and you might get the impression that designing software is complicated!
 
-Here's some basic math to guide your decision-making process.
+Let's be clear -- designing software may be hard at times, but in the end it's not really all that complicated.
+The end goal is always the same:
+
+* Write software that solves a problem,
+* does exactly what you mean it to,
+* and takes as little time to develop as possible
+
+There are lots of details to think through, but if you remember the goal, the details tend to fall in line.
+Then all that's left is to learn the problem space and think it through!
+
+Now, watch as we use our goal statement to reduce all those hair-pulling, information-overload decisions into a little rote research and one simple, unglamorous informed decision.
 
 ## When to Rewrite Stuff
 
-If one thing's true in life, it's that there's never enough time.
+Typical guidance for when to rewrite is over-complicated.
+Remember our end goal?
 
-No matter the scale, whether we're looking at a small function or a huge codebase, whether to rewrite is a question of whether rewriting finishes the job faster than not rewriting.
-By finishing the job we mean the whole job, with all the bells and whistles and future maintenance.
+> * Write software that solves a problem,
+> * does exactly what you mean it to,
+> * and takes as little time to develop as possible
 
-Say if you don't rewrite, the time it'll take to do the feature is 
+For now, let's take for granted that rewriting is a purely technical decision, that it doesn't affect your end product's interface or feature set.
+Thus we can safely say rewriting doesn't affect whether our software solves the problem at hand, because rewrite or no, from the user's point of view the software ought to work the same.
+
+That leaves us with variables to minimize:
+
+* How long it takes to write it and fix bugs we introduced
+* The number of bugs still around when we decide to ship
+
+A tall order, no doubt.
+But we can simplify the decision.
+Say if you don't rewrite, the time it'll take to do new features is 
 
 * (time needed to get the feature working on the existing codebase) +
-* (time needed to stabilize)
+* (time needed to fix bugs from those changes)
 
 If you do rewrite, you're dealing with a longer lists of time costs:
 
 * (time needed to rewrite the thing) +
-* (time needed to stabilize the thing after the rewrite) +
+* (time needed to fix bugs from those changes)
 * (time needed to add the feature after rewriting) + 
-* (time needed to stabilize new feature)
+* (time needed to fix bugs from those changes)
 
-To make the decision of whether to rewrite, just sume both lists and choose whichever takes less time.
+To make the decision of whether to rewrite, just sum both lists and choose whichever is less total time.
+If there are additional time costs to consider, just expand the lists to account for everything.
 
-## Where to Add Infrastructure
+## Where to Write Fancy Code
+
+---
+
+Add here what was previously the design speculation section
+
+In the end, after declaring just how sure you need to be that fancy code will be worth it, provide a heuristic:
+
+> The code that has had the most (bugs, requirement changes, feature requests) is the most likely to have more (bugs, requirement changes, feature requests) in the future.
+
+But by default, the answer really is fancy code is never excusable until it's proven necessary.
+And even then, true cleverness is recasting the problem so that fancy code is no longer needed.
+
+---
 
 The number of bugs in your code is linearly proportional to how much code you have.
 So less code is always better, if you can manage it.
@@ -47,7 +83,7 @@ So it's okay to start with a 'simple' draft for everything, and add infrastructu
 
 Beyond that, you just need some experience and some good judgment ;-)
 
-## Design Speculation
+## Whether to Guess
 
 Adding infrastructure is actually speculating in your software design.
 

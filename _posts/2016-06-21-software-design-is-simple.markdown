@@ -26,9 +26,9 @@ Now, watch as we use our goal statement to reduce all those hair-pulling, inform
 Typical guidance for when to rewrite is over-complicated.
 Remember our end goal?
 
-> * Write software that solves a problem,
-> * does exactly what you mean it to,
-> * and takes as little time to develop as possible
+> Write software that solves a problem,<br>
+> does exactly what you mean it to,<br>
+> and takes as little time to develop as possible
 
 For now, let's take for granted that rewriting is a purely technical decision, that it doesn't affect your end product's interface or feature set.
 Thus we can safely say rewriting doesn't affect whether our software solves the problem at hand, because rewrite or no, from the user's point of view the software ought to work the same.
@@ -48,14 +48,30 @@ Say if you don't rewrite, the time it'll take to do new features is
 If you do rewrite, you're dealing with a longer lists of time costs:
 
 * (time needed to rewrite the thing) +
-* (time needed to fix bugs from those changes)
+* (time needed to fix bugs from those changes) +
 * (time needed to add the feature after rewriting) + 
 * (time needed to fix bugs from those changes)
 
 To make the decision of whether to rewrite, just sum both lists and choose whichever is less total time.
 If there are additional time costs to consider, just expand the lists to account for everything.
 
-## Where to Write Fancy Code
+## When to Write Fancy Code
+
+Crack open a book like [Design Patterns](TODO link) and you might think software design is all about using programming constructs and abstraction to write elegant, extensible code that any developer can easily update to roll in new features and fix bugs.
+Right?
+
+Nope!
+
+All that fancy code is actually pretty rare, and for good reasons.
+Most developers eventually realize that truly clever engineering isn't fancy code, but rather recasting the problem so fancy code is no longer needed.
+
+That said, when is fancy code really the right answer?
+
+When you come down to it, fancy code is a betting game.
+You're doing work now under the assumption that certain kinds of changes will be more likely than others in the future.
+If you were right, those changes will be a cinch!
+
+But if you were wrong, the changes will be a much bigger burden to work around than if you didn't have them in the first place.
 
 ---
 
@@ -67,6 +83,10 @@ In the end, after declaring just how sure you need to be that fancy code will be
 
 But by default, the answer really is fancy code is never excusable until it's proven necessary.
 And even then, true cleverness is recasting the problem so that fancy code is no longer needed.
+
+---
+
+TODO I also want to redraft a little so that we take for granted that you're solving the problem at hand at the entire article's scope, and scope down tradeoffs for technical decisions to just fewest bugs and shortest time. We already wrote that for the first subsection, we just need to work it into the top-level scope.
 
 ---
 

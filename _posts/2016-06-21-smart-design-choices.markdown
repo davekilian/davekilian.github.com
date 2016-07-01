@@ -10,8 +10,8 @@ The only problem with all this information is the ensuing overload.
 Spend a few hours reading all that advice, and you might get the impression that designing software is complicated!
 
 Sure, there are many details to consider.
-But in this field we routinely distill problems down to their roots, so we can generalize and solve whole classes of problems in a single blow.
-If we can generalize solutions in our our code, why do we get lost in the weeds when we think about how we code?
+But in this field we routinely distill problems down to their roots, generalizing so we can solve whole classes of problems in a single blow.
+If we can generalize the problem space in our code, why do we get lost in the weeds when we think about how we code?
 
 I think we just need to step back and look at the core problem; everything else should fall out from there.
 In the end, every design choice aims to minimize two variables:
@@ -19,19 +19,21 @@ In the end, every design choice aims to minimize two variables:
 * How many problems it will introduce
 * How much time it'll cost
 
-In other words: we're dealing with a simple cost-benefit tradeoff.
-The cost is developer time, and the benefit is better software.
-We want the highest quality software in the least time, and our decisions are toward that goal.
 Phrasing the problem this way may not solve any problems directly, but it's a nice way to gain perspective.
-All the myrial details can be lumped into two buckets:
+All the myriad details from the problem space fit into the two variables:
 
 * **Problems** include everything from the simplest of bugs to the grandest-scale failures to actually satisfy a user need
 * **How long** includes not only time to ship, but also the total time it takes to maintain your code and adapt it to future demands
 
-We also have some flexibility deciding how to trade off between quality and time.
+We also have flexibility deciding how to trade off between the two.
 If you're bringing up a prototype or an MVP, you might be willing to decrease your quality a little if it saves you a lot of time -- but if you're about to launch your code into outer space, it's likely you'd rather spend longer to get it absolutely, provably right.
 
-For the rest of this post, let's derive some common design advice using this quality-time tradeoff as our first principle.
+So in short, we're dealing with a simple cost-benefit tradeoff.
+The cost is developer time, and the benefit is better software.
+We want the highest quality software in the least time, and our decisions are toward that goal.
+
+Does that seem too simple to be useful?
+Then for the rest of this post, let's derive common design advice using this quality-time tradeoff as our first principle.
 
 ## What Features Belong in Version 1?
 

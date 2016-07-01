@@ -1,27 +1,45 @@
 ---
 layout: post
-title: Software Design is Simple
+title: Making Smart Design Choices
 author: Dave
 draft: true
 ---
 
-There's lots of great advice out there about how to design software, and it's all just a few keystrokes away.
-The only problem with all this information is there's way, way too much of it.
+There's lots of great advice out there about how to design software, and so much of it is just a few keystrokes away.
+The only problem with all this information is the ensuing overload.
 Spend a few hours reading all that advice, and you might get the impression that designing software is complicated!
 
-Let's be clear -- designing software may be hard at times, but in the end it's not really all that complicated.
-The end goal is always the same:
+Sure, there are many details to consider.
+But in this field we routinely distill problems down to their roots, so we can generalize and solve whole classes of problems in a single blow.
+If we can generalize solutions in our our code, why do we get lost in the weeds when we think about how we code?
 
-* Write software that solves a problem,
-* does exactly what you mean it to,
-* and takes as little time to develop as possible
+I posit that we just need to acknowledge the core problem.
+In the end, every design choice aims to minimize two variables:
 
-There are lots of details to think through, but if you remember the goal, the details tend to fall in line.
-Then all that's left is to learn the problem space and think it through!
+* How many problems there are with the code
+* How long this is all going to take
 
-Now, watch as we use our goal statement to reduce all those hair-pulling, information-overload decisions into a little rote research and one simple, unglamorous informed decision.
+In other words: we're dealing with a simple cost-benefit tradeoff.
+The cost is developer time, and the benefit is better software.
+We want the highest quality software in the least time, and our decisions are all means to that end.
 
-## When to Rewrite Stuff
+Now, this isn't a solution in itself, but it works nicely for framing the problem.
+We can take the myriad details and dump each into one of our two buckets:
+
+* **Problems** include everything from the simplest of bugs to the grandest-scale failures to actually satisfy a need
+* **How long** includes time to ship, but also the total time it takes to maintain your code and adapt it to future demands.
+
+And we have some flexibility deciding how to trade off between quality and time (e.g., if you're bringing up a prototype or an MVP, you might be willing to decrease your quality a little if it saves you a lot of time -- but if you're about to launch your code into outer space, you'd like rather spend longer to get it absolutely, provably right).
+
+For the rest of this post, let's derive a lot of common design advice using this tradeoff as first principles.
+
+## What Features Belong in Version 1?
+
+TODO common advice is simple prototypes up front, with few core features.
+The argument: fewer features gets you way lower development time without generating more maintenance work later.
+Time savings at both ends!
+
+## Is It Time to Rewrite?
 
 Typical guidance for when to rewrite is over-complicated.
 Remember our end goal?
@@ -55,7 +73,7 @@ If you do rewrite, you're dealing with a longer lists of time costs:
 To make the decision of whether to rewrite, just sum both lists and choose whichever is less total time.
 If there are additional time costs to consider, just expand the lists to account for everything.
 
-## When to Write Fancy Code
+## You Aren't Gonna Need It
 
 Crack open a book like [Design Patterns](TODO link) and you might think software design is all about using programming constructs and abstraction to write elegant, extensible code that any developer can easily update to roll in new features and fix bugs.
 Right?

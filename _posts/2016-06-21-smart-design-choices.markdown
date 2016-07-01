@@ -13,25 +13,26 @@ Sure, there are many details to consider.
 But in this field we routinely distill problems down to their roots, so we can generalize and solve whole classes of problems in a single blow.
 If we can generalize solutions in our our code, why do we get lost in the weeds when we think about how we code?
 
-I posit that we just need to acknowledge the core problem.
+I think we just need to step back and look at the core problem; everything else should fall out from there.
 In the end, every design choice aims to minimize two variables:
 
-* How many problems there are with the code
-* How long this is all going to take
+* How many problems it will introduce
+* How much time it'll cost
 
 In other words: we're dealing with a simple cost-benefit tradeoff.
 The cost is developer time, and the benefit is better software.
-We want the highest quality software in the least time, and our decisions are all means to that end.
+We want the highest quality software in the least time, and our decisions are toward that goal.
 
-Now, this isn't a solution in itself, but it works nicely for framing the problem.
-We can take the myriad details and dump each into one of our two buckets:
+This may not be a solution in itself, but it works nicely for framing the problem and all its myriad aspects.
+We can lump the details into two buckets:
 
-* **Problems** include everything from the simplest of bugs to the grandest-scale failures to actually satisfy a need
-* **How long** includes time to ship, but also the total time it takes to maintain your code and adapt it to future demands.
+* **Problems** include everything from the simplest of bugs to the grandest-scale failures to actually satisfy a user need
+* **How long** includes not only time to ship, but also the total time it takes to maintain your code and adapt it to future demands
 
-And we have some flexibility deciding how to trade off between quality and time (e.g., if you're bringing up a prototype or an MVP, you might be willing to decrease your quality a little if it saves you a lot of time -- but if you're about to launch your code into outer space, you'd like rather spend longer to get it absolutely, provably right).
+We also have some flexibility deciding how to trade off between quality and time.
+If you're bringing up a prototype or an MVP, you might be willing to decrease your quality a little if it saves you a lot of time -- but if you're about to launch your code into outer space, you'd like rather spend longer to get it absolutely, provably right.
 
-For the rest of this post, let's derive a lot of common design advice using this tradeoff as first principles.
+For the rest of this post, let's derive a lot of common design advice using this tradeoff as our first principles.
 
 ## What Features Belong in Version 1?
 
@@ -73,7 +74,7 @@ If you do rewrite, you're dealing with a longer lists of time costs:
 To make the decision of whether to rewrite, just sum both lists and choose whichever is less total time.
 If there are additional time costs to consider, just expand the lists to account for everything.
 
-## You Aren't Gonna Need It
+## Are You Gonna Need It?
 
 Crack open a book like [Design Patterns](TODO link) and you might think software design is all about using programming constructs and abstraction to write elegant, extensible code that any developer can easily update to roll in new features and fix bugs.
 Right?

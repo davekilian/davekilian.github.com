@@ -5,8 +5,9 @@ author: Dave
 draft: true
 ---
 
-Basic guiding principle: if you think that a concept is simple and that everyone gets it wrong, you should check your work.
-What's less likely: everyone else is missing the obvious solution, or you're the only one still chasing the obvious(ly wrong) solution?
+If you ever find yourself trying to answer this question, you're probably not asking the right one.
+If you think solving a problem is simple and everyone's missing it, you should check your work.
+Which is less likely: that everyone else is being dumb, or that you're being dumb?
 
 Then examples
 

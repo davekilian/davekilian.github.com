@@ -22,15 +22,14 @@ In the end, every design choice aims to minimize two variables:
 In other words: we're dealing with a simple cost-benefit tradeoff.
 The cost is developer time, and the benefit is better software.
 We want the highest quality software in the least time, and our decisions are toward that goal.
-
 This may not be a solution in itself, but it works nicely for framing the problem and all its myriad aspects.
-We can lump the details into two buckets:
+We can lump all the details into two buckets:
 
 * **Problems** include everything from the simplest of bugs to the grandest-scale failures to actually satisfy a user need
 * **How long** includes not only time to ship, but also the total time it takes to maintain your code and adapt it to future demands
 
 We also have some flexibility deciding how to trade off between quality and time.
-If you're bringing up a prototype or an MVP, you might be willing to decrease your quality a little if it saves you a lot of time -- but if you're about to launch your code into outer space, you'd like rather spend longer to get it absolutely, provably right.
+If you're bringing up a prototype or an MVP, you might be willing to decrease your quality a little if it saves you a lot of time -- but if you're about to launch your code into outer space, it's likely you'd rather spend longer to get it absolutely, provably right.
 
 For the rest of this post, let's derive a lot of common design advice using this tradeoff as our first principles.
 
@@ -39,6 +38,11 @@ For the rest of this post, let's derive a lot of common design advice using this
 TODO common advice is simple prototypes up front, with few core features.
 The argument: fewer features gets you way lower development time without generating more maintenance work later.
 Time savings at both ends!
+
+## Should We Outsource?
+
+TODO when to roll your own code or pull it off the shelf.
+IIRC there's another post on this we can roll in here :D
 
 ## Is It Time to Rewrite?
 

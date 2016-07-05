@@ -1,6 +1,6 @@
 ---
 layout: post
-title: Software Design Fundamentals
+title: Fundamentals of Software Design
 author: Dave
 draft: true
 ---
@@ -27,48 +27,47 @@ Then for the rest of this post, let's show how these fundamental principles give
 
 ## What Features Belong in Version 1?
 
-When you're starting out a new project, one question that soon arises is the order in which you should code up all your ideas.
-Which ideas should be tackled before the others?
-The common answer is: start with absolutely no features now that you could do later.
-The result should be the minimal design that accomplishes a goal: a.k.a. the Minimum Viable Product.
+When you're starting out a new project, one question that soon arises is which ideas to code up first.
+The commonly accepted answer to that question is: start with absolutely no features now that you could do later.
+The result should be the minimal design that accomplishes the goal: a.k.a. the Minimum Viable Product.
 
 Why?
 A commonly cited reason is agility: a smaller set of features means a simpler product that you can iterate on more quickly.
 Quick iterations mean you can revise the core idea behind your product until you're sure you have a winner.
 In other words, for each feature we decide not to do up front,
 
-* We do not make the product unusuable
+* We do not make the product unusuable (else we would have done it)
 * We save time we would have needed to develop the feature
 * We save time we would have needed to maintain the feature as our designs iterated
 
-In other words, we took a small hit to the (initial) product quality, in order to gain back a ton of time, some up front (for not developing the feature) but most in the long run (for not having to keep the feature working despite redesigns).
-Saving all this time gives us more wiggle room to experiment, which opens the door to more agility in the design process.
+We have arrived back at our original principles: the quality-time tradeoff.
+In this case, by deciding to pare down the feature list, we take a small quality hit (missing features) for huge time savings (no maintenance on features we didn't do).
 
-### Agile Development
-
-Let's generalize from the section above.
-Ask: what is agile software development?
-
-So much has been written on "agile" software development that the term has begun to take on a meaning of its own.
-This meaning typically involves a bunch of design process tools, like kanban boards, sprints, and user stories.
-But once again, we're missing the forest for the trees.
-Part of the problem is we never get to the core ideas behind agile, even going all the way back to [the Agile Manifesto]() that started it all.
-
-Forget the zeitgeist around agile for a moment.
-Have you ever stopped to consider why the word "agile" was used to describe that style of software development, and not some other word?
-The answer lies in the point we just made in the previous section:
-
-> All the time you don't spend now is time you can spend changing your mind later.
-
-That's really it!
-Most of agile tools and methodoligies are really brainstorming devices to help you decide what features are worth doing now despite the ongoing maintenance cost, and which features you should shelve to give yourself time to change things up.
-If you go back to the Agile Manifesto, the document that started the whole thing, you'll notice hat most of the twelve bullets can be condensed into three points:
-
-1. We want to maximize the usefulness of the product
-2. We believe the only way to do so is to draft, experiment, and redraft
-3. We focus on time efficiency, so we can redraft more often
-
-And hence all the arguments about agile and misunderstanding agile.
+> ### Agile Development
+> 
+> You can generalize this idea beyond minimum viable products.
+> In general, deciding to pare down your feature set gives you **agility**, or room to iterate.
+> But this agility doesn't mean exactly the same thing as Agile.
+> 
+> So much has been written on Agile software development that the term has taken on multiple meanings of its own, typically involving tools like kanban, sprints, user stories, and the like.
+> This is a tragic missed opportunity: there's something real here, but as a field we've once again missed the forest for the trees.
+> You can even see this going all the way back to the [Agile Manifesto](http://www.agilemanifesto.org/) that started it all.
+> 
+> Forget the zeitgeist around Agile for a moment.
+> Have you ever stopped to consider why the word "agile" was used to describe that style of software development, and not another word?
+> The answer lies in the point we just made in the previous section:
+> 
+> > All the time you don't spend now is time you can spend changing your mind later.
+>
+> That's the idea: agility is the ability to change your mind quickly.
+> If you go back and reread the manifesto, you'll notice 'principles' 3-12 are all means to one end: time efficiency.
+> We could summarize those twelve princples in three bullets:
+> 
+> 1. We want to maximize the usefulness of the product
+> 2. We believe we can only do so by experimenting and redrafting
+> 3. We focus on time efficiency, so we can redraft more
+>
+> Beyond that, Agile tools and methodologies are intended to help maximize time efficiency.
 
 ## Should We Outsource?
 

@@ -46,8 +46,8 @@ In this case, by deciding to pare down the feature list, we take a small quality
 > ### Agile Development
 > 
 > You can generalize this idea beyond minimum viable products.
-> In general, deciding to pare down your feature set gives you **agility**, or room to iterate.
-> But this agility doesn't mean exactly the same thing as Agile.
+> In general, deciding to pare down your feature set lends you **agility**, or room to iterate.
+> This agility doesn't mean exactly the same thing as Agile.
 > 
 > So much has been written on Agile software development that the term has taken on multiple meanings of its own, typically involving tools like kanban, sprints, user stories, and the like.
 > This is a tragic missed opportunity: there's something real here, but as a field we've once again missed the forest for the trees.
@@ -57,7 +57,7 @@ In this case, by deciding to pare down the feature list, we take a small quality
 > Have you ever stopped to consider why the word "agile" was used to describe that style of software development, and not another word?
 > The answer lies in the point we just made in the previous section:
 > 
-> > All the time you don't spend now is time you can spend changing your mind later.
+> > All the code you don't write now is time you can spend changing your mind later.
 >
 > That's the idea: agility is the ability to change your mind quickly.
 > If you go back and reread the manifesto, you'll notice 'principles' 3-12 are all means to one end: time efficiency.
@@ -71,10 +71,44 @@ In this case, by deciding to pare down the feature list, we take a small quality
 
 ## Should We Outsource?
 
-TODO when to roll your own code or pull it off the shelf.
-IIRC there's another post on this we can roll in here :D
+One thing programmers learn early on is not to reinvent the wheel.
+
+Every programming language has some notion of a 'library' or 'module' that allows you to reuse code in multiple projects.
+Plenty of code is available online for dropping into your project; some is free, some is provided for pay.
+The question is, when should you pick an off-the-shelf solution instead of rolling your own?
+
+Keep in mind that our goal is to develop the best product with the least development cost.
+Also keep in mind that our requirements are the same whether or not we pick up an off-the-shelf solution.
+This allows us to simplify the question:
+
+> Will outsourcing decrease the overall time cost for developing and maintaining my product?
+
+When answering this question, there are two sorts of time costs to consider: costs up front, and long-term maintenance costs.
+Up-front costs include researching the options, selecting one, learning how to use it, and actually integrating it into your project.
+Further costs down the line include fixing bugs you find in the library, and/or working around issues the maintainer will not fix at the library level.
+
+Common advice for ingesting off-the-shelf components lines up with minimizing these costs:
+
+* **When selecting a component to use, default to the industry standard.**
+  The industry standard component will likely be well-documented, have an active and responsive crew of maintainers, and will have few bugs that other people haven't already found.
+
+* **If you're not selecting a popular, industry-standard component, have a maintenance plan.**
+  What are you going to do if you find a bug, and the maintainer isn't willing to help you fix it?
+  Are you going to work around issues at your layer?
+  Will you have the source code and be able to fix it yourself?
+
+* **Good things to outsource are complex and error-prone**. 
+  Things that involve complex specifications and tricky parsing logic (like HTTP, or HTML) are likely to take a long time to fully develop and maintain.
+  Given the 'roll your own' option has high costs, the 'off the shelf' option is likely to have lower time cost, even if you end up having to deal with bugs in external code.
+
+* **Don't outsource your core functionality.**
+  Your core features are the most likely to require iteration, and bugs in your core features are the most serious.
+  By outsourcing these features, you greatly increase the time cost of iterating on your ideas, and of getting mission-critical issues fixed.
+  These increased costs often end up outweighing the costs of developing those features yourself.
 
 ## Is It Time to Rewrite?
+
+---
 
 Typical guidance for when to rewrite is over-complicated.
 Remember our end goal?

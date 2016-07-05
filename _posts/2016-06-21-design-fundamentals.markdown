@@ -1,6 +1,6 @@
 ---
 layout: post
-title: Making Smart Design Choices
+title: Software Design Fundamentals
 author: Dave
 draft: true
 ---
@@ -9,37 +9,66 @@ There's lots of great advice out there about how to design software, and so much
 The only problem with all this information is the ensuing overload.
 Spend a few hours reading all that advice, and you might get the impression that designing software is complicated!
 
-Sure, there are many details to consider.
-But in this field we routinely distill problems down to their roots, generalizing so we can solve whole classes of problems in a single blow.
-If we can generalize the problem space in our code, why do we get lost in the weeds when we think about how we code?
+When information overload is a problem, core guiding principles are often the solution.
+I believe that the core guiding principle of software design is that, with every choice, we try to minimize two variables:
 
-I think we just need to step back and look at the core problem; everything else should fall out from there.
-In the end, every design choice aims to minimize two variables:
+* **How many problems the choice will introduce**, from the simplest of bugs to the grandest-scale misunderstanding of user needs.
+* **How much time it'll cost**, not just right away to ship the feature, but also the ongoing cost it takes to maintain your code and adapt it to future demands.
 
-* How many problems it will introduce
-* How much time it'll cost
-
-Phrasing the problem this way may not solve any problems directly, but it's a nice way to gain perspective.
-All the myriad details from the problem space fit into the two variables:
-
-* **Problems** include everything from the simplest of bugs to the grandest-scale failures to actually satisfy a user need
-* **How long** includes not only time to ship, but also the total time it takes to maintain your code and adapt it to future demands
-
-We also have flexibility deciding how to trade off between the two.
-If you're bringing up a prototype or an MVP, you might be willing to decrease your quality a little if it saves you a lot of time -- but if you're about to launch your code into outer space, it's likely you'd rather spend longer to get it absolutely, provably right.
+These two variables are sometimes at odds, which gives us some flexibility in deciding how to trade off between the two.
+Depending on the situation, a small decrease in quality that yields bountiful time savings sometimes makes sense, but not always (e.g., if you plan to launch your code into outer space).
 
 So in short, we're dealing with a simple cost-benefit tradeoff.
-The cost is developer time, and the benefit is better software.
-We want the highest quality software in the least time, and our decisions are toward that goal.
+The cost is developer time, and the benefit is a better product.
+We want the highest quality software in the least time, and all our decisions serve that goal.
 
-Does that seem too simple to be useful?
-Then for the rest of this post, let's derive common design advice using this quality-time tradeoff as our first principle.
+Does that seem too obvious to be useful?
+Then for the rest of this post, let's show how these fundamental principles give rise to all sorts of common engineering advice.
 
 ## What Features Belong in Version 1?
 
-TODO common advice is simple prototypes up front, with few core features.
-The argument: fewer features gets you way lower development time without generating more maintenance work later.
-Time savings at both ends!
+When you're starting out a new project, one question that soon arises is the order in which you should code up all your ideas.
+Which ideas should be tackled before the others?
+The common answer is: start with absolutely no features now that you could do later.
+The result should be the minimal design that accomplishes a goal: a.k.a. the Minimum Viable Product.
+
+Why?
+A commonly cited reason is agility: a smaller set of features means a simpler product that you can iterate on more quickly.
+Quick iterations mean you can revise the core idea behind your product until you're sure you have a winner.
+In other words, for each feature we decide not to do up front,
+
+* We do not make the product unusuable
+* We save time we would have needed to develop the feature
+* We save time we would have needed to maintain the feature as our designs iterated
+
+In other words, we took a small hit to the (initial) product quality, in order to gain back a ton of time, some up front (for not developing the feature) but most in the long run (for not having to keep the feature working despite redesigns).
+Saving all this time gives us more wiggle room to experiment, which opens the door to more agility in the design process.
+
+### Agile Development
+
+Let's generalize from the section above.
+Ask: what is agile software development?
+
+So much has been written on "agile" software development that the term has begun to take on a meaning of its own.
+This meaning typically involves a bunch of design process tools, like kanban boards, sprints, and user stories.
+But once again, we're missing the forest for the trees.
+Part of the problem is we never get to the core ideas behind agile, even going all the way back to [the Agile Manifesto]() that started it all.
+
+Forget the zeitgeist around agile for a moment.
+Have you ever stopped to consider why the word "agile" was used to describe that style of software development, and not some other word?
+The answer lies in the point we just made in the previous section:
+
+> All the time you don't spend now is time you can spend changing your mind later.
+
+That's really it!
+Most of agile tools and methodoligies are really brainstorming devices to help you decide what features are worth doing now despite the ongoing maintenance cost, and which features you should shelve to give yourself time to change things up.
+If you go back to the Agile Manifesto, the document that started the whole thing, you'll notice hat most of the twelve bullets can be condensed into three points:
+
+1. We want to maximize the usefulness of the product
+2. We believe the only way to do so is to draft, experiment, and redraft
+3. We focus on time efficiency, so we can redraft more often
+
+And hence all the arguments about agile and misunderstanding agile.
 
 ## Should We Outsource?
 

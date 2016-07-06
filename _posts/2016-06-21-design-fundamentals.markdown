@@ -108,39 +108,33 @@ Common advice for ingesting off-the-shelf components lines up with minimizing th
 
 ## Is It Time to Rewrite?
 
----
+When fixing bugs, adding features, or otherwise maintaining an existing software product, a natural question that often arises is whether to rewrite a particular body of code.
+This can include anything from shuffling a few lines of code around a few functions to redesigning an entire system.
 
 Typical guidance for when to rewrite is over-complicated.
-Remember our end goal?
+We can simplify a lot like we did with the outsourcing question:
 
-> Write software that solves a problem,<br>
-> does exactly what you mean it to,<br>
-> and takes as little time to develop as possible
+> Will rewriting decrease the overall time cost for developing and maintaining my product?
 
-For now, let's take for granted that rewriting is a purely technical decision, that it doesn't affect your end product's interface or feature set.
-Thus we can safely say rewriting doesn't affect whether our software solves the problem at hand, because rewrite or no, from the user's point of view the software ought to work the same.
+To answer, we just need to do a couple of sums:
 
-That leaves us with variables to minimize:
+If we do not rewrite, then the cost of adding each feature will be:
 
-* How long it takes to write it and fix bugs we introduced
-* The number of bugs still around when we decide to ship
+   > How long it takes to add the new feature +<br>
+   > How long it takes to stabilize the new feature
 
-A tall order, no doubt.
-But we can simplify the decision.
-Say if you don't rewrite, the time it'll take to do new features is 
+If we do rewrite, then the total cost is:
 
-* (time needed to get the feature working on the existing codebase) +
-* (time needed to fix bugs from those changes)
+   > How long it takes to rewrite +<br>
+   > How long it takes to stabilize after rewriting +<br>
+   > How long it takes to add the new feature post-refactoring +<br>
+   > How long it takes to stabilize the new feature post-refactoring
 
-If you do rewrite, you're dealing with a longer lists of time costs:
+Once we sum those two costs, we can just pick whichever option is less cost overall.
+You can factor whatever you want into the two cost lists, as long as you're fair with all your estimates.
 
-* (time needed to rewrite the thing) +
-* (time needed to fix bugs from those changes) +
-* (time needed to add the feature after rewriting) + 
-* (time needed to fix bugs from those changes)
-
-To make the decision of whether to rewrite, just sum both lists and choose whichever is less total time.
-If there are additional time costs to consider, just expand the lists to account for everything.
+To summarize, the total cost of rewriting and doing the feature can clock in under the cost of just adding the feature without a rewrite, but usually this only works if the rewrite is both scoped and significantly simplifies extending the code later on.
+This is often the case for smaller code changes, but more care is needed when considering rewrites for large systems.
 
 ## Are You Gonna Need It?
 
@@ -149,68 +143,25 @@ Right?
 
 Nope!
 
-All that fancy code is actually pretty rare, and for good reasons.
-Most developers eventually realize that truly clever engineering isn't fancy code, but rather recasting the problem so fancy code is no longer needed.
+All that fancy code is actually pretty rare, and most experienced developers end up realizing that truly clever engineering isn't fancy code, but rather rotating the problem to the point fancy code is no longer needed.
 
-That said, when is fancy code really the right answer?
+If fancy code is rarely needed, when is it the way to go?
+To answer, we'll recast the question in a way that should look familliar:
 
-When you come down to it, fancy code is a betting game.
-You're doing work now under the assumption that certain kinds of changes will be more likely than others in the future.
-If you were right, those changes will be a cinch!
+> Will adding infrastructure to accommodate change up front decrease the overall time cost for developing and maintaining my product?
 
-But if you were wrong, the changes will be a much bigger burden to work around than if you didn't have them in the first place.
+This is where things get fuzzy.
+Figuring out which changes to accommodate for is a betting game: you're doing work now in the hopes that certain kinds of changes will be more likely than others in the future.
+If you were right, those changes will be a cinch; but if you were wrong, working around your unnecessary infrastructure will be a much bigger burden than if you hadn't done any extra work up front.
+Usually the way to win the game is not to play: don't add infrastructure up front unless you are *extremely* confident the odds are in your favor.
 
----
+How confident would that be? 
+Let's say you're speculating on an order-of-magnitude speedup/slowdown.
+In that case, if you guess correctly, then when the time comes to make a change, it'll only take $\frac{1}{10}$th the time it would have taken had you not anticipated the change up front; but if you're wrong, the future change will take 10 times as long.
 
-Add here what was previously the design speculation section
+Then the break-even probability that you anticipated correctly would be:
 
-In the end, after declaring just how sure you need to be that fancy code will be worth it, provide a heuristic:
-
-> The code that has had the most (bugs, requirement changes, feature requests) is the most likely to have more (bugs, requirement changes, feature requests) in the future.
-
-But by default, the answer really is fancy code is never excusable until it's proven necessary.
-And even then, true cleverness is recasting the problem so that fancy code is no longer needed.
-
----
-
-TODO I also want to redraft a little so that we take for granted that you're solving the problem at hand at the entire article's scope, and scope down tradeoffs for technical decisions to just fewest bugs and shortest time. We already wrote that for the first subsection, we just need to work it into the top-level scope.
-
----
-
-The number of bugs in your code is linearly proportional to how much code you have.
-So less code is always better, if you can manage it.
-
-Adding infrastructure to your code can mean faster turnaround times for changes you expect you'll need to make.
-But adding infrastructure also means more code and more bugs, so adding more isn't always great.
-Then when is it a good idea?
-
-One heuritic: the code that has had the most (bugs, requirement changes, feature requests) is the most likely to have more (bugs, requirement changes, feature requests) in the future.
-
-So it's okay to start with a 'simple' draft for everything, and add infrastructure as soon as you see a recurring pattern of bugs and changes in a particular area of your codebase.
-
-Beyond that, you just need some experience and some good judgment ;-)
-
-## Whether to Guess
-
-Adding infrastructure is actually speculating in your software design.
-
-You can design up front to accommodate change, but you can't accommodate every possible change.
-One way or another, you're going to need to make educated guesses about what changes are likely, to accommodate for them in advance.
-(That's why the 'senior' developers on your team or usually more heavily embroiled in the business and user scenarios, whereas more junior developers often stick to the code itself).
-
-The thing about speculating is, once it comes time to make changes to the code:
-
-* If you were right, the change will be easy
-* If you were wrong, the change will be very expensive
-
-For example, let's say if you speculate correctly, then when the time comes to make a change, it'll only take $\frac{1}{10}$th the time it would have taken had you not acommodated for the change up front.
-Let's also say if you're wrong, then when the time comes to make the change, it will take 10 times as long.
-
-Then to break even, what's the necessary probability you speculated correctly?
-
-$p(\frac{1}{10}x) = (1 - p)(10x)$
-
-$\frac{1}{10}p = (1 - p)(10)$
+$p(\frac{1}{10}) = (1 - p)(10)$
 
 $\frac{1}{10}p = 10 - 10p$
 
@@ -218,21 +169,11 @@ $10.1p = 10$
 
 $p = .99$ (roughly)
 
-So, you want to add infrastructure; are you 99% sure you're gonna need it?
+So, you want to add infrastructure to make future changes easier; are you 99% sure you're gonna need it?
 
-Another facet to consider: the 10X slowdown from speculating wrong is a way bigger hit than the 10X speedup from speculating right.
-Using the numbers above,
-
-* If making the change would take 1 hour had you not speculated,
-* Then the change would take 6 minutes if you had speculated (you saved 54 minutes)
-* And the change would take 10 hours if you had speculated wrong (you lost 9 hours!)
-
-In light of this, experienced developers often keep it simple by default and leave adding complexity to the future.
-This means future changes aren't free, but they usually don't require expensive reworks either.
-
+Things only get worse from there.
+Say you get into the habit of speculating on future changes to your codebase.
 Over the long run, how often do you have to speculate correctly to break even with never speculating at all?
-
-$1x = (\frac{1}{10}x)p + (10x)(1 - p)$
 
 $1 = (\frac{1}{10})p + (10)(1 - p)$
 
@@ -244,5 +185,36 @@ $p = .90$ (roughly)
 
 So, do you speculate correctly 90% of the time?
 
-Keep it simple and avoid speculating if you can -- because the odds are against you!
+Why are these numbers so extreme?
+The problem is that we're dealing with order-of-magnitude speedups and slowdowns, and an order-of-magnitude slowdown is way more significant than an order-of-magnitude speedup.
+Using the numbers above,
+
+* If making the change would take 1 hour had you not speculated,
+* Then the change would take $\frac{1}{10}^{th}$ that, or 6 minutes, if you had speculated (you saved 54 minutes)
+* And the change would take $10X$ that, or 10 hours, if you had speculated wrong (you lost 9 hours!)
+
+In light of this, experienced developers often keep it simple by default and leave adding complexity to the future.
+This means future changes aren't free, but they usually don't require expensive reworks either.
+This is also the reason why 'senior' engineers tend to be more embroiled in the business itself whereas 'junior' engineers tend to focus mostly on code: understanding the business gives you better data to speculate on.
+
+If all this seems overwhelming, there's an easy way out: just don't speculate.
+Keep the code simple and straightforward, and don't add infrastructure until you already know you need it.
+A useful heuristic is to remember the code that's most likely to need work in the future is the code that has needed the most work in the past.
+So start simple, and expand out as the need becomes clear.
+
+Keep it simple -- because the odds are against you!
+
+> ### Aside: Wanna Be a "10X" Developer?
+>
+> Open secret: when it comes to speculating on future code changes, pretty much everybody is wrong pretty much 100% of the time.
+> You can't foresee bugs: if you could, you wouldn't make bugs in the first place.
+> And you're can't foresee feature requests: there are just too many possibilities to choose from.
+>
+> Another open secret: most people speculate on future code changes all the time.
+> Why wouldn't they?
+> What's the point of that fancy computer science education, and reading all that literature on design, if in the end you should always stick to what you learned in CS 101?
+>
+> Consider this: if you believe the back-of-the-napkin numbers we made up above, then most people speculate incorrectly on future code changes nearly 100% of the time, making them $\frac{1}{10}^{th}$ as effective as they could be if they didn't speculate.
+> Wanna be 10X as effective as these people?
+> Just don't speculate!
 

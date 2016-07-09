@@ -134,6 +134,13 @@ dd
     margin-bottom: 1em;
 }
 
+pre
+{
+    background-color: transparent;
+    border: none;
+    padding: 0 0 0 2em;
+}
+
 pre code
 {
     font-size: 110%;

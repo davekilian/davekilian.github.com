@@ -22,13 +22,15 @@
 				margin: 0;
 			}
 
-			.project { font-size: 125% }
-
 			a { color: #555 }
+
+            @media print {
+                div.pagebreak { page-break-after: always; }
+            }
 		</style>
 	</head>
 	<body>
-		<div style="width: 800px; margin-left:auto; margin-right: auto">
+		<div style="width: 750px; margin-left:auto; margin-right: auto">
 
 			<!-- Contact information -->
 			<table style="width: 100%"><tr>
@@ -37,15 +39,11 @@
                          width="70px" height="70px" alt="" style="vertical-align: middle; border: 1px solid #aaa">
 				</td>
 				<td>
-					<span style="font-size: 200%">David C. Kilian</span><br>
+					<span style="font-size: 200%">David Kilian</span><br>
 
 					<div class="left">
-						dave.kilian@gmail.com<br>
-						(571)-212-3971
-					</div>
-					<div class="right">
-                        15401 NE 10th St, Apt E209<br>
-                        Bellevue, WA, 98007
+                        https://www.davekilian.com<br>
+						dave.kilian@gmail.com
 					</div>
 				</td>
 			</tr></table>
@@ -53,69 +51,64 @@
 			<div style="width: 100%" class="bottom-border"></div>
 
 			<!-- Summary -->
-            <p>I am a full-time employee working for Microsoft in Seattle.
+            <p>I am a full-time employee working for Microsoft in Seattle.<br>
             I graduated from Brown University with a B.S. in Computer Science in May of 2013.</p>
 
-            <p>I love computer systems. I have experience in computer graphics, game engine design, operating systems and computer networking. 
-            My current areas of interest are in-browser development, distributed systems, teaching modern OpenGL,
-            building on my existing knowledge, and learning about anything I come in contact with. I learn incredibly quickly.</p>
+            <p>I love computer systems!
+            I have experience in computer graphics, game engine design, operating systems, and computer networking.
+            Lately I have been interested in learning more about distributed storage, networking and cryptography.</p>
+
+            <p>I'm a quick study, and I love to learn and to teach.</p>
 
 			<!-- Work Experience -->
 			<span class="section-header bottom-border">Work Experience</span><br>
 
 			<span style="font-size: 125%">Software Development Engineer, Microsoft</span><br>
+            <p>SDE I-SDE II, Windows Deployment: August 2013-Present</p>
+
             <ul>
-                <li>August 2013-Present: Working on Windows Deployment technologies</li>
-                <li>May-August 2012 (Intern): Worked with Windows Fundamentals team on an unannounced project</li>
-                <li>May-August 2011 (Intern): Worked with Visual Studio Ultimate team developing extension for Team Foundation Server</li>
+                <li>Primary point of contact for Windows consumer recovery features (design, development, testing, support)</li>
+                <li>Worked with PC manufacturers to help them customize recovery for their devices</li>
+                <li>Advised partner teams and helped them build solutions on our technology</li>
+                <li>Onboarded and mentored new team members</li>
             </ul>
 
-			<span style="font-size: 125%">Undergraduate (Head) Teaching Assistant for Brown University Computer Science Dept.</span><br>
             <ul>
-                <li>January-May 2013: Interactive Computer Graphics (CS224) as Head TA</li>
-                <li>January-May 2013: Operating Systems (CS167/9) as Project Mentor</li>
-                <li>August-December 2012: Introduction to Computer Graphics (CS123) as Head TA</li>
-				<li>January-May 2012: Introduction to Computer Systems Security (CS166) as Undergrad TA</li>
-				<li>August-December 2011: Introduction to Computer Graphics (CS123) as Undergrad TA</li>
-				<li>January-May 2011: Introduction to Software Engineering (CS032) as Undergrad TA</li>
+                <li>Lead a ground-up rebuild of Windows's Push-Button Reset feature from start to finish:
+                    I identified design-level issues causing recurring problems, came up with a design to fix those,
+                    proposed it to the team and garnered support, impemented and tested the design, and supported it in market.
+                    <br><br>
+                    Benefits realized include halving the failure rate,
+                    broader support for automatically recovering from failures,
+                    a high-quality regression test suite which catches new problems early,
+                    and deeper insight about in-market behavior via improved device telemetry.
+                    We immediately had fewer bugs, and the severity of those bugs fell drastically.
+                </li>
+            </ul>
+
+            <p>Internships, 2011-2012</p>
+            <ul>
+                <li>May-August 2012: Worked with Windows Fundamentals team on an unannounced project</li>
+                <li>May-August 2011: Worked with Visual Studio Ultimate team developing extension for Team Foundation Server</li>
+            </ul>
+
+			<span style="font-size: 125%">Undergraduate Teaching Assistant for Brown University Computer Science Dept.</span><br>
+            <ul>
+                <li>Head TA for Interactive Computer Graphics (CS224)</li>
+                <li>Project mentor TA for Operating Systems (CS167/9)</li>
+                <li>Head TA for Introduction to Computer Graphics (CS123)</li>
+                <li>Undergrad TA for Introduction to Computer Systems Security (CS166)</li>
+                <li>Undergrad TA for Introduction to Computer Graphics (CS123)</li>
+                <li>Undergrad TA for Introduction to Software Engineering (CS032)</li>
 			</ul>
-			<ul>
-                <li>As UTA: Developed course materials (lectures, labs, assignments), graded assignments/labs, helped students via
-                office hours, answered questions via email</li>
-                <li>As HTA: Additionally managed other UTAs, organized course, created new lecture content, gave a couple lectures</li>
+            <ul style="list-style-type: none">
+                <li>As a regular undergrad TA, I developed course materials (lectures, labs, assignments), graded assignments/labs,
+                helped students via office hours, and answered questions via email.
+                As the head TA, I additionally managed other undergrad TAs, organized course, created new lecture content,
+                gave a couple lectures</li>
             </ul>
 
-			<!-- Projects -->
-			<span class="section-header bottom-border">Projects</span><br>
-
-            <span class="project">nullZERO</span><br>
-            <ul>
-                <li>3D third-person zero-gravity shooter based on the Battle Room from Orson Scott Card's <i>Ender's Game</i></li>
-                <li>Implemented network replication and prediction model published by Valve for its Source Engine</li>
-                <li>Written in C++ using the Qt application framework and OpenGL</li>
-            </ul>
-
-			<span class="project">Cupcake Shader Editor</span><br>
-			<ul>
-                <li>Originally a lab written by a previous TA, aimed at teaching CS123 students to write shader programs</li>
-                <li>Upgraded to a standalone GLSL editor, fixed stability issues, redesigned UI to allow
-                students to modify shader parameters at runtime rather than compile time</li>
-				<li>Written in C++ using the Qt application framework and OpenGL</li>
-			</ul>
-
-			<span class="project">Peebles Lab</span><br>
-			<ul>
-				<li>Webcomic (<a href="http://www.peebleslab.com/">http://peebleslab.com/</a>)
-				and web store (<a href="http://store.peebleslab.com/">http://store.peebleslab.com/</a>)</li>
-				<li>Written from scratch in PHP using MySQL</li>
-			</ul>
-
-            <span class="project">...and more!</span><br>
-            <ul>
-                <li>I'm starting a blog at <a href="http://www.davekilian.com">www.davekilian.com</a></li>
-                <li>Some of my past projects and current side projects can be found at
-                    <a href="http://github.com/davekilian">github.com/davekilian</a></li>
-            </ul>
+            <div class="pagebreak" />
 
 			<!-- Education -->
 			<span class="section-header bottom-border">Education</span>
@@ -149,25 +142,26 @@
             XNA, MSSQL, and many features of the .NET framework. Knowing C#, I quickly picked up
             Java and did some work in Swing.</p>
 
-            <p>I have thrown together a few websites in plain HTML / CSS, in some cases adding 
-            interactivity with Javascript. I learned PHP and MySQL in order to build server-driven
-            web applications.</p>
-
-            <p>Recently I have begun to explore other languages for web development (Rails,
-            node.js) but am not greatly experienced in them. I have used Python for a handful
-            of class projects.</p>
-
             <p>My interest in systems programming has led me to learn much about C and C++. I
             have developed several applications and a game engine using the Qt application 
-            framework and OpenGL.</p>
+            framework and OpenGL. I have much experience with C++ on Windows from my recent
+            work experience, during which I set aside time to learn new features introduced in
+            C++11 and C++14. When I need something quick 'n dirty, I usually go to Python.</p>
 
-            <p>As a TA, I've used Bash scripting and Linux facilities on a few occasions to
-            make assignments and systems 'just work' for students.</p>
+            <p>I have thrown together a few websites in plain HTML / CSS, in some cases adding 
+            interactivity with Javascript. I learned PHP and MySQL in order to build server-driven
+            web applications. Later I explored more modern web development tools (Rails,
+            node.js) but am not greatly experienced in them.</p>
 
-            <span class="project">tl;dr</span>
+            <p><b>tl;dr: </b>C++, C#, Python, Java, HTML, CSS, PHP, Qt, OpenGL, XNA, JavaScript, SQL, Windows, Bash, Android</p>
 
-            <p>C#, Java, C, C++, HTML, CSS, PHP, Qt, OpenGL, XNA, Javascript,
-            SQL, Ruby on Rails, Python, Bash, Android</p>
+            <!-- Links -->
+			<span class="section-header bottom-border">On the Web</span>
+            <ul>
+                <li>I post occasionally to a blog at <a href="http://www.davekilian.com">www.davekilian.com</a></li>
+                <li>Some of my past projects and current side projects can be found at
+                    <a href="http://github.com/davekilian">github.com/davekilian</a></li>
+            </ul>
 
 			<!-- Footer -->
 			<hr style="color: gray; width: 100%">

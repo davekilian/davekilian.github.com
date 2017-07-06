@@ -1,6 +1,6 @@
 ---
 layout: post
-title: Best Practices Can Lead You Astray
+title: "\"Best Practices\" Sometimes Aren't"
 author: Dave
 ---
 

@@ -1,0 +1,22 @@
+---
+layout: post
+title: Fill Rates
+author: Dave
+draft: true
+---
+
+Brain dump:
+
+In computer graphics, once you've reasonably optimized your program, fill rate is almost certainly your limiting factor.
+
+For each triangle, may need to fill as much as every pixel. O(triangles X screen resolution). Does hundreds of stream processors sound like more than enough any more?
+
+A big reason for this is occlusion detection. Depth buffering requires you to rasterize every triangle, and in the worst / extremely unlucky case, you might have to render each one of those pixels for each triangle, only to find that one or more of the later triangles covers it up.
+
+But depth buffering is the best and most flexible occlusion detector we have, things like the painters algorithm were abandoned for good reasons.
+
+As an industry we know fill rate is our Achilles heel. A number of oddities about game rendering / the graphics pipeline comes down to optimizations to help reduce fill rate. Things like one-sided faces, and finite length view frustums are there by default since they help out in general. Even users help by dropping their screen resolution, speeding us up by a factor of the reduced number of pixels.
+
+If you know you're having fill rate problems, there are many tricks in the book. If you are in a big wide open space, and all the geometry in that space needs to be visible, try adding fog and cut the view frustum length.
+
+If you have rooms / subdivided spaces / otherwise have complex geometry that isn't viewable from certain parts of the scene, occlusion buffers can quickly help you determine whether that geometry is visible. You can also compute offline the areas where this geometry is visible

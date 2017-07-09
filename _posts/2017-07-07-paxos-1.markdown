@@ -1,0 +1,390 @@
+---
+layout: post
+title: "Paxos: A Beginner's Guide"
+author: Dave
+draft: true
+---
+
+If you write software, I encourage you to learn about Paxos!
+
+If you're looking to get your feet wet in distributed programming, or to dig deeper into the subject, Paxos is a great way to gain insight and experience.
+Paxos is one of those special few algorithms which are important to both theory and practice.
+It is not only a key result in distributed systems research, but also a key underpinning of many state-of-the-art production systems.
+
+If you've already heard of Paxos, you probably already know about its reputation.
+Many think Paxos is a complicated thing, implemented by researchers stuffed away in secret rooms, so that mortals may build distributed systems they may never truly understand.
+
+Luckily, those people are totally wrong!
+Having taken some time to parse Paxos out of the papers, I believe anyone who has successfully learned Dijkstra's algorithm can learn Paxos.
+Paxos may not be the most intuitive or obvious of algorithms, but it's far from incomprehensible.
+I believe most of the confusion actually comes from the presentation, rather than the algorithm itself.
+In this article I will try to rememdy that.
+
+This is the first of a series of posts covering Paxos.
+Consider this series the introduction to Paxos I never had, but wish I did.
+We will start with a discussion of computer networks, and how they make consensus tricky.
+Once we better understand the problem, we'll see Paxos's solution.
+Then we'll progressively build Paxos's consensus primitive into more powerful algorithms, discovering along the way what Paxos doesn't handle well, or at all.
+Finally, we'll use all of this to build a demo implementing a toy distributed state-replication algorithm with Paxos.
+
+Our demo will be written in [Go](https://www.golang.org).
+If you like, you can download and run it ahead of time with the following commands:
+
+    $ go get github.com/davekilian/paxos-demo
+    $ $GOROOT/bin/paxos-demo
+
+I don't plan for this article to teach you everything there is to know about Paxos; rather, I want to provide you with enough general intuition that you can figure out the rest easily enough.
+If you like this article, I encourage you to employ your newfound understanding by tackling some of the seminal papers, which I'll list at the end of this article.
+
+## Zero to Paxos
+
+Any explanation of Paxos would be woefully incomplete if we didn't start with the problem definition and the design hurdles Paxos must overcome.
+After all, as Paxos's own creator once wrote,
+
+> _[Paxos] is among the simplest and most obvious of distributed algorithms. ... [T]his consensus algorithm follows almost unavoidably from the properties we want it to satisfy._
+> 
+> &mdash; [Paxos Made Simple](https://www.microsoft.com/en-us/research/publication/paxos-made-simple/), Lamport '01
+
+Paxos is a [distributed consensus](https://en.wikipedia.org/wiki/Consensus_(computer_science)) algorithm.
+That is, if we have a network of nodes, each running an instance of the same program, then Paxos helps us synchronize those programs, so they all store the same value for a particular variable (called the **consensus variable**).
+Consensus has many uses in distributed systems, and is especially important for implementing [leader election](https://en.wikipedia.org/wiki/Leader_election) and [state machine replication](https://en.wikipedia.org/wiki/State_machine_replication).
+
+Right off the bat, we should ask why we need special algorithms for consensus in the first place.
+We human beings don't seem to have any problem striking agreements, explicitly or implicitly, in our day-to-day lives.
+Why wouldn't it be the same for computers?
+
+Consensus is harder for computers because of the way we designed the Internet Protocol (IP), which underpins nearly all modern computer networks.
+In particular, IP makes a couple of key omissions:
+
+1. If one node sends multiple packets to another node, IP does not require both packets to be sent along the same path.
+
+2. In the event a router is overloaded, IP allows it to simply ignore new incoming packets, without notifying anyone.
+
+These omissions in the IP specification are purposeful: the flexibility they provide eases the work of bringing up IP on existing computer networks.
+That was particularly important to IP during its early days, as it was originally designed to link together disparate networks into a single grand unified network, which we today know as the Internet.
+
+Nonetheless, these omissions also have ramifications for people building algorithms and applications which run on top of IP: particularly, if we send someone an IP packet but never receive a response, we're left with no way to tell whether or not they got our message.
+It's possible the sender's message was dropped before delivery, or the recipient's reply was dropped before getting back to the sender.
+As the sender, there's no side channel by which to learn which of these happened.
+
+That throws a wrench in simple consensus protocols.
+To see why, let's consider a famous thought experiment called the [Two Generals' Problem](https://en.wikipedia.org/wiki/Two_Generals%27_Problem):
+
+Imagine two ancient armies sieging a city.
+Both armies are led by generals; let's call them Alice and Bob.
+Because the city is heavily fortified, Alice and Bob can only take the city of they attack together.
+Thus Alice and Bob need to agree on when to mount their attack.
+
+The two armies are stationed on opposite sides of the city, so Alice and Bob can only communicate via written messages delivered by couriers.
+The terrain is dangerous, however, so there's a chance any courier can be delayed or captured, before or after delivering their message.
+
+To peek past the metaphor for a moment, Alice and Bob are like network nodes.
+They need to reach consensus for a particular variable -- i.e. the time to mount the attack.
+The couriers are like packets on the network: they can be delayed or altogether prevented from reaching their destination.
+Like network nodes and their packets, Alice and Bob can only communicate using couriers.
+If the sender expects a response but never gets one, there's no way to tell whether or not the message was actually delivered.
+
+Naive consensus protocols don't work in this situation.
+For example, say Alice sends Bob a message directing him to attack at dawn.
+If Alice receives a reply from Bob acknowledging, then all is well. But if Alice never hears back from Bob, what should she do?
+
+* If Alice's courier was captured before delivering the message, Bob doesn't know when to attack.
+  So Alice **should not** attack at dawn, as she would be attacking alone.
+
+* If Alice's courier was captured after delivering the message, Bob thinks Alice is attacking at dawn.
+  So Alice **should** attack at dawn; otherwise, Bob would be attacking alone.
+
+Now Alice is stuck.
+To decide what to do, she needs to know whether Bob got the message, but she doesn't have a reliable way to figure out whether he did.
+She can try sending more couriers, but the same thing can happen to them too.
+So we reach an impasse.
+
+In the next section, we'll see how Paxos sidesteps this issue.
+But before moving on, this would be a good time to pause and consider how you might try to get around this.
+Feel free to continue on whenever you're ready.
+
+## The Core Negotiation Algorithm
+
+In any distributed consensus algorithm, we're going to start with several **candidate values** and then whittle them down to a single value all nodes agree upon.
+Inevitably that will require some kind of "negotiation" process, by which a node abandons its own candidate value in favor of some other node's value.
+Paxos defines such a negotiation protocol.
+
+The Two Generals' Problem tells us that, when a node 'wins' one of these negotiations, our consensus algorithm must not require it to wait and learn that it won.
+Otherwise, if we did require the 'winner' to wait for a final acknowledgement from the 'loser,' the 'winner' would get stuck just like Alice if the packet containing that acknowledgement were dropped by the network.
+So we conclude the 'winner' must actually move on without knowing the outcome of negotiating.
+
+By applying this principle to every interaction in the algorithm, we find:
+
+> In distributed consensus, it must be possible for every node in the system to reach consensus *without any single node knowing consensus has been reached.*
+
+Paxos's negotiation algorithm implements exactly this.
+Before you move on though, this would be a good time to stop and think about how you might design such an algorithm.
+If that sounds daunting, don't worry: you're not the first to think so.
+In fact, Paxos itself was discovered out of an attempt to prove such a consensus algorithm could not exist.
+(Instead of an impossibility proof, Leslie Lamport ended up with a viable algorithm, which he dubbed Paxos.)
+
+Ready?
+Then let's see how Paxos's negotiation algorithm works:
+
+We will employ two types of nodes to participate in the algorithm: **negotiators** and **storage nodes**.
+Negotiators each have a candidate value; storage nodes each have a consensus variable.
+Negotiators negotiate with each other indirectly, by changing the values the storage nodes store.
+Consensus is reached when all storage nodes store the same value.
+
+The key question is how negotiators negotiate.
+If every negotiator just repeatedly broadcasted its candidate value to all storage nodes in a loop, the network clearly would never reach consensus. 
+Each storage node would be constantly switching back and forth between different negotiators' candidate values.
+Even if all storage nodes happened to agree for a time, eventually some negotiator would come back in and change everything all over again.
+
+So instead, Paxos makes negotiators "back off" as soon as they discover another negotiator is winning.
+Thus when a winner starts to emerge, all other negotiators immediately fall in line to help it succeed.
+This is indeed a rather cordial negotiation :-)
+
+To implement all this, the negotiation algorithm runs in a loop.
+Each iteration is called a **round**.
+During each round, each negotiator runs the following algorithm:
+
+> _Query each storage node for its current value, then wait for a majority of the storage nodes to respond with their values._
+>
+> _Select the most recent of the values returned.
+> If all values were null, select this negotiator's candidate value instead._
+>
+> _Assign the selected value to all storage nodes._
+
+More explicitly, this means each negotiator will:
+
+> Send requests to all storage nodes, asking each for (a) the current value of its consensus variable, and (b) which round it was last updated.
+>
+> Wait for a majority of the storage nodes to reply.
+> So if there are $N$ storage nodes, wait for $\frac{N}{2} + 1$ replies.
+>
+> Use the replies to select a value: 
+>
+> * If some replies had a non-`null` value, find the reply with the most recent round number, and select that reply's value.
+> * Else (in case all replies have `null` values), select this negotiator's candidate value.
+>
+> Finally, broadcast an update command to all storage nodes, telling each to set its consensus variable to the value we just selected.
+> (This means _all_ storage nodes, including ones that did not reply to the query we sent at the beginning of the round.)
+>
+> Then the round is over; the negotiator proceeds to the next round and repeats these steps.
+> Note that the negotiator does not receive acknowledgements from the storage nodes after sending update commands; it just proceeds to the next round.
+
+This algorithm is designed for an interesting property:
+once a majority of the storage nodes have adopted the same value, the negotiation is over.
+We can prove that from that point onward, every negotiator always selects the value which the majority agrees upon.
+Thus, once a majority is reached, every negotiator helps the majority value propagate further, and the system converges.
+
+For the rest of this discussion we need to name this property -- let's call it **majority convergence**.
+Now we're getting into the fancy-sounding terminology!
+
+To see why majority convergence works, consider an example network containing 1 negotiator and 7 storage nodes.
+Imagine we just completed round #1, during which 4 of those storage nodes adopted the same value.
+The other 3 somehow didn't get the round #1 "update" command, so their consensus variable instances are still `null`.
+Our network looks like this:
+
+| Storage Node  | Value         | Last Update |
+|:-------------:|:-------------:|:-----------:|
+| A             | `null`        | `null`      | 
+| B             | `null`        | `null`      | 
+| C             | `null`        | `null`      | 
+| D             | "value"       | Round 1     |
+| E             | "value"       | Round 1     |
+| F             | "value"       | Round 1     |
+| G             | "value"       | Round 1     |
+
+Now imagine we're starting round #2.
+Per the negotiation algorithm, the negotiator will query all 7 storage nodes for their current values, then wait for a majority (4 of them) to reply.
+Looking at the example above, it should be apparent that of those 4 replies, at least 1 will come from a node that was updated during round #1. 
+
+Say the negotiator receives these 4 replies:
+
+    Storage Node A: Value: <nil>   Last update: <never>
+    Storage Node B: Value: <nil>   Last update: <never>
+    Storage Node C: Value: <nil>   Last update: <never>
+    Storage Node D: Value: "value" Last update: Round #1
+
+According to the negotiation algorithm, the negotiator sees that it has at least one reply with a non-null value, and must therefore choose the most recent of them.
+In this example, that's storage node `D`'s reply (`"value"`).
+Thus, as we predicted, the negotiator propagates `"value"` in an update command broadcasted to all storage nodes.
+This satisifes the convergence property for round #2.
+
+You should be able to convince yourself that it doesn't matter which 4 replies the negotiator receives; no matter what, once the network is in this state the negotiator is guaranteed to broadcast `"value"` on round #2.
+Feel free to try it out if you're not convinced.
+
+Things won't be any different on round #3.
+Say after round #2, only a few storage nodes get the update command from the negotiator, so the system lands in the following state:
+
+| Storage Node  | Value         | Last Update |
+|:-------------:|:-------------:|:-----------:|
+| A             | `null`        | `null`      | 
+| B             | "value"       | Round 2     | 
+| C             | "value"       | Round 2     | 
+| D             | "value"       | Round 2     |
+| E             | "value"       | Round 1     |
+| F             | "value"       | Round 1     |
+| G             | "value"       | Round 1     |
+
+Once again, the negotiator will ask all storage nodes for their current state, and wait for at least 4 to reply.
+There is now only 1 storage node which hasn't been set to `"value"`, so the other 3 replies must come from nodes which were updated during rounds #1 and #2.
+So just like in round #2, in round #3 the negotiator will see `"value"` is the latest existing value, and so it will broadcast `"value"` to all storage nodes.
+Thus the majority convergence property is upheld.
+
+We can repeat this analysis for any round, to show the majortiy convergence property will always hold.
+If you are so inclined, you can use this analysis to build a formal proof, by induction, this algorithm implements the property.
+
+## Multiple Negotiators
+
+We're not out of the woods yet!
+
+So far all of our examples have involved only one negotiator.
+While one negotiator makes analysis easy, it isn't very interesting in practice: if we were happy deploying a production system with just one negotiator, we could design the algorithm so the negotiator just repeatedly broadcasts its candidate value to all storage nodes, forever.
+There'd be no reason to go through the trouble of requesting data from the storage nodes and using the responses to select a value.
+
+So let's consider a network with two negotiators.
+Let's call our two negotiators Alice and Bob, and let's keep the 7 storage nodes from before.
+
+Consider the following execution:
+
+1. Alice and Bob each query all storage nodes
+2. Alice and Bob each wait for a majority to reply
+3. Alice and Bob each receive 4 responses with value=`null`
+4. Alice broadcasts an update with value=`Alice's value`
+5. All storage store `Alice's value` in the consensus variable
+
+Meanwhile, let's say Bob is having some problem that prevents him from making progress.
+Maybe his CPU is under high load due to another process on the machine, or say he has rebooted to install an update, or maybe a router between him and the network has a long queue of packets to get through before it can deliver packets to or from Bob.
+Or maybe it's our fault, and Bob has a bug :-)
+
+It's perfectly fine for Bob to be out of the picture for a while; while he's busy, Alice runs the network herself and guides it to reach consensus on her value.
+
+But consider what happens when Bob finally gets unstuck.
+He still has those replies from step #3 of the execution above, and even though _we_ know those replies are stale, Bob does not.
+Seeing all replies are `null`, Bob selects his candidate value (`Bob's value`) in step #4.
+Then in step #5, we broadcasts an update with value=`Bob's value` to all storage nodes.
+Whichever storage nodes receive that broadcast promptly accept it, thereby backtracking on a previous consensus.
+
+Whoops.
+
+The more we consider this case, the worse it seems:
+
+* We can't say the network will "eventually" converge, because there's no time bound on how long Bob is out of the picture.
+  Bob could come back online and mess everything up after weeks or months of the system buzzing along happily.
+
+* We can't say the network will "heal" after Bob does this, because the network was probably accepting customer data before Bob came back and messed everything up.
+  Rolling the network back to an older state probably resulted in losing some of that customer data, with no path of recovering it.
+
+* We can't say this case is unlikely, as at scale this will happen more frequently.
+  If you say Bob's failure is literally "one in a million" (happens once every 1,000,000 rounds), then if every round takes 1 whole second Bob will fail like this every 11 days.
+
+If you built a distributed database that lost new data about once every two weeks, customers wouldn't use your database for very long :-)
+
+So if we accept this problem is severe, how can we fix it?
+
+We can't prevent Bob from going offline, or having bugs.
+(If you have ways to make IP networks reliable, or to prevent software from having bugs, stop reading this post and go get rich of your ideas!)
+Instead, we'll need to prevent Bob from rolling the system back if he goes offline for a while and then comes back online.
+
+In Paxos, we do this by extracting a **promise** from the storage nodes:
+at the start of each round, each negotiator tells each storage node the number of the round it is starting.
+Upon learning this, the storage node promises not to accept update commands for previous rounds.
+This fixes the case where Bob goes offline and comes back online later, because while Bob was offline Alice was able to extract newer promises from the storage nodes.
+When Bob comes back, his update command will be for some old round number that storage nodes have already promised to ignore.
+So Bob's stale update command has no effect on the network.
+
+To keep things simple, we can work promises into our existing algorithm without passing any additional messages.
+That gives us the following:
+
+For **negotiators**:
+
+> Run a loop consisting of rounds.
+> In each round, do the following:
+>
+> Send a _promise_ command containing the current round number to all storage nodes.
+> The promise command doubles as a request for (a) the current value of the storage node's consensus variable, and (b) which round it was last updated.
+>
+> Wait for a majority of the storage nodes to reply.
+> So if there are $N$ storage nodes, wait for $\frac{N}{2} + 1$ replies.
+>
+> Use the replies to select a value: 
+>
+> * If some replies had a non-`null` value, find the reply with the most recent round number, and select that reply's value.
+> * Else (in case all replies have `null` values), select this negotiator's candidate value.
+>
+> Finally, broadcast an update command to all storage nodes, telling each to set its consensus variable to the value we just selected.
+
+For **storage nodes**:
+
+> On start, allocate local storage for:
+>
+> * `var`: an instance of the consensus variable
+> * `lastUpdate`: the round number `var` was last changed
+> * `promise`: the highest promised round number
+>
+> Upon receiving a **promise** command from a negotiator, examine its round number.
+> If the command is older than `this.promise`, drop the command.
+> Otherwise, update `this.promise` to the command's round number, and send a reply containing `var` and `lastUpdate`.
+>
+> Upon receiving an **update** command from a negotiator, examine its round number.
+> If the command is older than `this.promise`, drop the command.
+> Otherwise, update `this.promise` and `this.lastUpdate` to the command's round number, and update `this.var` to the command's value.
+
+In an example network with a single negotiator and a single storage node, a successful first round might look like this:
+
+> Both nodes come online.
+> The negotiator chooses its candidate value (we don't care how)
+> The storage node initializes its local variables.
+> 
+> The negotiator sends `Command: Promise Round: 1` to the storage node.
+> The storage node receives this command.
+>
+> On the storage node, since `this.promise` is 0 and `command.round` is 1, it decides not to drop this promise command.
+>
+> The storage node sets `this.promise := 1`
+>
+> The storage node sends `Reply: Value: <null> LastUpdate: <never>`.
+> The negotiator receives this reply.
+> 
+> The negotiator now has 1 of 1 replies, which is a majority, so it may now proceed with the rest of the round.
+>
+> The negotiator examines its replies and finds all have `Value: <null>`, meaning no storage node has a value yet.
+> So the negotiator selects its own candidate value.
+> 
+> The negotiator sends `Command: Update Round: 1 Value: Example`.
+> The storage node receives the command.
+>
+> On the storage node, since `this.promise` is 1 and `command.round` is also 1, it decides not to drop this promise command.
+>
+> The storage node sets `this.promise := 1`, `this.lastUpdate := 1`, and `this.val := "Example"`
+>
+> Meanwhile, the negotiator has progressed to the next round, and has probably already started sending out the next set of promise commands.
+
+As an exercise, try spelling out the next round of this execution.
+Then try adding more storage nodes.
+Then try adding more negotiators.
+You should find that, once you get a majority, there's never a case where any storage node updates to any value except the majority value.
+If you think you've found such a case, re-read the algorithms above closely :-)
+
+## Recap and Next Steps
+
+Now we have the full version of Paxos's core negotiation algorithm.
+It satisifes the majority convergence property: 
+
+> Once a majority of the storage nodes have adopted the same value,
+> every negotiator always opts to broadcast that same value, 
+> propagating it further.
+
+This works because:
+
+* The negotiators' value-selection rule ensures all subsequent rounds propagate the same value
+
+* The storage nodes' promises ensure the system can never execute previous rounds
+
+Even so, we don't yet have a full distributed consensus algorithm.
+The majority convergence property doesn't guarantee consensus; it only guarantees consensus once a majority is reached.
+Actually reaching a majority in the first place is up to the consensus algorithm, and we have yet to see how to do that.
+
+We'll cover all of that and more later in the series.
+Coming up next, we'll depart from our metaphors and terminology and rebuild them in a formal definition, using the standard terminology from the Paxos papers.
+
+To continue this discussion, head on over to: [Paxos II: Formalisms](/paxos-2.html)
+

@@ -88,6 +88,19 @@ div.post-content h6
     text-align: center;
 }
 
+div.post-content table
+{
+    font-size: 90%;
+    width: 90%;
+    margin: auto;
+}
+
+div.post-content th,
+div.post-content td
+{
+    border: 1px solid #777;
+}
+
 body
 {
     font-size: 100%;

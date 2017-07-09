@@ -1,0 +1,15 @@
+---
+layout: post
+title: "Paxos II: Formalisms"
+author: Dave
+draft: true
+---
+
+TODO
+
+* formal specification
+
+* standard terminology
+
+* formal specification with standard terminology
+

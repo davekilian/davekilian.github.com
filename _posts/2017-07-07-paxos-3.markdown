@@ -1,0 +1,37 @@
+---
+layout: post
+title: "Paxos III: Full Algorithms"
+author: Dave
+draft: true
+---
+
+## Consensus
+
+TODO
+
+* I'm a little torn: do we want to do distinguished proposers here, or in the first post?
+
+* learners
+
+* round numbering
+
+* nodes entering / leaving the network
+
+* optimizations to send fewer messages
+
+* coordinator backoff / liveness guarantees
+
+## Leader Election
+
+TODO
+
+## State Machine Replication
+
+TODO
+
+## Demo
+
+TODO
+
+## Further Reading
+

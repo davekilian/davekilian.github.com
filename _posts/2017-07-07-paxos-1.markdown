@@ -33,8 +33,8 @@ If you like, you can download and run it ahead of time with the following comman
     $ go get github.com/davekilian/paxos-demo
     $ $GOROOT/bin/paxos-demo
 
-I don't plan for this article to teach you everything there is to know about Paxos; rather, I want to provide you with enough general intuition that you can figure out the rest easily enough.
-If you like this article, I encourage you to employ your newfound understanding by tackling some of the seminal papers, which I'll list at the end of this article.
+I don't plan for this series to teach you everything there is to know about Paxos; rather, I want to provide you with enough general intuition that you can figure out the rest easily enough.
+If you like these articles, I encourage you to employ your newfound understanding by tackling some of the seminal papers, which I'll list at the end of the series.
 
 ## Zero to Paxos
 
@@ -225,8 +225,8 @@ Say after round #2, only a few storage nodes get the update command from the neg
 | G             | "value"       | Round 1     |
 
 Once again, the negotiator will ask all storage nodes for their current state, and wait for at least 4 to reply.
-There is now only 1 storage node which hasn't been set to `"value"`, so the other 3 replies must come from nodes which were updated during rounds #1 and #2.
-So just like in round #2, in round #3 the negotiator will see `"value"` is the latest existing value, and so it will broadcast `"value"` to all storage nodes.
+There is now only 1 storage node which hasn't been set to `"value"`, so the other 3 replies must come from nodes which were updated during round #1 or #2.
+So just like in round #2, in round #3 the negotiator will see `"value"` is the most recent existing value, so it will broadcast `"value"` to all storage nodes.
 Thus the majority convergence property is upheld.
 
 We can repeat this analysis for any round, to show the majortiy convergence property will always hold.
@@ -236,7 +236,7 @@ If you are so inclined, you can use this analysis to build a formal proof, by in
 
 We're not out of the woods yet!
 
-So far all of our examples have involved only one negotiator.
+So far we have only considered networks with one negotiator.
 While one negotiator makes analysis easy, it isn't very interesting in practice: if we were happy deploying a production system with just one negotiator, we could design the algorithm so the negotiator just repeatedly broadcasts its candidate value to all storage nodes, forever.
 There'd be no reason to go through the trouble of requesting data from the storage nodes and using the responses to select a value.
 
@@ -259,30 +259,25 @@ It's perfectly fine for Bob to be out of the picture for a while; while he's bus
 
 But consider what happens when Bob finally gets unstuck.
 He still has those replies from step #3 of the execution above, and even though _we_ know those replies are stale, Bob does not.
-Seeing all replies are `null`, Bob selects his candidate value (`Bob's value`) in step #4.
-Then in step #5, we broadcasts an update with value=`Bob's value` to all storage nodes.
+Seeing all the replies he received are `null`, Bob selects his candidate value (`Bob's value`) in step #4.
+Then in step #5, he broadcasts an update with value=`Bob's value` to all storage nodes.
 Whichever storage nodes receive that broadcast promptly accept it, thereby backtracking on a previous consensus.
 
 Whoops.
 
-The more we consider this case, the worse it seems:
+We can't have our network abandoning the value it reached conensus on after consensus was reached.
+This is especially true if Bob had been offline for a long time: in the meantime, Alice was running the network, and was probably accepting customer data.
+So Bob coming along and backtracking the state of the network probably caused permanent loss of that data.
 
-* We can't say the network will "eventually" converge, because there's no time bound on how long Bob is out of the picture.
-  Bob could come back online and mess everything up after weeks or months of the system buzzing along happily.
+We could try to write this off as an uncommon failure or something we don't handle, but at scale all rare problems become common.
+For example we could say Bob's failure was literally "one in a million" (happens once every 1,000,000 rounds), but if we run one round of Paxos every second, then Bob will fail this way every 11 days.
+If you built a distributed database that lost new data about once every two weeks, you wouldn't have customers for very long :-)
 
-* We can't say the network will "heal" after Bob does this, because the network was probably accepting customer data before Bob came back and messed everything up.
-  Rolling the network back to an older state probably resulted in losing some of that customer data, with no path of recovering it.
-
-* We can't say this case is unlikely, as at scale this will happen more frequently.
-  If you say Bob's failure is literally "one in a million" (happens once every 1,000,000 rounds), then if every round takes 1 whole second Bob will fail like this every 11 days.
-
-If you built a distributed database that lost new data about once every two weeks, customers wouldn't use your database for very long :-)
-
-So if we accept this problem is severe, how can we fix it?
+So if we accept this is a problem that needs to be fixed, how do we fix it?
 
 We can't prevent Bob from going offline, or having bugs.
-(If you have ways to make IP networks reliable, or to prevent software from having bugs, stop reading this post and go get rich of your ideas!)
-Instead, we'll need to prevent Bob from rolling the system back if he goes offline for a while and then comes back online.
+(If you have ways to make IP networks reliable AND prevent software from having bugs, stop reading this post and go get rich of your ideas!)
+If we accept sometimes Bob will go offline for a while, we need to design our algorithm so Bob cannot roll back the system state when he returns.
 
 In Paxos, we do this by extracting a **promise** from the storage nodes:
 at the start of each round, each negotiator tells each storage node the number of the round it is starting.
@@ -290,9 +285,10 @@ Upon learning this, the storage node promises not to accept update commands for 
 This fixes the case where Bob goes offline and comes back online later, because while Bob was offline Alice was able to extract newer promises from the storage nodes.
 When Bob comes back, his update command will be for some old round number that storage nodes have already promised to ignore.
 So Bob's stale update command has no effect on the network.
+During later rounds, Bob will see the effects of Alice's update and catch up with the rest of the network.
 
 To keep things simple, we can work promises into our existing algorithm without passing any additional messages.
-That gives us the following:
+That gives us the following two algorithms:
 
 For **negotiators**:
 
@@ -328,20 +324,20 @@ For **storage nodes**:
 > If the command is older than `this.promise`, drop the command.
 > Otherwise, update `this.promise` and `this.lastUpdate` to the command's round number, and update `this.var` to the command's value.
 
-In an example network with a single negotiator and a single storage node, a successful first round might look like this:
+In an example network with a single negotiator and a single storage node, a successful execution of both algorithms might look like this:
 
 > Both nodes come online.
 > The negotiator chooses its candidate value (we don't care how)
 > The storage node initializes its local variables.
 > 
-> The negotiator sends `Command: Promise Round: 1` to the storage node.
+> The negotiator sends `Command: Promise, Round: 1` to the storage node.
 > The storage node receives this command.
 >
 > On the storage node, since `this.promise` is 0 and `command.round` is 1, it decides not to drop this promise command.
 >
 > The storage node sets `this.promise := 1`
 >
-> The storage node sends `Reply: Value: <null> LastUpdate: <never>`.
+> The storage node sends `Reply: Value: <null>, LastUpdate: <never>`.
 > The negotiator receives this reply.
 > 
 > The negotiator now has 1 of 1 replies, which is a majority, so it may now proceed with the rest of the round.
@@ -349,7 +345,7 @@ In an example network with a single negotiator and a single storage node, a succ
 > The negotiator examines its replies and finds all have `Value: <null>`, meaning no storage node has a value yet.
 > So the negotiator selects its own candidate value.
 > 
-> The negotiator sends `Command: Update Round: 1 Value: Example`.
+> The negotiator sends `Command: Update, Round: 1, Value: Example`.
 > The storage node receives the command.
 >
 > On the storage node, since `this.promise` is 1 and `command.round` is also 1, it decides not to drop this promise command.

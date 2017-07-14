@@ -35,3 +35,9 @@ TODO
 
 ## Further Reading
 
+* Part-time parliament
+* Paxos made simple
+* Paxos made live
+* Ring Paxos?
+* Raft
+

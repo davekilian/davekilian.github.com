@@ -382,5 +382,5 @@ Actually reaching a majority in the first place is up to the consensus algorithm
 We'll cover all of that and more later in the series.
 Coming up next, we'll depart from our metaphors and terminology and rebuild them in a formal definition, using the standard terminology from the Paxos papers.
 
-To continue this discussion, head on over to: [Paxos II: Formalisms](/paxos-2.html)
+To continue this discussion, head on over to: [Paxos II: Formalized](/paxos-2.html)
 

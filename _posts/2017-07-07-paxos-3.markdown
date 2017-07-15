@@ -1,43 +1,187 @@
 ---
 layout: post
-title: "Paxos III: Full Algorithms"
+title: "Paxos: The Parliament"
 author: Dave
 draft: true
 ---
 
-## Consensus
+_This post is part of a series.
+[Click here to start from the beginning](/paxos-1.html)._
 
-TODO
+Some of the background story
 
-* I'm a little torn: do we want to do distinguished proposers here, or in the first post?
+* algorithm is presented as a story about an ancient parliament
+* some initial reviewers (ACM?) thought it was a joke
 
-* learners
+Story
 
-* round numbering
+* pretend archaeology
+* "fragmentary history:" we will omit parts of the algorithm for generality
+* island of Paxos
+* part-time parliament
+* legislators like processes, leaving the chamber like failing
+* but while they're in the chambers they behave correctly and promptly: non-byzantine failures
+* "mutual trust" -- legislators pass any proposed decree
+* "ledgers with indelible ink" provide durable storage (HDDs)
+* also state on "slips of paper" providing volatile storage (RAM)
+* messengers carry messages, forgetful: zero- or multiple-delivery, arbitrary delay
+* sequence of decrees as the consensus variable
+* legislators and messengers are "scrupulously honest" so they exhibit non-Byzantine failures
+* no idea how they handled cheating, so we don't handle byzantine failure modes
+* multiple times we say 'manuscript is lost' meaning you provide this when implementing paxos
 
-* nodes entering / leaving the network
+Synod algorithm built in steps
 
-* optimizations to send fewer messages
+* a preliminary protocol from consensus constraints
+* a basic protocol guaranteeing consistency but not progress
+* a synod protocol
 
-* coordinator backoff / liveness guarantees
+Mathemtical results (2.1)
 
-## Leader Election
+* build up some tools we will need to discuss algorithms later
+* notation
+* ballots: a ballot number, decree, quorum of priests, and a set of priests who voted for it
+* a ballot is successful if there exists some quorum of priests who voted for the ballot
+* ballot numbers give a total order, but are not the chronological order voting carried out
+* each ballot number is unique
+* any two quorums have at least one priest in common
+* the negotiators' value-selection rule
+* a vote has a decree, a ballot number, and the priest who voted
+* partial order of votes given by the ballot number of each vote
+* total order over votes needed, but how is not prescribed ('manuscript lost')
+* 'max' vote according to total order is the value propagated forward later
+* define three properties as follows:
+* P1: each ballot has a unique ballot number
+* P2: the quorums of any two ballots overlap by at least one priest
+* P3: the decree of a ballot is the decree of the 'max' vote in its quorum
+* Lemma 1: if properties, then if a ballot reaches quorum, later ballot will have the same decree
+* Theorem 1: if two ballots reach quorum, both have the same decree, trivial based on lemma
+* Theorem 2: if you have a set of ballots which satisfy P1-P3, can always add new ballots which do too
 
-TODO
+The preliminary protocol (2.2)
 
-## State Machine Replication
+* in summary, this is the protocol we discussed in post 1 (steps 1-4) + 'learning' (steps 5-6)
+* designed solely to produce ballots satisfying P1-P3
+* the set of ballots is distributed; it's likely no one priest will see all ballots produced
+* a priest initiated a ballot with a ballot number, decree and quorum
+* ballot initiation and voting algorithms constructued to satisfy P1-P3
+* P1: ballot numbers are (priest ID + sequence number) to ensure never a collision
+* P2: quorums must be a majority set
+* prefer priests with better attendance (uptime)
+* P3: determine 'max' vote by simply asking each priest in the quorum via messages
+* this leads us to the first two steps of the preliminary protocol
+* S1: priest p chooses ballot number and sends NextBallot(b) to some priests
+* S2: priests q receiving NextBallot(b) return LastVote(b, v) with most recent decree + ballot no.
+* LastVote contains that priest's MaxVote value
+* to maintain LastVote is MaxVote, promises: don't vote on earlier ballots
+* sending LastVote implicitly is that promise; if we can't promise, do not send
+* promise written to ledger (durable storage)
+* next steps of the preliminary protocol
+* S3: send BeginBallot with new number, decree of max vote, to quorum of priests who sent LastVote
+* S4: priests q vote for ballot unless promised not to do so, responding with Voted
+* all steps in the protocol are optional: prevents progress but does not violate safety
+* all steps are either idempotent, or have a mechanism to prevent replays from causing problems
+* S5: if the vote is successful, p sends a Success(decree) message to every priest
+* S6: upon receiving a Success message, q enters decree in durable storage
+* S5-6 are the 'learning' phase I chose not to cover in post 1
 
-TODO
+The basic protocol (2.3)
 
-## Demo
+* the preliminary protocol, but with some restrictions to reduce storage requirements
+* we only really need to store three variables
+* lastTried: number of the last ballot p tried to initiate
+* prevVote: the vote cast by q in the highest-nmbered ballot q voted in
+* nextBal: the ballot number which q promised via a LastVote() message
+* in preliminary protocol, p could conduct any number of ballots concurrently
+* in basic protocol, p must conduct one ballot at a time
+* p ignores messages for past ballots after starting a new ballot
+* ballot may abruptly end if p goes offline ('loses slip of paper')
+* on PTP paper page 12, we go into modified 6 steps based on new variables
 
-TODO
+The Synod protocol (2.4)
 
-## Further Reading
+* now focus on ensuring progress
+* description of the livelock problem of the basic protocol
+* to address, first define timeouts during which some large percentile of operations complete
+* choose a president to initiate ballots
+* okay to temporarily have multiple presidents: impedes progress, not correctness
+* req: if no priest enters or leaves after T minutes, exactly one priest will be a president
+* how to satisfy this requirement?
+* define some total order over the priests (maybe sort by name)
+* a priest is a president after receiving no messages from any higher-named priest for T minutes
+* a priest stops being a president immediately after receiving such a message
+* 'missing parts of manuscript' for optimal algorithm for sorting priests
 
-* Part-time parliament
-* Paxos made simple
-* Paxos made live
-* Ring Paxos?
-* Raft
+Multi-decree (3)
+
+* Now the focus is on passing more than one decree as the algorithm progresses
+* Start by electing one president
+* Then all proposals proceed by running Synod in parallel
+* One NextBallot message with one ballot number for each active Synod instance
+* One LastVote message with all the max votes for all Synod instances
+* One value-selection rule / BeginBallot for each Synod instance
+* Etc
+* When a new decree is requested, the president starts a new Synod instance
+* Once the president learns the result, it notifies the client success
+* No need to continue rerunning Synod after the value is in the president's ledger
+* If a president takes over to find a gap in the ledger, they pass a 'null' decree and move on
+* This way an old node (Bob) can't complete a very old timed-out request?
+* This also gives a primitive way to NACK client requests?
+* It also enforces ordering: if A proposed then B, A has a lower decree no. than B
+* If the presidency is stable, you can reduce to BeginBalot-Voted-Success to save on latency
+
+Miscellaneous concerns and optimizations (3.3)
+
+* 3.3.1: How to elect a president?
+* ID-based ordering can cause disruptions (if node AAAA comes back online)
+* Additionally can cause delays while AAAA gets 6 months of ledger data
+* No provably optimal solution, but there are many options
+* Option: once a president is singularly elected, no new president until that one times out
+* Option: allow disruption, but sort using a uptime-based metric
+* Option: allow disruption, but sort based on available bandwidth
+* 3.3.2: How to bound the size of the ledger to keep things performant?
+* Our 'decrees' log is really an append-only file system
+* Periodically collapse that down into the end state of the system
+* State is (last collapsed state) + (reply latest log messages)
+* Can extend this to always updating collapsed state once there are no gaps in the log
+* 3.3.3: Use Paxos to assign roles instead of data
+* Put a particular node in charge of some piece of data (e.g. 'cheese fit for sale')
+* The hard part of this is handing over control atomically
+* Solution: use leases, assign a role for a fixed amount of time everyone agrees upon
+* Renew the lease early to prevent unnecessary turnover
+* Can also force quit by passing a decree which ends the lease immediately
+* Deal with desynced clocks by adding some delay before actually starting delegation
+* 3.3.4: Notifying clients the outcome of state replication
+* Can't examine just any ledger, because any individual ledger could be missing newer decrees
+* Naive solution: pass a dummy decree and wait until it passes, then read up until that decree
+* Problem with this is it doesn't scale
+* Better solution: clients keep track of the decree number they're up to date with
+* Say clients A and B are working together, A is up to date and B is out of date
+* A notifies B it is out of date, and B contacts a legislator and catches up to the point of A
+* Then if A and B agree they can work together
+* Facebook likes: say the user has seen data up to ledger pos 250, and they select refresh
+* When you refresh, the new data has to be from ledger pos 250 or newer, but never before
+* Trick is you can track the ledger position client-side
+* Alternately, you can set up designated learners for different kinds of data
+* Like designated learners for particular users' facebook feeds
+* Whenever a client needs data for a user's facebook feed, it contacts the designated learner
+* Designated learners assigned through leases, like in 3.3.3
+* 3.3.5: Retracting errors, e.g. due to bugs in the implementation (or disk corruption0
+* A simple solution is to re-pass the same decree redundantly every once in a while
+* 3.3.6: Adding and removing nodes from the network
+* This isn't fully solved by the paper
+* There are some basic ideas but nothing concrete
+* Particularly, if you ever pass a decree which unenlists everybody .. gg!
+
+Relating all this to real systems (4)
+
+* Can have a 'fast' read if stale cache is fine, 'slow' read if you need the real data now
+* Lamport suggests his earlier papers for more expensive real-time algorithms (1978, 1984)
+* Paxos does not have fixed time bounds on decrees passing, those other papers do
+
+Standardize terminology
+
+* negotiators are really called proposers
+* storage nodes are really called acceptors
+* majorities are called quorums
 

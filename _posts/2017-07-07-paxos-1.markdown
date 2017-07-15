@@ -7,14 +7,14 @@ draft: true
 
 If you write software, I encourage you to learn about Paxos!
 
-If you're looking to get your feet wet in distributed programming, or to dig deeper into the subject, Paxos is a great way to gain insight and experience.
-Paxos is one of those special few algorithms which are important to both theory and practice.
-It is not only a key result in distributed systems research, but also a key underpinning of many state-of-the-art production systems.
+Whether you're getting your feet wet in distributed programming, or digging deeper, Paxos is a great way to gain insight and experience.
+Paxos is one of those few algorithms which manage to be important to both theory and practice:
+it's not only a key result in distributed systems research, but also an underpinning of many state-of-the-art production systems.
 
 If you've already heard of Paxos, you probably already know about its reputation.
 Many think Paxos is a complicated thing, implemented by researchers stuffed away in secret rooms, so that mortals may build distributed systems they may never truly understand.
 
-Luckily, those people are totally wrong!
+Luckily, those people are wrong!
 Having taken some time to parse Paxos out of the papers, I believe anyone who has successfully learned Dijkstra's algorithm can learn Paxos.
 Paxos may not be the most intuitive or obvious of algorithms, but it's far from incomprehensible.
 I believe most of the confusion actually comes from the presentation, rather than the algorithm itself.
@@ -35,23 +35,24 @@ If you like, you can download and run it ahead of time with the following comman
 
 I don't plan for this series to teach you everything there is to know about Paxos; rather, I want to provide you with enough general intuition that you can figure out the rest easily enough.
 If you like these articles, I encourage you to employ your newfound understanding by tackling some of the seminal papers, which I'll list at the end of the series.
+The papers are easier to follow once you get the basic idea.
 
 ## Zero to Paxos
 
-Any explanation of Paxos would be woefully incomplete if we didn't start with the problem definition and the design hurdles Paxos must overcome.
+Paxos is a system of algorithms which implement [distributed consensus](https://en.wikipedia.org/wiki/Consensus_(computer_science)).
+That is, if we have a network of nodes, each running an instance of the same program, then Paxos synchronizes those programs, so they all store the same value for a particular variable (the **consensus variable**).
+Replicating values this way allows systems to work even when some nodes crash or get disconnected (a property called **fault-tolerance**).
+
+To explain how Paxos implements distributed consensus, we must first examine what challenges it overcomes.
 After all, as Paxos's own creator once wrote,
 
 > _[Paxos] is among the simplest and most obvious of distributed algorithms. ... [T]his consensus algorithm follows almost unavoidably from the properties we want it to satisfy._
 > 
 > &mdash; [Paxos Made Simple](https://www.microsoft.com/en-us/research/publication/paxos-made-simple/), Lamport '01
 
-Paxos is a [distributed consensus](https://en.wikipedia.org/wiki/Consensus_(computer_science)) algorithm.
-That is, if we have a network of nodes, each running an instance of the same program, then Paxos helps us synchronize those programs, so they all store the same value for a particular variable (called the **consensus variable**).
-Consensus has many uses in distributed systems, and is especially important for implementing [leader election](https://en.wikipedia.org/wiki/Leader_election) and [state machine replication](https://en.wikipedia.org/wiki/State_machine_replication).
-
-Right off the bat, we should ask why we need special algorithms for consensus in the first place.
-We human beings don't seem to have any problem striking agreements, explicitly or implicitly, in our day-to-day lives.
-Why wouldn't it be the same for computers?
+A natural first question is: what problem is there even to solve?
+People don't seem to have much trouble with consensus: otherwise much of society wouldn't function.
+If people have solved consensus, can't we just make computers do whatever we're doing?
 
 Consensus is harder for computers because of the way we designed the Internet Protocol (IP), which underpins nearly all modern computer networks.
 In particular, IP makes a couple of key omissions:
@@ -63,11 +64,7 @@ In particular, IP makes a couple of key omissions:
 These omissions in the IP specification are purposeful: the flexibility they provide eases the work of bringing up IP on existing computer networks.
 That was particularly important to IP during its early days, as it was originally designed to link together disparate networks into a single grand unified network, which we today know as the Internet.
 
-Nonetheless, these omissions also have ramifications for people building algorithms and applications which run on top of IP: particularly, if we send someone an IP packet but never receive a response, we're left with no way to tell whether or not they got our message.
-It's possible the sender's message was dropped before delivery, or the recipient's reply was dropped before getting back to the sender.
-As the sender, there's no side channel by which to learn which of these happened.
-
-That throws a wrench in simple consensus protocols.
+Nonetheless, these properties of IP make it hard to implement consensus, even for human beings.
 To see why, let's consider a famous thought experiment called the [Two Generals' Problem](https://en.wikipedia.org/wiki/Two_Generals%27_Problem):
 
 Imagine two ancient armies sieging a city.
@@ -84,7 +81,8 @@ The couriers are like packets on the network: they can be delayed or altogether 
 Like network nodes and their packets, Alice and Bob can only communicate using couriers.
 If the sender expects a response but never gets one, there's no way to tell whether or not the message was actually delivered.
 
-Naive consensus protocols don't work in this situation.
+What would you do in this situation?
+Most obvious approaches don't work.
 For example, say Alice sends Bob a message directing him to attack at dawn.
 If Alice receives a reply from Bob acknowledging, then all is well. But if Alice never hears back from Bob, what should she do?
 
@@ -100,8 +98,7 @@ She can try sending more couriers, but the same thing can happen to them too.
 So we reach an impasse.
 
 In the next section, we'll see how Paxos sidesteps this issue.
-But before moving on, this would be a good time to pause and consider how you might try to get around this.
-Feel free to continue on whenever you're ready.
+But before moving on, this would be a good time to pause and consider how you might try to solve this problem.
 
 ## The Core Negotiation Algorithm
 
@@ -109,16 +106,16 @@ In any distributed consensus algorithm, we're going to start with several **cand
 Inevitably that will require some kind of "negotiation" process, by which a node abandons its own candidate value in favor of some other node's value.
 Paxos defines such a negotiation protocol.
 
-The Two Generals' Problem tells us that, when a node 'wins' one of these negotiations, our consensus algorithm must not require it to wait and learn that it won.
-Otherwise, if we did require the 'winner' to wait for a final acknowledgement from the 'loser,' the 'winner' would get stuck just like Alice if the packet containing that acknowledgement were dropped by the network.
-So we conclude the 'winner' must actually move on without knowing the outcome of negotiating.
+The Two Generals' Problem tells us that, when a node 'wins' a negotiation, our consensus algorithm must not require it to find out whether it won.
+Otherwise, if the winner did wait for a final acknowledgement from the loser and that packet was dropped by the network, the winner would get stuck just like Alice.
+So we conclude the winner must actually move on without knowing the outcome of the negotiation.
 
 By applying this principle to every interaction in the algorithm, we find:
 
 > In distributed consensus, it must be possible for every node in the system to reach consensus *without any single node knowing consensus has been reached.*
 
-Paxos's negotiation algorithm implements exactly this.
-Before you move on though, this would be a good time to stop and think about how you might design such an algorithm.
+It might sound magical, but this is precisely what Paxos's negotiation algorithm does.
+This is a good time to stop and think how you might design an algorithm of your own to do this.
 If that sounds daunting, don't worry: you're not the first to think so.
 In fact, Paxos itself was discovered out of an attempt to prove such a consensus algorithm could not exist.
 (Instead of an impossibility proof, Leslie Lamport ended up with a viable algorithm, which he dubbed Paxos.)
@@ -136,11 +133,11 @@ If every negotiator just repeatedly broadcasted its candidate value to all stora
 Each storage node would be constantly switching back and forth between different negotiators' candidate values.
 Even if all storage nodes happened to agree for a time, eventually some negotiator would come back in and change everything all over again.
 
-So instead, Paxos makes negotiators "back off" as soon as they discover another negotiator is winning.
+So instead, Paxos makes negotiators back off as soon as they discover another negotiator is winning.
 Thus when a winner starts to emerge, all other negotiators immediately fall in line to help it succeed.
-This is indeed a rather cordial negotiation :-)
+This process of negotiation is cordial indeed :-)
 
-To implement all this, the negotiation algorithm runs in a loop.
+The negotiation algorithm runs in a loop.
 Each iteration is called a **round**.
 During each round, each negotiator runs the following algorithm:
 
@@ -384,3 +381,10 @@ Coming up next, we'll depart from our metaphors and terminology and rebuild them
 
 To continue this discussion, head on over to: [Paxos II: Formalized](/paxos-2.html)
 
+
+---
+
+TODO
+
+After re-examining the flow of the posts, now I'm thinking we should finish building the basic algorithm before moving on.
+The next section can cover synod and beyond.

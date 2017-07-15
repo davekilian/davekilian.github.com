@@ -1,6 +1,6 @@
 ---
 layout: post
-title: "Paxos: Production-Ready Algorithms"
+title: Paxos Demo
 author: Dave
 draft: true
 ---

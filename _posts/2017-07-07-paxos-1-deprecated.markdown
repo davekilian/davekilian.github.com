@@ -1,6 +1,6 @@
 ---
 layout: post
-title: "Paxos: A Beginner's Guide"
+title: "Paxos: A Beginner's Guide [deprecated]"
 author: Dave
 draft: true
 ---

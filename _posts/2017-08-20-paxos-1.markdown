@@ -1,0 +1,89 @@
+---
+layout: post
+title: Paxos From Scratch
+author: Dave
+draft: true
+---
+
+The algorithm *Paxos* from distributed computing has a reputation for being difficult to learn and understand.
+This reputation isn't well-deserved, however; Paxos isn't much more difficult than to learn than Dijkstra's algorithm.
+It's true both Dijkstra and Paxos seem inscrutable if all you do is stare at code or proofs of correctness, but both are relatively easy to follow if you learn to think about the problem the same way the algorithm's designer did.
+
+In this series we'll derive Paxos from first principles.
+Along the way we'll build a mental framework for thinking about replication in distributed systems, and we'll see how Paxos is a direct result of that mental model.
+Finally, once we understand what we're doing, we'll build a simple Paxos implementation in [Go](https://www.golang.org).
+
+## Why Bother Learning Paxos?
+
+Paxos is useful for solving a particular problem in distributed systems design: replicating a small amount of information across many nodes.
+
+Paxos is entirely peer-to-peer, so it has no single point of failure.
+As long as a majority (at least $\frac{N}{2}+1$) of nodes are online, Paxos stays up and running.
+The only downside of Paxos is that it's inefficient, taking a long time and lots of network bandwidth to replicate information.
+This means Paxos is only suitable for use with a small amount of data.
+
+It turns out this makes Paxos a great fit for implementing a diverse array of distributed programming tools and techniques.
+Some examples include:
+
+**Locking and Leasing**: 
+Sometimes it's useful to give a node exclusive ownership over a resource.
+To make sure the node releases ownership even if it fails, a common approach is to grant the node a timed *lease*, giving the node exclusive access to the resource until a certain expiry time.
+Paxos is a natural choice for maintaining the table of active leases.
+
+**Sharding**:
+When storing a very large amount of data, a common technique it to break the dataset into chunks and assign each chunk to a particular node.
+This technique is called "sharding."
+When sharding a dataset, we need to maintain a table mapping shards to the nodes which host that shard.
+Paxos is a natural choice for maintaining this mapping table.
+
+**Failover**:
+In a system that employs sharding, it's common practice to replicate a shard across multiple nodes.
+Typically, a node called the "primary" handles requests for the shard, while one or more "secondary" nodes store backups of the shard's data.
+In the event the primary fails, a secondary can be promoted to the primary, and an unallocated node can be promoted to a new secondary to replace the failed node.
+Paxos is a natural choice for keeping track of primaries and secondaries.
+
+## How to Learn Paxos
+
+The best way to understand how Paxos works is to explore the problem and try to solve it.
+After all, as Paxos's creator once quipped:
+
+> _[Paxos] is among the simplest and most obvious of distributed algorithms. ... [T]his consensus algorithm follows almost unavoidably from the properties we want it to satisfy._
+> 
+> &mdash; [Paxos Made Simple](https://www.microsoft.com/en-us/research/publication/paxos-made-simple/), Lamport '01
+
+Learning the mental model behind Paxos is also useful for distributed system design in general.
+Understanding it requires understanding key techniques in distributed systems design, as well as gaining an intuitive understanding of how systems fail, and what approaches don't work as a result.
+
+To help build this mental model and explain Paxos at the same time, in this article we will derive Paxos from scratch.
+
+## TODO
+
+A simplified buildup:
+
+1. Most trivial case: one server does everything
+2. For failures, etc, would be nice to have *replication*
+3. Trivial replication: one master, many slaves
+4. Network unreliable, so master has to retry forever
+5. We want to promote a slave to a master if the master fails
+6. Assuming we can do that, network unreliable, leads to split brain
+7. Somehow have to handle multiple nodes that think they're 'masters'
+8. Master nodes ask a majority of slaves for current value, propagate latest
+9. Result: once the majority of slaves agree, masters keep propagating
+10. Result: a master which cannot reach a majority of slaves cannot progress
+11. But alas, this only works if you have a global synchronous clock for rounds
+12. Instead, use 'promises' to prevent the system from backtracking
+13. 'Warring proposers' problem, need to back off somehow
+
+I think we now have Synod?
+Reread the paper to be sure.
+I feel like I at least forgot to include something about learners.
+
+Post II will be the full Parliament algorithm.
+Make an endless list of decisions, keeping leadership stable via leases.
+
+Then, as a third post, using this as a general distributed state mechanism.
+Chubby lock service, stuff like that.
+Also shortcomings, like how to add or remove nodes.
+
+In the fourth post, a working demo.
+

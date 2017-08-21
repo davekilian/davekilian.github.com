@@ -1,6 +1,6 @@
 ---
 layout: post
-title: "Paxos: The Parliament"
+title: "Paxos: The Parliament [deprecated]"
 author: Dave
 draft: true
 ---

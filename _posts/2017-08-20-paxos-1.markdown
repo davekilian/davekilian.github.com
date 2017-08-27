@@ -5,56 +5,56 @@ author: Dave
 draft: true
 ---
 
-The algorithm *Paxos* from distributed computing has a reputation for being difficult to learn and understand.
-This reputation isn't well-deserved, however; Paxos isn't much more difficult than to learn than Dijkstra's algorithm.
-It's true both Dijkstra and Paxos seem inscrutable if all you do is stare at code or proofs of correctness, but both are relatively easy to follow if you learn to think about the problem the same way the algorithm's designer did.
+If you've opened a web browser today, chances are you've connected to at least one distributed system that uses Paxos.
+I can say this with confidence because Paxos is an extremely popular choice for solving a very common algorithm in distributed systems design.
 
-In this series we'll derive Paxos from first principles.
-Along the way we'll build a mental framework for thinking about replication in distributed systems, and we'll see how Paxos is a direct result of that mental model.
-Finally, once we understand what we're doing, we'll build a simple Paxos implementation in [Go](https://www.golang.org).
+Paxos's reputation precedes it, for being both confusing to learn and difficult to implement.
+This reputation isn't entirely fair: the paper in which Paxos was first published threw many readers by way of a humourous metaphor involving a fictional ancient government.
+(In fact, some of Paxos's initial reviewers thought Paxos was just a joke, and didn't realize the paper contained anything of import.)
 
-## Why Bother Learning Paxos?
+Lucky for us distributed systems programmers, Paxos is not too much more difficult to learn than Dijkstra's algorithm.
+There isn't really any part that's harder than Dijkstra; there's just more material to get through.
+To demonstrate this, in this post we will derive Paxos from scratch.
 
-Paxos is useful for solving a particular problem in distributed systems design: replicating a small amount of information across many nodes.
+This will prove an important point once and for all:
 
+> _[...Paxos] is among the simplest and most obvious of distributed algorithms. \[...\] This consensus algorithm follows almost unavoidably from the properties we want it to satisfy._
+> 
+> &mdash; [Paxos Made Simple](https://www.microsoft.com/en-us/research/publication/paxos-made-simple/), Lamport '01
+
+## Motivation
+
+Paxos is an algorithm which implements *distributed consensus*.
+What is consensus, and why should we care about algorithms which solve it?
+
+Consensus is a pretty simple concept.
+The idea is to synchronize instances of some program running across multiple networked computers, so that all instances share the same value for some variable.
+This variable could be anything, even a large data structure containing a whole database of useful information.
+
+Consensus is often used to build higher-level primitives.
+Typically, consensus is used to *replicate* the state of some node to other nodes, to guarantee there is no single point of failure.
+As long as state is always replicated, it's okay if the 'primary' node goes offline, as any 'secondary' node can take its place.
+
+In this way, consensus allows us to build central authorities into our distributed systems.
+This is good, because central authorities allow us to build a number of key higher-level primitives:
+
+* **Locking/Leasing**:
+  *Locking* a resource grants exclusive ownership over it to a single node.
+  *Leasing* a resource is the same as locking, except the lock also expires automatically after some amount of time.
+  A central authority is useful for tracking active locks/leases, and granting new ones for available resources.
+
+* **Sharding**:
+  *Sharding* a dataset splits it into chunks called *shards*, and assigns each shard to a different node.
+  A central authority is useful for tracking how the dataset has been split, and which nodes have been assigned which shards.
+
+In this way, consensus algorithms underpin many key primitives that are commonly used in distributed system design.
+
+Paxos is essentially the only algorithm used for implementing consensus in modern systems.
+That's because it's a great fit for many of these problems:
 Paxos is entirely peer-to-peer, so it has no single point of failure.
 As long as a majority (at least $\frac{N}{2}+1$) of nodes are online, Paxos stays up and running.
 The only downside of Paxos is that it's inefficient, taking a long time and lots of network bandwidth to replicate information.
 This means Paxos is only suitable for use with a small amount of data.
-
-It turns out this makes Paxos a great fit for implementing a diverse array of distributed programming tools and techniques.
-Some examples include:
-
-**Locking and Leasing**: 
-Sometimes it's useful to give a node exclusive ownership over a resource.
-To make sure the node releases ownership even if it fails, a common approach is to grant the node a timed *lease*, giving the node exclusive access to the resource until a certain expiry time.
-Paxos is a natural choice for maintaining the table of active leases.
-
-**Sharding**:
-When storing a very large amount of data, a common technique it to break the dataset into chunks and assign each chunk to a particular node.
-This technique is called "sharding."
-When sharding a dataset, we need to maintain a table mapping shards to the nodes which host that shard.
-Paxos is a natural choice for maintaining this mapping table.
-
-**Failover**:
-In a system that employs sharding, it's common practice to replicate a shard across multiple nodes.
-Typically, a node called the "primary" handles requests for the shard, while one or more "secondary" nodes store backups of the shard's data.
-In the event the primary fails, a secondary can be promoted to the primary, and an unallocated node can be promoted to a new secondary to replace the failed node.
-Paxos is a natural choice for keeping track of primaries and secondaries.
-
-## How to Learn Paxos
-
-The best way to understand how Paxos works is to explore the problem and try to solve it.
-After all, as Paxos's creator once quipped:
-
-> _[Paxos] is among the simplest and most obvious of distributed algorithms. ... [T]his consensus algorithm follows almost unavoidably from the properties we want it to satisfy._
-> 
-> &mdash; [Paxos Made Simple](https://www.microsoft.com/en-us/research/publication/paxos-made-simple/), Lamport '01
-
-Learning the mental model behind Paxos is also useful for distributed system design in general.
-Understanding it requires understanding key techniques in distributed systems design, as well as gaining an intuitive understanding of how systems fail, and what approaches don't work as a result.
-
-To help build this mental model and explain Paxos at the same time, in this article we will derive Paxos from scratch.
 
 ## TODO
 

@@ -22,7 +22,7 @@ ul.nav h4
 
 div.sidebar
 {
-    background-color:#eee; 
+    background-color:#f8f8f8;
     padding: 2em; 
     position: fixed; 
     right: 0px; 
@@ -54,7 +54,7 @@ div.post-blurb:hover
 
 div.post-container
 {
-    max-width: 650px;
+    max-width: 640px;
     margin-left: auto;
     margin-right: auto;
 }
@@ -66,15 +66,8 @@ div.post-date
 
 div.post-content
 {
-    font-family: "Merriweather", serif;
+    font-family: "Roboto Slab", "Merriweather", serif;
     font-size: 17px;
-    line-height: 30px;
-    font-weight: 100;
-}
-
-div.post-content strong, b
-{
-    font-weight: 700;
 }
 
 div.post-content h1,
@@ -82,9 +75,10 @@ div.post-content h2,
 div.post-content h3,
 div.post-content h4,
 div.post-content h5,
-div.post-content h6
+div.post-content h6,
+h1.post-title
 {
-    font-family: sans-serif;
+    font-family: "Roboto Slab", serif;
     text-align: center;
 }
 
@@ -104,7 +98,6 @@ div.post-content td
 body
 {
     font-size: 100%;
-    word-spacing: .12em;
 }
 
 p
@@ -121,7 +114,9 @@ li p
 
 blockquote
 {
-    border: 3px solid #eee;
+    border: 1px solid #ccc;
+    border-radius: 5px;
+    box-shadow: 0 .3em 0 #eee;
 }
 
 blockquote p
@@ -149,14 +144,15 @@ dd
 
 pre
 {
-    background-color: transparent;
-    border: none;
-    padding: 0 0 0 2em;
+    background-color: white;
+    border: 1px solid #ccc;
+    border-radius: 5px;
+    box-shadow: 0 .2em 0 #eee;
 }
 
 pre code
 {
-    font-size: 110%;
+    font-size: 14px;
 }
 
 blockquote

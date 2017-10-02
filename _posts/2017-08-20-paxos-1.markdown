@@ -1,64 +1,69 @@
 ---
 layout: post
-title: Paxos From Scratch
+title: Learning Distributed System Design with Paxos
 author: Dave
 draft: true
 ---
 
-If you've opened a web browser today, chances are you've connected to at least one distributed system that uses Paxos.
-I can say this with confidence because Paxos is an extremely popular choice for solving a very common algorithm in distributed systems design.
+The modern distributed systems programmer has a glut of tools to choose from, thanks to decades of research and development that have been fueled by seemingly never-ending growth in the Internet and the cloud.
+Many distributed systems engineers do great work just by learning these tools and combining them into fully-functioning solutions.
+The very best engineers prefer to know the inner workings of their tools, in order to best play to each tool's strengths and avoid its weaknesses.
 
-Paxos's reputation precedes it, for being both confusing to learn and difficult to implement.
-This reputation isn't entirely fair: the paper in which Paxos was first published threw many readers by way of a humourous metaphor involving a fictional ancient government.
-(In fact, some of Paxos's initial reviewers thought Paxos was just a joke, and didn't realize the paper contained anything of import.)
+If you're interested in learning how many distributed programming tools work, or how to design your own, there's no better place to start than learning the inner workings of Paxos.
+Designing and implementing Paxos exemplifies many of the problems distributed systems designers face day-to-day, along with many techniques commonly used for solving them.
+Paxos is also extremely popular across the industry, especially in distributed storage and databases, so if you're interested in the subject you'll likely need to learn it sooner or later anyway.
 
-Lucky for us distributed systems programmers, Paxos is not too much more difficult to learn than Dijkstra's algorithm.
-There isn't really any part that's harder than Dijkstra; there's just more material to get through.
-To demonstrate this, in this post we will derive Paxos from scratch.
+In this blog series, we'll derive Paxos from first principles.
+Unlike many existing derivations, this one will be engineering-focused: instead of verbose specifications and exacting proofs of correctness, we'll concentrate on motivation, understanding, and real-world practices and techniques.
+Our goal will be less to provide a ready-made implementation of Paxos, and more to give you a taste of distributed programming problems and solutions.
 
-This will prove an important point once and for all:
+If you've heard of Paxos before, you probably know of its reputation for being complex, hard to understand, and tricky to implement, which would make it an odd choice to use for use in an introductory-level text.
+Rather than subjecting the reading to a trial by fire, however, we aim to demonstrate that Paxos is really not so complicated a solution to arrive at, at least once you have the right mindset and toolbox.
+After all, Lamport himself claims that
 
 > _[...Paxos] is among the simplest and most obvious of distributed algorithms. \[...\] This consensus algorithm follows almost unavoidably from the properties we want it to satisfy._
 > 
 > &mdash; [Paxos Made Simple](https://www.microsoft.com/en-us/research/publication/paxos-made-simple/), Lamport '01
 
-## Motivation
+So without further ado, let's begin!
 
-Paxos is an algorithm which implements *distributed consensus*.
-What is consensus, and why should we care about algorithms which solve it?
+## A Brief History
 
-Consensus is a pretty simple concept.
-The idea is to synchronize instances of some program running across multiple networked computers, so that all instances share the same value for some variable.
-This variable could be anything, even a large data structure containing a whole database of useful information.
+Despite the number of tools and techniques that have evolved over the years, distributed system design still largely rests on many of the same theoretical foundations that were laid decades ago.
+One of the chief among those is the distributed consensus algorithm Paxos.
 
-Consensus is often used to build higher-level primitives.
-Typically, consensus is used to *replicate* the state of some node to other nodes, to guarantee there is no single point of failure.
-As long as state is always replicated, it's okay if the 'primary' node goes offline, as any 'secondary' node can take its place.
+Paxos was originally developed by the distributed systems researcher Leslie Lamport in the late 1980s/early 1990s.
+Lamport tried to publish it in 1990 in his paper [The Part-Time Parliament](TODO), but was unsuccessful in doing so.
+Few researchers at the time understood the paper and its relevance, in no small part because of the format Lamport used.
+By describing his algorithm as if it were invented in ancient times by a fictional government on the Greek island of Paxos, Lamport made the algorithm more approachable, but its relevance to the field more obscure.
+It took nearly a decade and the implementation of several Paxos-based systems for the paper to finally be reviewed, accepted, and published in 1998.
+It has since become one of the field's most famous results.
 
-In this way, consensus allows us to build central authorities into our distributed systems.
-This is good, because central authorities allow us to build a number of key higher-level primitives:
+A few years later, Lamport published [Paxos Made Simple](TODO), which describes the same algorithm without the Greek allegory, instead opting for a simpler, more direct approach.
 
-* **Locking/Leasing**:
-  *Locking* a resource grants exclusive ownership over it to a single node.
-  *Leasing* a resource is the same as locking, except the lock also expires automatically after some amount of time.
-  A central authority is useful for tracking active locks/leases, and granting new ones for available resources.
+In the intervening years, Paxos has become ubiquitous across the industry.
+Most distributed storage / database engines incorporate in their implementation Paxos or a Paxos-based algorithm.
 
-* **Sharding**:
-  *Sharding* a dataset splits it into chunks called *shards*, and assigns each shard to a different node.
-  A central authority is useful for tracking how the dataset has been split, and which nodes have been assigned which shards.
+More recently, in 2013, Ongaro and Ousterhout published [Raft](https://ramcloud.stanford.edu/wiki/download/attachments/11370504/raft.pdf), a reimagining of Paxos aimed at addressing some of the algorithm's complexities and making it easier to understand and reason about.
+Raft has recently been picking up steam as a possible successor to Paxos, replacing it in several distributed system courses at well-known universities and in a few production systems.
 
-In this way, consensus algorithms underpin many key primitives that are commonly used in distributed system design.
+## The Consensus Problem
 
-Paxos is essentially the only algorithm used for implementing consensus in modern systems.
-That's because it's a great fit for many of these problems:
-Paxos is entirely peer-to-peer, so it has no single point of failure.
-As long as a majority (at least $\frac{N}{2}+1$) of nodes are online, Paxos stays up and running.
-The only downside of Paxos is that it's inefficient, taking a long time and lots of network bandwidth to replicate information.
-This means Paxos is only suitable for use with a small amount of data.
+Paxos implements a solution to *distributed consensus*, one of the foundational problems of implementing a distributed system.
+Distributed consensus can be summarized as thus: given a network of nodes running instances of a program, how can all the instances of the program agree on the value of a variable?
+A consensus algorithm is a useful primitive in the distributed systems designer's toolbox: if you can solve consensus well, you can use that to implement more useful higher-level tools.
+
+---
 
 ## TODO
 
-A simplified buildup:
+Take a look at the older content below and refine our plan for deriving the algorithm.
+Along the way, look out for techniques that need to be discussed separately.
+Then come up with a final order of topics.
+
+The old stuff:
+
+Build as follows:
 
 1. Most trivial case: one server does everything
 2. For failures, etc, would be nice to have *replication*

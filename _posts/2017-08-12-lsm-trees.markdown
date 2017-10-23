@@ -1,0 +1,57 @@
+---
+layout: post
+title: LSM Trees
+author: Dave
+draft: true
+---
+
+Brain dump:
+We can probably design this thing for first principles. Something like the following.
+
+We have some kind of journal or log to which we only append.
+
+We also want to build an index over the log. That is, we want a tree of pointers into the log, in order to quickly find the entry or entries we're looking for. Because reasons, this index needs to be kept up to date constantly. Also because of reasons, say the index is constantly being appended to, but is searched much less frequently.
+
+This might seem kind of contrived, but it turned out to be much more general than the original authors foresaw. People realized that you could build a database/file system entirely around the technique of having a log and an index over that log. Then people realized if you did this, you could make this into a distributed database with easy-to-write performant code for data replication. Now this technique underlies many real distributed database systems, including BigTable, Cassandra, Azure Storage, to do others?
+
+Until we successfully build the data structure we wanted, we will assume the system never crashes. We'll come back to crashes and crash recovery at the end of the article.
+
+Building this index is pretty easy to start out. Just allocate some heap space and build a binary tree. Or your favorite other type of tree.
+
+Eventually we'll run into problems scaling this. Say the log now grows so large the index cannot fit only in RAM. Now things get a lot trickier all of a sudden.
+
+Writing to disk is very slow compared to writing to memory. We said the index needs to always be up to date, but if we have to go update the index on disk every time we get a write command, write throughout will greatly suffer.
+
+A solution to this problem: amortize the disk writes. That is, batch up a bunch of new log writes in memory, and write them all out to disk in one go.
+
+How many writes to we cache before writing out to disk? That's some basic math. Look at the rate writes are coming into memory, and look at the disks write speed. The break even point gives the number of writes to batch
+
+The next problem: if we need to write parts of our tree to disk, how should we structure the disk section of the tree? The disk being slow is also makes this tricky.
+
+An obvious answer from the study of file systems is the b-tree. See Wikipedia for a great overview of b-trees and how they work.
+
+The nice thing about a b-tree is they require few disk operations per insert. If your node can accommodate 20 children, the number of node updates needed to insert an item in the worst case is log_20(the current size of the tree).
+
+However, if we implement this and profile it, we'll soon discover another big problem: although you don't need to update many nodes when updating a b-tree, updating those nodes requires random seeks on disk, and seeks are incredibly slow (get some real numbers to back this up)
+
+So the next question becomes, can we further reduce how often we need to seek on disk when we flush the memory tree out to the disk tree?
+
+Observation: in any b-tree that is relatively full, the vast majority of the nodes in the tree are at the leaves. (Motivate the math which makes this converge to (N-1)/N, then for real numbers like breadth=10, 90% of nodes are at the leaves, and for breadth=100, 99% are at the leaves)
+
+So it stands to reason we don't need to store the internal nodes of the b-tree on disk; there won't be too many of them at all. Instead we can keep the internal nodes in memory, and the leaves on disk. That should remove the burden of updating the b-tree on disk, as now the only thing we must write to disk is the leaf, which is just one write.
+
+To review, now we have two trees in memory: a "new data" tree based on some write performance-optimized data structure, containing new data that is not yet on disk, and a "disk index" tree that's space-optimized and points to disk sectors. The disk itself just contains arrays of leaf nodes that write out in batches.
+
+That's pretty much optimal in terms of removing disk seeks during writes. However, we still need to worry about disk seeks during reads. If we're not careful about how we write out leaf arrays to disk, we can end up with highly fragmented streams that are hard to search.
+
+To reduce read seeks, want to keep the on disk lead array sorted. Since the "new data" memory tree is also sorted, an obvious way to do this is to build a new leaf array using the "merge step" of the merge sort algorithm (that is, zip the two sorted subarrays together into one sorted final array). After zipping, write the new leaf array to a new contiguous region in disk, without overwriting anything, and then update the "disk index" tree in memory. Then we can drop the old leaf array on disk.
+
+We can't afford to rewrite the whole tree every time we flush changes from memory to disk; but we can do so in batches on every flush. Start at the left end of the tree and merge N disk nodes with N memory nodes to create a new 2N-node extent. Next time, merge the next N disk nodes with the next N memory nodes to create another 2N-node extent. Eventually, when you complete the tree, go back to the beginning and start again. The LSM paper calls this a rolling merge.
+
+Motivate this reduces read seeks and write seeks for the index.
+
+A nice side effect of this is it provides a natural way to garbage collect stale nodes and remove deleted data. When we complete a full rolling merge, all old extents are no longer in use, and we can reuse that space for new extents. Any deleted nodes are simply not added to new extents during the merge steps, so after a complete rolling merge all deleted nodes are gone.
+
+Then introduce crashing and recovery, still need to read about this.
+
+Finally, bring it back to distributed systems.

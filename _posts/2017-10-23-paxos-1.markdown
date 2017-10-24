@@ -5,19 +5,20 @@ author: Dave
 draft: true
 ---
 
-The modern distributed systems programmer has a glut of tools to choose from, thanks to decades of research and development that have been fueled by seemingly never-ending growth in the Internet and the cloud.
-Many distributed systems engineers do great work just by learning these tools and combining them into fully-functioning solutions.
-The very best engineers prefer to know the inner workings of their tools, in order to best play to each tool's strengths and avoid its weaknesses.
+The modern distributed systems programmer has no shortage of tools to choose from!
+As these tools mature and best practices are established, it's becoming easier for developers to build their products just by learning these tools and combining them.
+Nonetheless, there's no substitute for a deep intuitive understanding of how your tools work internally.
+By knowing the inner workings of your tools, you can best play to each tool's strengths and weaknesses, and greatly speed up development and debugging.
 
-If you're interested in learning how many distributed programming tools work, or how to design your own, there's no better place to start than learning the inner workings of Paxos.
-Designing and implementing Paxos exemplifies many of the problems distributed systems designers face day-to-day, along with many techniques commonly used for solving them.
-Paxos is also extremely popular across the industry, especially in distributed storage and databases, so if you're interested in the subject you'll likely need to learn it sooner or later anyway.
+If you're interested in learning how distributed programming tools work internally, or how to design your own, I think there's no better place to start than to learn the inner working of Paxos.
+Trying to solve the problem Paxos solves exposes you to a lot of common problems distributed developers face every day, and the techniques Paxos employes to solve them are more general than Paxos itself.
+On top of that, Paxos is popular and well known, so it doesn't hurt to have it under your belt.
 
 In this blog series, we'll derive Paxos from first principles.
 Unlike many existing derivations, this one will be engineering-focused: instead of verbose specifications and exacting proofs of correctness, we'll concentrate on motivation, understanding, and real-world practices and techniques.
 Our goal will be less to provide a ready-made implementation of Paxos, and more to give you a taste of distributed programming problems and solutions.
 
-If you've heard of Paxos before, you probably know of its reputation for being complex, hard to understand, and tricky to implement, which would make it an odd choice to use for use in an introductory-level text.
+If you've heard of Paxos before, you may have the impression Paxos is complex, hard to understand, and tricky to implement, which would make it an odd choice to use for an introduction to distributed systems design.
 Rather than subjecting the reading to a trial by fire, however, we aim to demonstrate that Paxos is really not so complicated a solution to arrive at, at least once you have the right mindset and toolbox.
 After all, Lamport himself claims that
 
@@ -32,63 +33,107 @@ So without further ado, let's begin!
 Despite the number of tools and techniques that have evolved over the years, distributed system design still largely rests on many of the same theoretical foundations that were laid decades ago.
 One of the chief among those is the distributed consensus algorithm Paxos.
 
-Paxos was originally developed by the distributed systems researcher Leslie Lamport in the late 1980s/early 1990s.
+Paxos was originally created by the distributed systems researcher Leslie Lamport in the late 1980s/early 1990s.
 Lamport tried to publish it in 1990 in his paper [The Part-Time Parliament](TODO), but was unsuccessful in doing so.
-Few researchers at the time understood the paper and its relevance, in no small part because of the format Lamport used.
-By describing his algorithm as if it were invented in ancient times by a fictional government on the Greek island of Paxos, Lamport made the algorithm more approachable, but its relevance to the field more obscure.
-It took nearly a decade and the implementation of several Paxos-based systems for the paper to finally be reviewed, accepted, and published in 1998.
-It has since become one of the field's most famous results.
+At the time few reviewers understood the significance of the paper and what it had accomplished.
+To their credit, it was probably hard for them to be sure whether the paper was meant to be taken seriously in the first place: Lamport chose to write his paper as if the narrator were an archaeologist uncovering the workings of an ancient government unearthed on the Greek island of Paxos.
+The reader was meant to make the leap that the proceedings of this parliament were in fact the algorithm that Lamport was describing, and that the unique 'challenges' the government faced were the same ones faced by distributed systems today.
 
-A few years later, Lamport published [Paxos Made Simple](TODO), which describes the same algorithm without the Greek allegory, instead opting for a simpler, more direct approach.
+Nearly a decade later, the paper was reviewed, accepted, and finally published in 1998.
+It has since become one of the field's most famous results.
+Only a couple years after that, Lamport published [Paxos Made Simple](TODO), which describes the same algorithm without the Greek allegory, instead opting for a simpler, more direct approach, in an attempt to amend some of the confusion caused by the original paper's presentation.
 
 In the intervening years, Paxos has become ubiquitous across the industry.
-Most distributed storage / database engines incorporate in their implementation Paxos or a Paxos-based algorithm.
+If you've been on the Internet today, chances are you've interacted with some system which is based on or uses Paxos in some way.
 
 More recently, in 2013, Ongaro and Ousterhout published [Raft](https://ramcloud.stanford.edu/wiki/download/attachments/11370504/raft.pdf), a reimagining of Paxos aimed at addressing some of the algorithm's complexities and making it easier to understand and reason about.
 Raft has recently been picking up steam as a possible successor to Paxos, replacing it in several distributed system courses at well-known universities and in a few production systems.
+That said, it has not yet been able to replace Paxos entirely, especially in systems that were designed before Raft started gaining prominence.
 
-## The Consensus Problem
+## The Problem Statement
 
-Paxos implements a solution to *distributed consensus*, one of the foundational problems of implementing a distributed system.
-Distributed consensus can be summarized as thus: given a network of nodes running instances of a program, how can all the instances of the program agree on the value of a variable?
-A consensus algorithm is a useful primitive in the distributed systems designer's toolbox: if you can solve consensus well, you can use that to implement more useful higher-level tools.
+Paxos solves *distributed consensus*, a key problem that comes up fairly frequently in distributed systems design.
+Consensus is roughly summarized as follows:
+
+> Say I have multiple instances of the same program running on multiple computers in parallel.
+> Each instance of the program has an instance of some variable, which is usually in sync across the network.
+> However, for various reasons the programs have fallen out of sync and no longer agree on the value of that variable.
+> <br><br>
+> How can I bring the programs back in sync?
+
+That problem statement might sound contrived: if the programs were already in sync, how could they have fallen out of sync?
+Clearly that's a bug, why wouldn't we just fix it?
+
+The problem is that finding and fixing every way a system can fail is a task that can never be completed.
+Failures creep into distributed systems from all sides:
+software developers are fallible, and all software has bugs;
+hardware fails, often because of the laws of themodynamics;
+systems operators make mistakes;
+and even if everyone could somehow do these jobs perfectly, there are still external factors that can't be avoided (high energy ions from outer space can scramble hard drive sectors; natural disasters can bring down entire datacenters).
+
+If we can't go find and fix every source of failures in our system, the next best thing we can do is automatically detect and mitigate failures.
+That's what the consensus problem is all about: if we need a group of nodes to always agree on the value of some variable, but due to failures some of the nodes have fallen out of sync, we need a way to figure out how to bring the nodes back in sync.
+Paxos is a tool for doing just that.
+
+## No Shortcuts
+
+When faced with solving a hard problem, it's often worth checking whether you can't instead work around it.
+If the problem is that nodes can get out of sync, why not just store the consensus variable on just one node?
+If there's only one copy of the variable in the network, then nothing can get out of sync, so there's no consensus problem to need solving!
+
+In more detail, say we designed a client/server architecture for managing the consensus variable:
+
+* Make one node the **server**, in charge of storing it and telling other nodes its value.
+* Make all the other nodes **clients**, which query the server for the value of the consensus variable whenever needed.
+
+Although clever, this architecture has a couple of major drawbacks.
+
+First, **the server is a single point of failure.**
+If the server crashes, none of the remaining nodes can get the current value of the consensus variable, so the whole system halts.
+Since we previously established that failures are common, we would like for the system to be able to continue running even if a couple of nodes fail.
+
+Second, **the server is a bottleneck.**
+If the central authority reaches its limits and is answering as many queries per second as it can, there's no way to increase the throughput of the entire system.
+Usually, when we design a distributed system, we want it to be able to handle more requests per second if we add more nodes to the network.
+
+Sadly, the only way to address either of these concerns is to store copies the consensus variable on more than one node.
+Doing this reintroduces the possibility that nodes can get out of sync, which reintroduces the consensus problem.
 
 ---
 
 ## TODO
 
-Take a look at the older content below and refine our plan for deriving the algorithm.
-Along the way, look out for techniques that need to be discussed separately.
-Then come up with a final order of topics.
+Continue building as follows:
 
-The old stuff:
+Since anyone can go down, clearly we need to replicate a value to all peers.
+So if you have a value, tell all the peers you can contact your preferred value.
 
-Build as follows:
+The network is not reliable, so we're going to have to repeat this on a loop.
 
-1. Most trivial case: one server does everything
-2. For failures, etc, would be nice to have *replication*
-3. Trivial replication: one master, many slaves
-4. Network unreliable, so master has to retry forever
-5. We want to promote a slave to a master if the master fails
-6. Assuming we can do that, network unreliable, leads to split brain
-7. Somehow have to handle multiple nodes that think they're 'masters'
-8. Master nodes ask a majority of slaves for current value, propagate latest
-9. Result: once the majority of slaves agree, masters keep propagating
-10. Result: a master which cannot reach a majority of slaves cannot progress
-11. But alas, this only works if you have a global synchronous clock for rounds
-12. Instead, use 'promises' to prevent the system from backtracking
-13. 'Warring proposers' problem, need to back off somehow
+Since a node can go down and come back up, we need some kind of round system to prevent old values from coming back to life.
+Values in later rounds beat values in earlier rounds.
+So if you don't have a value and some peers tell you their values, adopt the one from the latest round.
 
-I think we now have Synod?
-Reread the paper to be sure.
-I feel like I at least forgot to include something about learners.
+What if you already do have a value? 
+Obviously you have to be able to change your mind, or the system will never converge.
+And you can't always change your mind, because the system can converge and subsequently unconverge.
 
-Post II will be the full Parliament algorithm.
-Make an endless list of decisions, keeping leadership stable via leases.
+Here's Paxos's clever trick: don't pick any value until you've gotten votes from a majority of your peers.
+Once you've heard back from a majority of your peers, pick the value from the latest round like we already said
+(this might mean abandoning your current value).
 
-Then, as a third post, using this as a general distributed state mechanism.
-Chubby lock service, stuff like that.
-Also shortcomings, like how to add or remove nodes.
+Example execution / "demonstration by induction" rather than a proof showing that works.
+Also the "two majorities must overlap by at least one node" principle.
 
-In the fourth post, a working demo.
+Come up with a good way to motivate in the mechanic of "promising" not to select a value from any earlier round
+
+Introduce the "warring proposers" problem and introduce the idea of leader election.
+Natural question to answer: why couldn't we just use this with master/slave replication and be done?
+
+At this point we have Synod, and can move on to full / multi-round Paxos.
+
+Analysis of runtime, expensive in terms of message passing $O(N^2)$
+
+Epilogue about what kinds of things you can use this for.
+Lease-based locking is one, sharding is another.
 

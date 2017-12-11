@@ -54,7 +54,7 @@ div.post-blurb:hover
 
 div.post-container
 {
-    max-width: 800px;
+    max-width: 630px;
     margin-left: auto;
     margin-right: auto;
 }
@@ -66,8 +66,10 @@ div.post-date
 
 div.post-content
 {
-    font-family: "Roboto Slab", "Merriweather", serif;
-    font-size: 17px;
+    font-family: "Roboto Slab", serif;
+    font-size: 16px;
+    font-weight: 400;
+    -webkit-font-smoothing: antialiased;
 }
 
 div.post-content h1,
@@ -78,8 +80,20 @@ div.post-content h5,
 div.post-content h6,
 h1.post-title
 {
-    font-family: "Roboto Slab", serif;
+    font-family: "Roboto", sans-serif;
+    font-weight: 700;
     text-align: center;
+}
+
+div.post-content h1,
+h1.post-title
+{
+    font-size: 40px;
+}
+
+div.post-content h2
+{
+    font-weight: 700
 }
 
 div.post-content table

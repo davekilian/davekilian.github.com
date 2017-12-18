@@ -1,14 +1,14 @@
 ---
 layout: post
-title: "\"Best Practices\" Sometimes Aren't"
+title: "The Trouble with \"Best Practices\""
 author: Dave
 ---
 
-Best practices are common learnings distilled into simple steps you can take to make your code better.
-But they're no substitute for thinking before you code :-)
+Learning and implementing best practices is an essential step to getting to know a new programming language/framework/etc.
+In general, best practices get you better results faster, and with less hassle; however, they're no no substitute for thinking before you code :-)
 
-It might seem surprising, but so-called "common sense" rules can lead to trouble if followed thoughtlessly.
 To apply a best practice, it's important to remember what makes that practice best, and decide whether that really applies to the situation at hand.
+Otherwise, thoughtlessly following so-called "common sense" rules can lead to trouble.
 
 In this post we'll take a look at one of the more universal best practices in programming: naming literal values with constants.
 We'll see how even the lowly constant can cause more harm than good.

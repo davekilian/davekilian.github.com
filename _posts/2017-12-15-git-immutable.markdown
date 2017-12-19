@@ -5,7 +5,7 @@ author: Dave
 draft: true
 ---
 
-For how popular a tool Git is, we sure don't seem to understand it very well!
+For such a popular tool, we sure don't seem to understand Git very well!
 
 Beginners routinely have trouble getting Git to work smoothly, and even more advanced users stumble from time to time.
 Most developers who have used Git extensively for any reasonable period of time have had the experience of trying to do something straightforward, only to find the repo in such a weird state that it almost seemed simplest to just delete the whole thing and start over.
@@ -23,35 +23,50 @@ Once you understand this, you'll never need to blow away your repo again!
 
 ## Git in a Nutshell
 
-As previously mentioned, Git works in an unintuitive way.
+When you work with version control systems, you're constantly dealing with diffs:
 
-Programmers generally think of their source control system as a database of "diffs."
-That is, you generally think of your source control as a linear history of changes, each of which added or removed some lines of code on top of what was previously checked in.
-What makes Git odd is that it doesn't work like this; instead, each commit in Git is actually a snapshot of your entire source tree!
+* You diff your code versus the checked-in state to see what you've changed
+* When you're done with a change, you check it in to make it permanent
+* To understand the history of a file and how it was authored, you check the list of changes that have been made to that file over its lifetime
 
-To make that point a little clearer, imagine the act of cloning the repository.
-As part of that, we'll need to copy the latest state of the source code to your local disk, so you can edit it.
+Given the above, it's natural to assume version control systems work by internally storing a database of diffs, which can be replayed to reconstruct the current state of any file in the repository on-the-fly.
+Indeed, there are many version control systems that do work this way.
 
-With an "intuitive" source control manager, the algorithm for doing so would be something like this:
+However, Git, in its typical fashion, does almost the exact opposite of that.
+Instead of storing diffs that can be replayed to construct a snapshot, Git stores snapshots, which can be diffed on-the-fly as needed.
 
-> *Start with an empty directory.
-> Then, walk the changes in the history from oldest to newest, each time applying that change to the directory.
-> The end result is the current state of the repo.*
+The basic unit of state in Git is called a commit.
+A commit sounds similar in concept to a "change," "changelist" or "changeset" from a traditional version control system, but don't be fooled:
+a Git commit is not a set of changes, but rather a complete snapshot of your entire repo at the time the commit was made.
 
-With Git, the algorith is instead much simpler:
+To organize commits into a logical "history," each commit has a pointer to its "parent" commit.
+A commit's parent commit stores a complete snapshot of the repo from before the new commit was created.
+As such, if you have a commit, you can walk backwards in time by following each commit's parent pointer recursively.
+Eventually you'd reach the repo's initial commit, which has no parent commit.
 
-> *Look up the latest commit, and then copy the contents of the commit to the local directory.*
+It's perfectly valid and pretty normal for more than one commit to point to the same parent commit.
+It's also valid for a commit to have more than one parent commit!
+The former typically happens when two changes are authored in parallel; the latter typically happens when those two commits are merged together.
 
-The Git algorithm works because it stores snapshots of your files, not diffs.
+Even though you can walk commits backward in time, you cannot walk commits forward in time.
+That is, commits have pointers to their parents, but they do not have pointers to their children.
+To view the repo's history, your only option is to start with the latest commit and walk backwards in time.
 
-None of this is to say Git doesn't use diffs at all; when you're working with Git day to day, you generate and view diffs all the time.
-The important point to keep in mind is that, whenever Git gives you a diff between something and something else, that diff was generated on-the-fly.
-For example, if you diff two commits, Git just looks at the contents of each commit (since each commit is a snapshot of your entire working tree) and compares the contents to generate a diff.
+Git provides branches for tracking these latest commits with a well-known name.
+Internally, each branch is nothing more than a pointer to a commit.
+When you run `git log` for a branch, Git starts at the commit the branch points to and walks backward in time until it reaches the repo's initial commit.
 
-To combine commits into a history, each commit has a pointer to its 'parent' commit.
-By convention, the parent commit should be the commit on top of which this commit was authored; thus, if I diff a commit vs its parent commit, the result should be the changes introduced by that commit.
+If you grok all of the above, then congratulations!
+You understand almost everything you need to know in order to work with Git effectively.
+Without further ado, we'll move on the tools you'll find useful for getting out of trouble.
 
-## Basic Operations
+## Resetting
+
+## Rebasing
+
+## Cherry-Pick
+
+## The Reflog
 
 ## The Big Hammer
 

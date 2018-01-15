@@ -1,6 +1,6 @@
 ---
 layout: post
-title: "The Trouble with \"Best Practices\""
+title: Trouble with Best Practices
 author: Dave
 ---
 

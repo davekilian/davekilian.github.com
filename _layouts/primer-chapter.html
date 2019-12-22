@@ -9,6 +9,12 @@ layout: default
         <div class="post-content">
             {{ content }}
         </div>
+        {% if page.istoc == false %}
+        <div class="hidden-print">
+            <hr />
+            <a style="font-size: 150%" href="/primer">Back to Book Index</a>
+        </div>
+        {% endif %}
     </div>
 </div>
 

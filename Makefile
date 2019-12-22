@@ -1,4 +1,4 @@
 
 all :
-	/bin/bash -c "rvm all do jekyll build"
+	/bin/bash -c "jekyll build"
 

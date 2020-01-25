@@ -1,41 +1,62 @@
 ---
 layout: post
-title: How Storage Systems Work
+title: Storage, for Mortals
 author: Dave
 draft: true
 ---
 
-> Front matter and motivation
+*Never roll your own database* is good advice, but one downside of telling people never to roll their own storage systems is people coming to think they shouldn't roll their own because they can't &mdash; that there must be something mysterious and arcane about building these systems that only a few select individuals could ever hope to build one.
+
+Lucky for us, that's not true!
+
+Databases, file systems and the like are designed by engineers just like you and me, using concepts you've probably already learned in a college-level introductory course on data structures and algorithms. My goal with this blog is to convince you of this by showing you the basic chain of reasoning that leads you to more or less the state of the art in databases, file systems and so on.
+
+If these systems are simple enough we can cover them in a blog post, you might ask, why not roll your own The main answer is time: a common rule of thumb is that is takes 10 years to stabilize a file system or database such that it's optimally fast and also bug-free. But the hard part isn't so much the high level design as the low-level implementation; mostly what makes storage hard is that multithreading is hard.
+
+So, let's design some storage systems!
 
 ## The Key Problem
 
-> Hint: it's not storing data (hardware does a fine job of that already). Software just needs to funnel data and not 'get in the way' of hardware
->
-> The key challenge is efficiently finding data - a client provides an identifier, the system finds the data for that identifier and returns it. This must be efficient.
->
-> In other words, storage is actually a search problem. The write algorithm aims to (efficiently) set up for reads (to also be efficient)
->
-> Think of all storage systems as fundamentally key/value mappings. All storage systems have keys, but sometimes the key is heavily disguised
->
-> * Want to load a web page? You need to provide its URL
-> * Want to read a file? You need to provide the file's path
-> * When to read from memory? You need to provide the memory's address
-> * Want to read a row from a database? You need the row's key
-> * And so on
->
-> All storage systems need keys because you can't deal with all the data all the time. Keys allow you to amplify knowledge: if have a small piece of information (a key) you can obtain a larger piece of information (a record). The record might have additional keys you can use to learn more.
->
-> With this design, a storage system is just a key/value mapping
+Beware: the title of this section is a (dumb) pun.
+
+Ironically, the hard part about designing a sotrage system isn't storing data; hardware does a pretty fine job of that already, and in software, our main job is to funnel the data to the hardware and not get in the way.
+
+The hard part is retrieval &mdash; getting the data out of hardware is just about as easy as getting the data into hardware in the first places, but first *finding* the data the user asked for is hard.
+
+In other words, storage is a search problem.
+
+In pretty much every storage system that has ever existed, all stored data is identified by some sort of key: the client presents a key to the storage system, the storage system does 'something' to figure out where in hardware the data is being stored, and the data asks the hardware to retrieve the data so it can be returned to a client. The 'something' is essentially a search over a key/value mapping.
+
+A lot of systems disguise the key, but if you look closely enough at a system that stores and retrieves data, you'll usually find something that looks a lot like a key:
+
+* Want to load a web page? You need to provide its URL (a key)
+* Want to read a file? You need to provide the file's path (a key)
+* Want to read from memory? You need to provide an address (a key)
+* Want to read from a database? You need to provide a primary key (... obviously a key!)
+
+In all of these systems, the key (or key-like thing) is an identifier for one and only one resource/record/etc. Each of these systems provides a query operation that, given a key, returns the resouce identified by that key.
+
+Keys pop up in all storage systems because you can't deal with all the data all the time (if you could, you wouldn't need the storage system in the first place). Keys allow the system's user to 'amplify' knowledge: if the client knows a small piece of information about something (a key), the client can provide it to the storage system to learn more about that thing (a record). This record might have additional keys the client can query the storage system about to learn more about related things.
+
+So storage is basically a search problem over a key-value map data structure. Every storage system provides a write operation, which puts a new key/value pair in this map, and a read operation, which given a key returns the corresponding value by searching this map. The write algorithm aims to (efficiently) set up for reads (to also be efficient).
 
 ## Optimizing and Tradeoffs
 
-> Optimization: you have complete controls of your data structures and algorithms, none over the client workload (the pattern of read and write requests generated by a client). Many strategies for optimizing: it's hard, tradeoffs can be subtle! 
->
-> Metrics you want to optimize for: latency (more properly, response time) measured in milliseconds (1/1000th) or microseconds (1 millionth); throughput, measured either in operatios per second or bytes per second. Maybe mention OLTP (latency/IOPS focused) vs OLAP (bandwidth focuoed)
+But what does "efficient" mean?
 
-## Data Strutures for Storage
+It might mean that read and write requests complete with low **latency**. Latency colloquially refers to the time that elapses between two events. In storage, those two events are usually a request starting and that request completing: so a request latency measures how long the system took to execute the request.
 
-> What we're trying to do is built a key-value map data structure stored on disks. What are some mapping data structures we already know?
+Or, "efficient" might refer to how much **throughput** the system provides. Throughput is kind of the inverse of latency: in a given amount of time, how much can the system do? You might measure throughput as a number of requests executed per second (often labeled "I/O Operations Per Second" or "IOPS") or as the number of bytes transferred to/from the client per second.
+
+In practice, "efficient" usually means a combination of these things. As a system nears its throughput limits, request latency tends to go up, because a system nearing its throughput limits must queue some requests, each request waiting for some other requests to complete, driving up latency. So from a user's perspective, "efficient" usually means providing reasonably low latency at the level of throughput the user intends.
+
+We, the designers of the storage system, usually start out by defining a target latency at a target throughput and optimize from there. We have complete control over our map data structure and algorithms, but no control over the client, who can issue any pattern of read and write requests at any rate, often concurrently.
+
+As we'll soon see, there are a lot of tricks we can use to optimize our data structures and algorithms, but most optimizations are tradeoffs that make the system good at certain request patterns at the expense of being worse at other patterns. For storage system designers, this means making assumptions about how the client will use the system; for clients, this means choosing a system that optimizes for the request pattern the client intends to use. And sometimes, there is no system optimized for the client's workload: that's when it's time to roll your own storage system!
+
+## Map Data Strutures
+
+So now we know a storage system is a key-value map data structure stored on disk. What are some map structures we already know?
 
 ### Hash Tables
 
@@ -45,7 +66,7 @@ draft: true
 
 
 
-### Maps for Disks
+## Maps for Disks
 
 > Disks provide the same basic interface to the computer as memory does: an array of bytes:
 >

@@ -1,19 +1,21 @@
 ---
 layout: post
-title: Storage, for Mortals
+title: Storage (for Mortals)
 author: Dave
 draft: true
 ---
 
 *Never roll your own database!*
 
-Most developers are familiar with this advice. But have you ever stopped to consider *why* you shouldn't build your own data storage systems? After all, it can't be that *nobody* should build new file systems, databases, distributed indexes and so on &mdash; times change, people change, hardware changes, and we aren't still using the original systems we designed back in the 1960s-70s.
+You've probably heard this advice before, or even took it for granted as common sense. But have you ever stopped to consider *why* you shouldn't build your own data storage engines?
 
-The reason people tell you not to build these systems yourself mostly boils down to time: as a rule of thumb, it takes about 10 years to fully stabilize a new general-purpose data storage system to the point of being near-optimal and also bug-free.
+After all, it can't be that *nobody* should build new file systems, databases, distributed search indexes and so on &mdash; times change, people change, hardware changes, and we aren't still using the original systems we designed back in the 1960s-70s. Clearly, some people do build their own data storage systems, and are pretty successful for doing so.
 
-Yet, despite this, these systems generally aren't so complicated at a high level, and it's not too hard to design one if you know what you're doing. In fact, if you have a good grasp over basic data structures and algorithms (the kind you might learn in an introductory class), there's a fairly simple line of reasoning you can follow to more or less reach today's state of the art.
+I'd argue the reason you generally shouldn't build one of these systems yourself is time: as a rule of thumb, it takes about 10 years to fully stabilize a new general-purpose data storage system to the point of being near-optimal and also bug-free, and for most projects you don't have that kind of time.
 
-With this article, my goal is to walk you down that line of reasoning, giving you an idea how your preferred databases, file systems and cloud storage services all work. All you'll need is some basic familiarity with data structures like hash tables and binary trees.
+Some argue another reason not to build these systems ourselves is they're too complicated for us mortals to design, and that such things are best left to the *Experts* (TM). In this article, I want to show you this isn't true &mdash; it's not too hard to come up with the basic design of these systems as long as you have a good grasp of introductory data structures and algorithms.
+
+My goal with this article is to walk you down a fairly simple line of reasoning that gets you more or less to today's state of the art in data storage. All you'll need is some basic familiarity with data structures like hash tables and binary trees.
 
 So, let's design some storage systems!
 
@@ -21,28 +23,28 @@ So, let's design some storage systems!
 
 What do you think is the main challenge of designing a data storage system?
 
-Hint: ironically, the hard part of storage is not storing data. From a software perspective, storing data is pretty easy: you tell the hardware to store data and then you wait until it's done. The hardware does the heavy lifting; you just set up the transfer and take care not to get in the way.
+Hint: ironically, the hard part of storage is not storing data. From a software perspective, storing data is pretty easy: you tell the hardware to store data and then you wait until the hardware is done. The hardware does all the work; your code just sets up the transfer and gets out of the way as fast as it can.
 
 The hard part is retrieval. You have a disk full of data, and a user comes along and asks you for a specific record somewhere on that disk. How do you know where to go looking for it?
 
 In other words, storage is a search problem!
 
-And it's not just any search problem &mdash; it's key/value search, a problem you're probably already familiar with if you've taken an intro course on data structures and algorithms.
+And it's not just any search problem &mdash; it's key/value search, a problem you're already tackled when you learned basic data structures and algorithms.
 
-Every storage system has a system of keys, but a lot of systems obscure the key by calling it something different. Yet, if you look at a system that retrieves data, you'll pretty much always find a key. For example:
+Don't believe me? Every storage system uses a system of keys to identify and retrieve data, but a lot of systems obscure the key and make the key/value mapping less than obvious. But if you look close enough at any system that retrieves data, you'll find a key hiding somewhere in the system's design. For example:
 
 * Want to download a web page? You need to provide its URL (a key)
 * Want to read a file? You need to provide its path (a key)
 * Want to load a value from memory? You need to provide its address (a key)
-* Want to query a database? You need to provide a primary key
+* Want to query a database? You need to provide a primary *key*
 
-So at the end of the day, the main thing you're doing when you build a data storage system like a database, file system, cloud storage, etc is build a map data structure which is stored on disk, alongside the actual keys and values the user asked you to store. Your system's write (store data) algorithm builds this map and your system's read (retrieve data) algorithm uses this map to find the requested data. The goal is to design a set of algorithms where writes efficiently set up reads to also be efficient.
+So at the end of the day, the main thing you're doing when you build a data storage system like a database, file system, cloud storage, etc is designing a map data structure which is stored on disk, alongside the actual keys and values the user asked you to store. Your system's write (store data) algorithm fills this map with key/value pairs and your system's read (retrieve data) algorithm uses this map to find the requested data. The goal is to design a set of algorithms where writes efficiently set up reads to also be efficient.
 
 ## Map Data Strutures
 
-So now we know a storage system is a key-value map data structure stored on disk. So now we just need to get an idea of what that map looks like.
+So now we know a storage system is an on-disk key-value map data structure and code for manipulating it. What does that map structure usually look like?
 
-What are some map structures we already know?
+Well, let's start with some map data structures we already know:
 
 ### Hash Tables
 
@@ -187,6 +189,10 @@ What are some map structures we already know?
 >
 > Mention fragmentation, this is more than just a data structures problem, very similar to writing a memory allocator since disks are very similar to memory
 
+## When to Build Storage Systems
+
+> Salvage some of the content from the old 'optimizing and tradeoffs' section. The main argument is that every system optimizes for certain workloads and the expense of being worse at other workloads, and sometimes you have a workload that nobody has ever optimized for &mdash; and that's when you break out this theory and go build your own system.
+
 ## Where To Next
 
 > Other concerns like resiliency (checksums), concurrency control
@@ -200,12 +206,6 @@ What are some map structures we already know?
 ## Additional Reading
 
 > Plug DDIA
-
-
-
-
-
-
 
 ---
 

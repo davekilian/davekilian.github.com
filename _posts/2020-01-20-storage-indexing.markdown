@@ -5,66 +5,44 @@ author: Dave
 draft: true
 ---
 
-*Never roll your own database* is good advice, but never let that convince you that you *can't* roll your own! Databases, file systems and the like are designed by engineers just like you and me, using concepts you've probably already learned in an introductory class on data structures and algorithms. If you have a grasp of these basic concepts, you're already well on your way to knowing how to build one of these systems on your own.
+*Never roll your own database!*
 
-The reason people tell you not to roll your own database, file system, etc mostly boils down to time: a common rule of thumb is that is takes 10 years to stabilize a file system or database to the point of being near-optimally fast and also bug-free. Most of those 10 years will be spent on low-level implementation concerns, primarily dealing with multithreading being hard.
+Most developers are familiar with this advice. But have you ever stopped to consider *why* you shouldn't build your own data storage systems? After all, it can't be that *nobody* should build new file systems, databases, distributed indexes and so on &mdash; times change, people change, hardware changes, and we aren't still using the original systems we designed back in the 1960s-70s.
 
-But the high level design of these systems is comparatively easy. My goal with this article is to walk you down the line of reasoning that leads you close to the state of the art in databases, file systems and so on. All you'll need is some familiarity basic data structures like hash tables and binary trees.
+The reason people tell you not to build these systems yourself mostly boils down to time: as a rule of thumb, it takes about 10 years to fully stabilize a new general-purpose data storage system to the point of being near-optimal and also bug-free.
+
+Yet, despite this, these systems generally aren't so complicated at a high level, and it's not too hard to design one if you know what you're doing. In fact, if you have a good grasp over basic data structures and algorithms (the kind you might learn in an introductory class), there's a fairly simple line of reasoning you can follow to more or less reach today's state of the art.
+
+With this article, my goal is to walk you down that line of reasoning, giving you an idea how your preferred databases, file systems and cloud storage services all work. All you'll need is some basic familiarity with data structures like hash tables and binary trees.
 
 So, let's design some storage systems!
 
 ## The Key Problem
 
-What do you think is the main challenge of designing a storage system?
+What do you think is the main challenge of designing a data storage system?
 
-Hint: it's (ironically) not the part where you actually store the data. That's pretty easy from a software standpoint: hardware does a pretty fine job of storing data, and as software developers we mostly just need to funnel the data to the hardware and not get in the way.
+Hint: ironically, the hard part of storage is not storing data. From a software perspective, storing data is pretty easy: you tell the hardware to store data and then you wait until it's done. The hardware does the heavy lifting; you just set up the transfer and take care not to get in the way.
 
-Other than storing data, there's really only one other thing a storage system has to do &mdash; retrieve data &mdash; so the main challenge must lie somewhere in there. Let's take a closer look at retrieval.
-
-In pretty much every storage system that has ever existed, all stored data is identified by some sort of key: the client presents a key to the storage system, the system does 'something' to figure out where in hardware the data is being stored, and the system asks the hardware to retrieve the data so it can be returned to a client.
-
-A lot of systems disguise the key, but if you look closely enough at a system that retrieves data, you'll usually find something that looks an awful lot like a key:
-
-* Want to load a web page? You need to provide its URL (a key)
-* Want to read a file? You need to provide the file's path (a key)
-* Want a value from RAM? You need to provide an address (a key)
-* Want to query a database? You need to provide a primary key (... which is obviously a key!)
-
-In all of these systems, the key (or key-like thing) is an identifier for one and only one resource/record/etc. Each of these systems provides a query operation that, given a key, returns the resouce identified by that key.
-
-> You might wonder why this is so commonly true. Keys pop up in storage systems because you can't deal with all the data all the time &mdash; if you could, you wouldn't need that storage system in the first place!
->
-> Keys allow a client to 'amplify' knowledge: if the client knows a small piece of information about something (a key), the client can provide it to the storage system to learn more about that thing (a record). This record might have additional keys the client can query the storage system about to learn more about related things.
-
-So, back to the original question: what makes retrieval challenging? The answer is the 'something' we mentioned the system has to do to find the data for a given key. How does a system find the data for a client-provided key?
+The hard part is retrieval. You have a disk full of data, and a user comes along and asks you for a specific record somewhere on that disk. How do you know where to go looking for it?
 
 In other words, storage is a search problem!
 
-So the key problem is the problems with keys: given a key, how do we figure out where we previously stored the corresponding data? The answer is we need to store a map data structure that maps every key to the corresponding data in storage hardware. Our system's write algorithm aims to (efficiently) set up for reads (to be efficient).
+And it's not just any search problem &mdash; it's key/value search, a problem you're probably already familiar with if you've taken an intro course on data structures and algorithms.
 
-## Optimizing and Tradeoffs
+Every storage system has a system of keys, but a lot of systems obscure the key by calling it something different. Yet, if you look at a system that retrieves data, you'll pretty much always find a key. For example:
 
-But what does "efficient" mean?
+* Want to download a web page? You need to provide its URL (a key)
+* Want to read a file? You need to provide its path (a key)
+* Want to load a value from memory? You need to provide its address (a key)
+* Want to query a database? You need to provide a primary key
 
-It might mean that read and write requests complete with low **latency**. If we were being pedantic, "latency" has a very specific meaning to storage people, but colloquially speaking, people often use the term to refer to the time between two events. In storage systems, those two events are usually a request starting and that request completing: so a request's latency is how long the system took to execute that request.
-
-Alternately, "efficient" might refer to how much **throughput** the system provides. Throughput is kind of the inverse of latency: in a given amount of time, how much can the system do? You might measure throughput as a number of requests executed per second (often labeled "I/O Operations Per Second" or "IOPS") or as the number of bytes transferred to/from the client per second.
-
-In practice, latency and throughput are often related. As a system nears its throughput limits, request latency tends to go up, because when a system can't keep up with the requested load, requests end up often needing to wait for other requests to progress, driving up latency for all requests. These waits are called *queuing delays*.
-
-So from a user's perspective, "efficient" usually means providing reasonably low latency at a reasonably high throughput.
-
-We, the designers of the storage system, usually start out by defining a target latency at a target throughput and optimize from there. In optimizing our map data structure, we have complete control over our map data structure and algorithms, but no control over the client, who can issue any pattern of read and write requests at any rate, often concurrently.
-
-As we'll soon see, there are a lot of tricks we can use to optimize our data structures and algorithms, but most optimizations are tradeoffs that make the system better at certain request patterns at the expense of being worse at other patterns. That has a couple of important ramifications:
-
-As storage system designers, we need to make assumptions about what kinds of request patterns clients will use the system for, so we can make tradeoffs that improve the common case while making the system worse at things that happen rarely or never.
-
-As users of storage systems, we need to select a system that is optimized for the request patterns we intend to use. On rare occasions, we might find there is no system optimized for our intended workload: that's when it's time to put on our system designer hats and roll our own!
+So at the end of the day, the main thing you're doing when you build a data storage system like a database, file system, cloud storage, etc is build a map data structure which is stored on disk, alongside the actual keys and values the user asked you to store. Your system's write (store data) algorithm builds this map and your system's read (retrieve data) algorithm uses this map to find the requested data. The goal is to design a set of algorithms where writes efficiently set up reads to also be efficient.
 
 ## Map Data Strutures
 
-So now we know a storage system is a key-value map data structure stored on disk. What are some map structures we already know?
+So now we know a storage system is a key-value map data structure stored on disk. So now we just need to get an idea of what that map looks like.
+
+What are some map structures we already know?
 
 ### Hash Tables
 
@@ -222,3 +200,35 @@ So now we know a storage system is a key-value map data structure stored on disk
 ## Additional Reading
 
 > Plug DDIA
+
+
+
+
+
+
+
+---
+
+> This originally appeared after the 'key problem' section and before launching the discussion about hash tables, binary search and so on. But it made the flow kind of weird, and I'm not positive we need to build up this terminology as part of the discussion.
+>
+> Cut if we manage to make it through the rest of the article without using these terms.
+
+> ## Optimizing and Tradeoffs
+>
+> When you're designing an index, you want your write algorithm to (efficiently) set up for reads (to also be efficient). But what does "efficient" mean in this context?
+>
+> It might mean that read and write requests complete with low **latency**. If we were being pedantic, "latency" has a very specific meaning to storage people, but colloquially speaking, latency usually means te time between two events. In storage systems, we'll mostly be interested in request latency: how long it takes to execute a request.
+>
+> "Efficient" might also refer to how much **throughput** the system provides. Throughput is kind of the inverse of latency: in a given amount of time, how much can the system do? You might measure throughput as a number of requests executed per second (often labeled "I/O Operations Per Second" or "IOPS") or as the number of bytes transferred to/from the client per second.
+>
+> In practice, latency and throughput are often related. As a system nears its throughput limits, request latency tends to go up, because when a system can't keep up with the requested load, requests end up often needing to wait for other requests to progress, driving up latency for all requests. These waits are called *queuing delays*.
+>
+> So from a user's perspective, "efficient" usually means providing reasonably low latency at a reasonably high throughput.
+>
+> We, the designers of the storage system, usually start out by defining a target latency at a target throughput and optimize from there. In optimizing our map data structure, we have complete control over our map data structure and algorithms, but no control over the client, who can issue any pattern of read and write requests at any rate, often concurrently.
+>
+> As we'll soon see, there are a lot of tricks we can use to optimize our data structures and algorithms, but most optimizations are tradeoffs that make the system better at certain request patterns at the expense of being worse at other patterns. That has a couple of important ramifications:
+>
+> As storage system designers, we need to make assumptions about what kinds of request patterns clients will use the system for, so we can make tradeoffs that improve the common case while making the system worse at things that happen rarely or never.
+>
+> As users of storage systems, we need to select a system that is optimized for the request patterns we intend to use. On rare occasions, we might find there is no system optimized for our intended workload: that's when it's time to put on our system designer hats and roll our own!

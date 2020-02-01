@@ -7,38 +7,37 @@ draft: true
 
 *Never roll your own database!*
 
-You've probably heard this advice before, or even took it for granted as common sense. But have you ever stopped to consider *why* you shouldn't build your own data storage engines?
+Most programmers agree with this advice. But have you ever stopped to consider why you shouldn't build your own data storage engines? After all, it can't be that *nobody* should build new file systems, databases, distributed search indexes and so on &mdash; times change, people change, hardware changes, and we aren't still using the original systems we designed back in the 1960s-70s. Clearly, some people must be out there successfully building their own data storage systems; so why shouldn't you or I?
 
-After all, it can't be that *nobody* should build new file systems, databases, distributed search indexes and so on &mdash; times change, people change, hardware changes, and we aren't still using the original systems we designed back in the 1960s-70s. Clearly, some people do build their own data storage systems, and are pretty successful for doing so.
+I'd argue the reason you generally shouldn't build one of these systems yourself is time: as a rule of thumb, it takes about 10 years to fully stabilize a new general-purpose data storage system to the point of being near-optimal and also bug-free, and for most projects you don't have that kind of time. There are many off-the-shelf databases, file systems and so on available to you, and chances are getting one of them to work reasonably well in your application will take less than the time it'd take to stabilize one of these systems yourself.
 
-I'd argue the reason you generally shouldn't build one of these systems yourself is time: as a rule of thumb, it takes about 10 years to fully stabilize a new general-purpose data storage system to the point of being near-optimal and also bug-free, and for most projects you don't have that kind of time.
+But if you want to build one of these systems yourself, you certainly can. Maybe you'd like to get a better feel for how these systems work internally, or maybe you want to see if you find it fun. There are people who will tell you that these systems are too complicated for us mortals to design, and that such things are best left to the *Experts* (TM). In this article, I want to show this isn't true &mdash; it's not too hard to come up with the basic design of these systems as long as you have a good grasp of basic data structures and algorithms.
 
-Some argue another reason not to build these systems ourselves is they're too complicated for us mortals to design, and that such things are best left to the *Experts* (TM). In this article, I want to show you this isn't true &mdash; it's not too hard to come up with the basic design of these systems as long as you have a good grasp of introductory data structures and algorithms.
-
-My goal with this article is to walk you down a fairly simple line of reasoning that gets you more or less to today's state of the art in data storage. All you'll need is some basic familiarity with data structures like hash tables and binary trees.
-
-So, let's design some storage systems!
+Let's try walking down a fairly simple line of reasoning that gets you more or less to today's state of the art in data storage. All you'll need is some basic familiarity with data structures like hash tables and binary trees:
 
 ## The Key Problem
 
 What do you think is the main challenge of designing a data storage system?
 
-Hint: ironically, the hard part of storage is not storing data. From a software perspective, storing data is pretty easy: you tell the hardware to store data and then you wait until the hardware is done. The hardware does all the work; your code just sets up the transfer and gets out of the way as fast as it can.
+Hint: ironically, the hard part isn't the part where you store the data. From a software perspective, storing data is pretty easy: you tell the hardware to store data and then you wait until the hardware is done. The hardware does all the work; your code just sets up the transfer and gets out of the way as fast as it can.
 
-The hard part is retrieval. You have a disk full of data, and a user comes along and asks you for a specific record somewhere on that disk. How do you know where to go looking for it?
+The hard part is retrieval. You have a disk (or maybe lots of disks) full of data, and a user comes along and asks you for a specific record somewhere on that disk. How do you know where to find it?
 
 In other words, storage is a search problem!
 
 And it's not just any search problem &mdash; it's key/value search, a problem you're already tackled when you learned basic data structures and algorithms.
 
-Don't believe me? Every storage system uses a system of keys to identify and retrieve data, but a lot of systems obscure the key and make the key/value mapping less than obvious. But if you look close enough at any system that retrieves data, you'll find a key hiding somewhere in the system's design. For example:
+> *Wait*, you might say, *that's true of key/value stores like [Redis](https://redis.io), but what about other kinds of storage systems? Is this a blog about key/value stores?*
+>
+> Well, even if most systems don't use the terms 'key' and 'value,' they all use something that looks an awful lot like a key to identify and retrieve data. If you look close enough at a system that supports data queries, I'm willing to bet you'll find a key hiding somewhere in the system's interface. Here are some examples:
+>
+> * Want to download a web page? You need to provide its URL (a key)
+> * Want to read a file? You need to provide its path (a key)
+> * Want to load a value from memory? You need to provide its address (a key)
+> * Want to query a database? You need to provide a primary *key*
+>
 
-* Want to download a web page? You need to provide its URL (a key)
-* Want to read a file? You need to provide its path (a key)
-* Want to load a value from memory? You need to provide its address (a key)
-* Want to query a database? You need to provide a primary *key*
-
-So at the end of the day, the main thing you're doing when you build a data storage system like a database, file system, cloud storage, etc is designing a map data structure which is stored on disk, alongside the actual keys and values the user asked you to store. Your system's write (store data) algorithm fills this map with key/value pairs and your system's read (retrieve data) algorithm uses this map to find the requested data. The goal is to design a set of algorithms where writes efficiently set up reads to also be efficient.
+So at the end of the day, the main thing you're doing when you build a data storage system like a database, file system, cloud storage, etc is designing some kind of map data structure which is stored on disk, alongside the actual keys and values your users asked you to store. Your system's write (store data) algorithm adds key/value pairs to this map and your system's read (retrieve data) algorithm queries this map to find the requested data. The goal is to design a set of algorithms where writes efficiently set up reads to also be efficient.
 
 ## Map Data Strutures
 
@@ -48,21 +47,41 @@ Well, let's start with some map data structures we already know:
 
 ### Hash Tables
 
+Hash tables (also known as hash maps and dictionaries) are easily the most popular data stuctures for mapping keys to values. Chances are, when you need a data structure that maps keys to values, you're going to reach for a hash table without really thinking about alternatives; after all, given hash tables provide constant time insert and lookup on average, why bother with anything else?
 
+The basic idea of a hash table is to store key/value pairs in an array, and use a hash function to map each possible key to an index in this array:
+
+> Diagram
+
+Since both the hash function and array access run in constant time, the hash table is also constant time overall.
+
+Or is it? The main challenge with hash tables is dealing with *collisions*: cases where two different happen to get mapped to the same array index:
+
+> Diagram
+
+This problem is unavoidable. For many commonly used key types (like ints and strings), there are many, many possible keys (possibly even more than there are atoms in the known uinverse), and you only have so many array slots to hold these keys in. There must be cases where two keys map to the same array slot simply because there simply aren't enough array slots for each key to get its own slot (this is sometimes called the [pigeonhole principle](https://en.wikipedia.org/wiki/Pigeonhole_principle)).
+
+Hash tables are still an area of active academic research, and that research is focused on finding better ways to avoid hash collisions, and to deal with the ones you've ended up with. [Wikipedia](https://en.wikipedia.org/wiki/Hash_table) has a pretty good discussion of the many different approachs people have come up with.
+
+But even with all this research, every known strategy for handling collisions takes $O(N)$ time in the worst case, meaning in the worst case for a hash table, the time it takes to insert one key/value mapping is proportional to the number of key/value mappings already in the hash table.
 
 ### Binary Search Trees
 
+Although they're less commonly known and used, binary search trees are another perfectly valid way to build and search a key/value mapping.
 
+The basic idea is to construct a tree, where each node has a key/value pair as well as pointers to two child nodes. These nodes are sorted: given a node, all nodes that can be reached from the current node's left child pointer have keys that are 'less' than the current node's key, and similarly, all nodes reachable from the right child have keys 'greater' than the current node's key:
 
-## Maps for Disks
-
-> Disks provide the same basic interface to the computer as memory does: an array of bytes:
->
 > Diagram
->
-> So the data structures we discussed above, which are typically built in memory, you can also store on a disk. 
->
-> There's a catch though: disks might have the same interface as memory, but they perform quite differently!
+
+It can be shown that, with this data structure, it takes $O(\log{N})$ time to insert a key/value pair or to find a node with a given key. Even if this isn't technically constant time, for most data sets this is so fast that it's barely distinguisable from constant time; and unlike hash tables being 'usually' constant time, $O(\log{N})$ is the true worst case for a binary search tree: a binary search will never take $O(N)$ time in any circumstance.
+
+> Should we introduce range queries?
+
+## Maps on Disks
+
+At the lowest level, a disk is a hardware device that exposes storage as an array of bytes; computer random access memory is also an array of bytes, so anything you can store in memory you can also store on a disk. This means it's totally possible to implement our key/value map as a hash table or a binary search tree stored on disk.
+
+But nobody does this, because there's a catch: even if memory and disks share a common interface (a byte array), memory and disks perform very differently!
 
 ### Disk Performance
 
@@ -84,7 +103,7 @@ Well, let's start with some map data structures we already know:
 >
 > Binary trees keep data sorted in key order, maintaining a degree of spatial locality, making them closer to want we want out of a key-value mapping structure
 
-### Another Observation
+### Access Times and I/O Sizes
 
 > For small I/O sizes, the time it takes to read from a disk is roughly constant
 >
@@ -163,25 +182,23 @@ Well, let's start with some map data structures we already know:
 >
 > Although file systems are not tied to b-trees as closely as databases usually are, many modern file systems use b-trees ubiquitously (such as btrfs on Linux, ReFS on Windows?, AFS on macOS? Others worth mentinoinng?)
 
-### Handling Large Items
+### Naming Hierarchy
 
-> How does a file system handle these large items? You can't stick them in your b-tree because they're often much larger than any particular node of your b-tree.
+> Very quick overview of files and directories. Show how this is basically the database problem all over again, and how b-trees are a good fit
+
+## File Contents and Handling Large Items
+
+> The database design assumed many small key and value records, but files can get pretty darn big: the name is still a small key, but the value (file contents) can be gigabytes to terabytes in size. You can't stick these file contents in your b-tree because they're often much larger than any particular node of your b-tree.
+>
+> Do we need to throw away our system and start over with something new? How does a file system handle these large items? 
 >
 > Think about the interface a disk provides, and fundamentally how a b-tree is laid out on disk
 >
 > Diagram showing a byte array, b-tree nodes in that byte array pointing to each other
 >
-> Idea: drop data anywhere on disk you have room to put it, then use a b-tree record to point to the data:
+> Idea: drop data anywhere on disk you have room to put it, then use a b-tree record to point to the data by its disk address:
 >
 > Diagram
-
-### Naming Hierarchy
-
-> Very quick overview of files and directories. Show how a b-tree is a good way to handle this
-
-### File Contents
-
-> Show how to use a b-tree to index over a file's contents, which are stored as blocks elsewhere on disk
 
 ### Disk Allocation
 

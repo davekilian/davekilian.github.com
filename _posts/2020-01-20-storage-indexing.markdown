@@ -7,11 +7,11 @@ draft: true
 
 *Never roll your own database!*
 
-Most programmers agree with this advice. But have you ever stopped to consider why not? It can't be that *nobody* should build new file systems, databases, distributed search indexes and so on &mdash; times change, people change, hardware changes, and we aren't still using the original systems we designed back in the 1960s-70s. Clearly, some people must be out there successfully building their own data storage systems; so why shouldn't you or I?
+Most programmers agree with this advice. But have you ever stopped to consider why not? It can't be that *nobody* should build new file systems, databases, distributed search indexes and so on &mdash; times change, people change, hardware changes, and we aren't still using the original systems we designed back in the 1960s-70s. Clearly, some people must be out there successfully building new data storage systems; so why shouldn't you or I?
 
-One fine answer is time: as a rule of thumb, it takes about 10 years to fully stabilize a new general-purpose data storage system to the point of being near-optimal and also bug-free, and for most projects you don't have that kind of time. There are many off-the-shelf databases, file systems and so on available to you, and chances are getting one of them to work reasonably well in your application will take less than the time it'd take to build and stabilize one of these systems yourself.
+One reasonable answer is time: as a rule of thumb, it takes about 10 years to fully stabilize a new general-purpose data storage system to the point of being near-optimal and also bug-free, and for most projects you don't have that kind of time. There are many off-the-shelf databases, file systems and so on available to you, and chances are getting one of them to work reasonably well in your application will take less than the time it'd take to build and stabilize one of these systems yourself.
 
-But you certainly can build one of these systems yourself, if you want. It could be you'd like to get a better feel for how these systems work internally, or maybe you want to see if it's fun. There are people who will tell you that these systems are too complicated for us mortals to understand, and that such things are best left to the *Experts* (TM). In this article, I want to show this isn't true &mdash; it's not too hard to come up with the basic design of these systems as long as you have a good grasp of basic data structures and algorithms.
+But you certainly can build one of these systems yourself, if you want. It could be you'd like to get a better feel for how these systems work internally, or maybe you want to see if it's fun. There are people who will tell you that these systems are too complicated for us mortals to understand, and that such things are best left to *The Experts<sup>TM</sup>*. In this article, I want to show this isn't true &mdash; it's not too hard to come up with the basic design of these systems as long as you have a good grasp of basic data structures and algorithms.
 
 Let's try walking down a fairly simple line of reasoning that gets you more or less to today's state of the art in data storage. All you'll need is some basic familiarity with data structures like hash tables and binary trees.
 
@@ -32,13 +32,13 @@ This interface should seem familiar: it's the basic key/value map interface prov
 * Want to load a value from memory? You need to provide its address (a key)
 * Want to query a database? You need to provide a primary *key*
 
-Later on we'll see how to gussie up an on-disk key/value store like this one to make it the core of a database, or a file system. But for now let's focus on how to build a store like this one efficiently.
+Later on we'll see how to gussy up an on-disk key/value store like this one to make it the core of a database, or a file system. But for now let's focus on how to build a store like this one efficiently.
 
 ## The Key Problem
 
 When designing something, a good question to answer first is: what's the hard part? What should we spend most of our time thinking about how to solve?
 
-Ironically, the 'storing the data' part of writing a data store isn't all that hard. The hardware does all the work, so from a software perspective all we really need to do is set up the transfer and get out of the way.
+Ironically, the 'storing the data' part of implementing a data store isn't all too challenging. The hardware does all the work, so from a software perspective all we really need to do is set up the transfer and get out of the way.
 
 The hard part is on the other end: retrieval. You have a disk (maybe a lot of disks) full of data, maybe written incrementally by lots of users over a long time. Today, a user comes along and requests a specific handful of bytes stored somewhere along your sea of billions (of bytes). How do you efficiently find the specific data the client requested?
 
@@ -110,7 +110,7 @@ I generated these graphs by repeatedly executing disk reads and writes, measurin
 
 Conventional wisdom goes that the time it takes to read or write data on a disk is proportional to the amount of data you read or write. Since the X axis of each graph ("bytes transferred") increases at an exponential rate, doubling progressively at each point, this would imply the graph of the latency vs bytes transferred should also rise exponentially, roughly doubling at each point ...
 
-... and it does, eventually. But look at the left side of each graph: for smallish I/O sizes of about 64 KB or less, both graphs are roughly flat. This means the time it took to read 1 KB of data was about the same as it took to read 32 KB of data. Weird, right? (We'll see a little later why this happens.)
+... and it does, eventually. But look at the left side of each graph: for smallish I/O sizes of about 64 KB or less, both graphs are roughly flat. This means the time it took to read 1 KB of data was about the same as it took to read 32 KB of data. Weird, right? (This happens because there's a fixed cost of setting up a disk I/O operation, which dominates the cost of actually reading/writing data for small I/O sizes.)
 
 With these characteristics in mind, let's re-evaluate or two map data structures.
 
@@ -177,21 +177,25 @@ There's a data structure that fits this bill: the **b-tree**.
 
 ## B-Trees
 
-> Why not take a binary search tree, and 'smoosh' it down by packing in many key/value pairs into a single node?
->
+Intuitively, the basic idea of a b-tree is to start with a binary search tree and 'smoosh' it down, kind of like this:
+
 > Diagram
->
-> We choose a node size around that sweet spot in the graph above (typically somewhere between 8K and 64K) and pack as many items into each node as will fit. We still use a binary search, but there are fewer individual nodes to read in, because each node has many values.
->
-> To search, we read in the root node, binary-search it (as an array), and follow the child link to another node, which we then binary-search (as an array), recurisvely, until we either find the key being queried or an empty space where the key would be if we had it:
->
+
+With a binary search tree, each node contains a single key/value pair and two child pointers. In a b-tree, each node contains lots of key/value pairs (hundreds of them, often), and just as many child node pointers. Usually we pick a node size somewhere between 8-64 kilobytes in size, and pack in as many key/value pairs per node as will fit.
+
+To search a b-tree, we first read the root node from disk. We then search that node's items array looking for either the item we want, or a grap between two items where our item would appear. In the latter case, we follow the child pointer to another node, which we then read from disk and search in the same way, recursively:
+
 > Diagram
->
-> Constructing a b-tree is a little more involved, but certainly nothing we can't handle Wikipedia has a good writeup (link)
+
+Like with binary trees, we fundamentally use binary search to search a b-tree, so its search complexity is $O(\log N)$. However, there are way, way fewer nodes in a b-tree than there are in a binary search tree with the same contents, which saves us a lot of disk read operations when searching.
+
+> TODO come up with some way of showing how many items you can get with very few tree levels
+
+Constructing a b-tree is a little more involved, but nothing we can't handle. Wikipedia has [a pretty good writeup](https://en.wikipedia.org/wiki/B-tree).
 
 ### Nice Properties of B-Trees
 
-> By packing many key-value records into a single node, we greatly reduce the number of individual nodes needed to store the tree. This allows us to store large amounts of data with a reasonable number of disk accesses.
+> By packing many key-value records into a single node, we greatly reduce the number of individual nodes needed to store the tree. This allows us to store large amounts of data with a reasonable number of disk accesses. Plus, if you need to read a single entry from a node, reading in the rest of the node is approximately 'free' because 
 >
 > B-tree nodes are also cache friendly. A simple scheme is, every time you read in a node, you add it to an in-memory cache. This is simple, and gives you both spatial locality (because keys in a node are a sorted and adjacent) and temporal locality (becuase you're caching nodes that were read recently).
 
@@ -285,29 +289,3 @@ There's a data structure that fits this bill: the **b-tree**.
 ## Additional Reading
 
 > Plug DDIA
-
----
-
-> This originally appeared after the 'key problem' section and before launching the discussion about hash tables, binary search and so on. But it made the flow kind of weird, and I'm not positive we need to build up this terminology as part of the discussion.
->
-> Cut if we manage to make it through the rest of the article without using these terms.
-
-> ## Optimizing and Tradeoffs
->
-> When you're designing an index, you want your write algorithm to (efficiently) set up for reads (to also be efficient). But what does "efficient" mean in this context?
->
-> It might mean that read and write requests complete with low **latency**. If we were being pedantic, "latency" has a very specific meaning to storage people, but colloquially speaking, latency usually means te time between two events. In storage systems, we'll mostly be interested in request latency: how long it takes to execute a request.
->
-> "Efficient" might also refer to how much **throughput** the system provides. Throughput is kind of the inverse of latency: in a given amount of time, how much can the system do? You might measure throughput as a number of requests executed per second (often labeled "I/O Operations Per Second" or "IOPS") or as the number of bytes transferred to/from the client per second.
->
-> In practice, latency and throughput are often related. As a system nears its throughput limits, request latency tends to go up, because when a system can't keep up with the requested load, requests end up often needing to wait for other requests to progress, driving up latency for all requests. These waits are called *queuing delays*.
->
-> So from a user's perspective, "efficient" usually means providing reasonably low latency at a reasonably high throughput.
->
-> We, the designers of the storage system, usually start out by defining a target latency at a target throughput and optimize from there. In optimizing our map data structure, we have complete control over our map data structure and algorithms, but no control over the client, who can issue any pattern of read and write requests at any rate, often concurrently.
->
-> As we'll soon see, there are a lot of tricks we can use to optimize our data structures and algorithms, but most optimizations are tradeoffs that make the system better at certain request patterns at the expense of being worse at other patterns. That has a couple of important ramifications:
->
-> As storage system designers, we need to make assumptions about what kinds of request patterns clients will use the system for, so we can make tradeoffs that improve the common case while making the system worse at things that happen rarely or never.
->
-> As users of storage systems, we need to select a system that is optimized for the request patterns we intend to use. On rare occasions, we might find there is no system optimized for our intended workload: that's when it's time to put on our system designer hats and roll our own!

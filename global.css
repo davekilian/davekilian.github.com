@@ -56,7 +56,7 @@ div.post-blurb:hover
 
 div.post-container
 {
-    max-width: 680px;
+    max-width: 720px;
     margin-left: auto;
     margin-right: auto;
 }
@@ -93,8 +93,7 @@ h1.post-title
 
 div.post-content table
 {
-    font-size: 90%;
-    width: 90%;
+    max-width: 90%;
     margin: auto;
 }
 
@@ -102,6 +101,12 @@ div.post-content th,
 div.post-content td
 {
     border: 1px solid #777;
+    padding: .15em .4em .15em .4em;
+}
+
+div.post-content img
+{
+    max-width: 100%;
 }
 
 body

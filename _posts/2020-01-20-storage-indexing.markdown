@@ -7,43 +7,48 @@ draft: true
 
 *Never roll your own database!*
 
-Most programmers agree with this advice. But have you ever stopped to consider why you shouldn't build your own data storage engines? After all, it can't be that *nobody* should build new file systems, databases, distributed search indexes and so on &mdash; times change, people change, hardware changes, and we aren't still using the original systems we designed back in the 1960s-70s. Clearly, some people must be out there successfully building their own data storage systems; so why shouldn't you or I?
+Most programmers agree with this advice. But have you ever stopped to consider why not? It can't be that *nobody* should build new file systems, databases, distributed search indexes and so on &mdash; times change, people change, hardware changes, and we aren't still using the original systems we designed back in the 1960s-70s. Clearly, some people must be out there successfully building their own data storage systems; so why shouldn't you or I?
 
-I'd argue the reason you generally shouldn't build one of these systems yourself is time: as a rule of thumb, it takes about 10 years to fully stabilize a new general-purpose data storage system to the point of being near-optimal and also bug-free, and for most projects you don't have that kind of time. There are many off-the-shelf databases, file systems and so on available to you, and chances are getting one of them to work reasonably well in your application will take less than the time it'd take to stabilize one of these systems yourself.
+One fine answer is time: as a rule of thumb, it takes about 10 years to fully stabilize a new general-purpose data storage system to the point of being near-optimal and also bug-free, and for most projects you don't have that kind of time. There are many off-the-shelf databases, file systems and so on available to you, and chances are getting one of them to work reasonably well in your application will take less than the time it'd take to build and stabilize one of these systems yourself.
 
-But if you want to build one of these systems yourself, you certainly can. Maybe you'd like to get a better feel for how these systems work internally, or maybe you want to see if you find it fun. There are people who will tell you that these systems are too complicated for us mortals to design, and that such things are best left to the *Experts* (TM). In this article, I want to show this isn't true &mdash; it's not too hard to come up with the basic design of these systems as long as you have a good grasp of basic data structures and algorithms.
+But you certainly can build one of these systems yourself, if you want. It could be you'd like to get a better feel for how these systems work internally, or maybe you want to see if it's fun. There are people who will tell you that these systems are too complicated for us mortals to understand, and that such things are best left to the *Experts* (TM). In this article, I want to show this isn't true &mdash; it's not too hard to come up with the basic design of these systems as long as you have a good grasp of basic data structures and algorithms.
 
-Let's try walking down a fairly simple line of reasoning that gets you more or less to today's state of the art in data storage. All you'll need is some basic familiarity with data structures like hash tables and binary trees:
+Let's try walking down a fairly simple line of reasoning that gets you more or less to today's state of the art in data storage. All you'll need is some basic familiarity with data structures like hash tables and binary trees.
+
+Without further ado ...
+
+## Let's Design a Store
+
+We'll start with one of the most basic kinds of storage systems: a key/value store, where we store both the keys and values on disk. We'll provide the following basic interface:
+
+* The client (our user) defines the structure of a **key** and a **value**
+* We provide a **write** method which accepts a key and a value, and adds them to our on-disk store
+* We provide a **read** method which accepts a key, and reads the corresponding value from disk
+
+This interface should seem familiar: it's the basic key/value map interface provided by many programming languages' standard libraries and runtimes. If this seems like an odd interface to use for disk storage, keep in mind that most "real" storage systems rely on something that looks an awful lot like a key/value mapping, even if these systems don't specifically use the words *key* and *value*. For example:
+
+* Want to download a web page? You need to provide its URL (a key)
+* Want to read a file? You need to provide its path (a key)
+* Want to load a value from memory? You need to provide its address (a key)
+* Want to query a database? You need to provide a primary *key*
+
+Later on we'll see how to gussie up an on-disk key/value store like this one to make it the core of a database, or a file system. But for now let's focus on how to build a store like this one efficiently.
 
 ## The Key Problem
 
-What do you think is the main challenge of designing a data storage system?
+When designing something, a good question to answer first is: what's the hard part? What should we spend most of our time thinking about how to solve?
 
-Hint: ironically, the hard part isn't the part where you store the data. From a software perspective, storing data is pretty easy: you tell the hardware to store data and then you wait until the hardware is done. The hardware does all the work; your code just sets up the transfer and gets out of the way as fast as it can.
+Ironically, the 'storing the data' part of writing a data store isn't all that hard. The hardware does all the work, so from a software perspective all we really need to do is set up the transfer and get out of the way.
 
-The hard part is retrieval. You have a disk (or maybe lots of disks) full of data, and a user comes along and asks you for a specific record somewhere on that disk. How do you know where to find it?
+The hard part is on the other end: retrieval. You have a disk (maybe a lot of disks) full of data, maybe written incrementally by lots of users over a long time. Today, a user comes along and requests a specific handful of bytes stored somewhere along your sea of billions (of bytes). How do you efficiently find the specific data the client requested?
 
-In other words, storage is a search problem!
+In other words, storage is a search problem! <span style="font-size:85%">(Also, the title of this section is a bad pun!)</span>
 
-And it's not just any search problem &mdash; it's key/value search, a problem you're already tackled when you learned basic data structures and algorithms.
-
-> *Wait*, you might say, *that's true of key/value stores like [Redis](https://redis.io), but what about other kinds of storage systems? Is this a blog about key/value stores?*
->
-> Well, even if most systems don't use the terms 'key' and 'value,' they all use something that looks an awful lot like a key to identify and retrieve data. If you look close enough at a system that supports data queries, I'm willing to bet you'll find a key hiding somewhere in the system's interface. Here are some examples:
->
-> * Want to download a web page? You need to provide its URL (a key)
-> * Want to read a file? You need to provide its path (a key)
-> * Want to load a value from memory? You need to provide its address (a key)
-> * Want to query a database? You need to provide a primary *key*
->
-
-So at the end of the day, the main thing you're doing when you build a data storage system like a database, file system, cloud storage, etc is designing some kind of map data structure which is stored on disk, alongside the actual keys and values your users asked you to store. Your system's write (store data) algorithm adds key/value pairs to this map and your system's read (retrieve data) algorithm queries this map to find the requested data. The goal is to design a set of algorithms where writes efficiently set up reads to also be efficient.
+So in designing our key/value store, the main challenge to overcome is designing an efficient on-disk key/value map data structure, where the write method efficiently sets up for reads to also be efficient.
 
 ## Map Data Strutures
 
-So now we know a storage system is an on-disk key-value map data structure and code for manipulating it. What does that map structure usually look like?
-
-Well, let's start with some map data structures we already know:
+Now that we know the goal, let's start looking at options. We want a key/value mapping data structure to store our data on disk &mdash; what are some map data structures we already know?
 
 ### Hash Tables
 
@@ -79,29 +84,72 @@ It can be shown that, with this data structure, it takes $O(\log{N})$ time to in
 
 ## Maps on Disks
 
-At the lowest level, a disk is a hardware device that exposes storage as an array of bytes; computer random access memory is also an array of bytes, so anything you can store in memory you can also store on a disk. This means it's totally possible to implement our key/value map as a hash table or a binary search tree stored on disk.
+Do people use data structures like hash tables and binary search trees to store and retrieve data on a disk?
 
-But nobody does this, because there's a catch: even if memory and disks share a common interface (a byte array), memory and disks perform very differently!
+You certainly can: at the lowest level, a disk is a hardware device that exposes data storage as an array of bytes. Computer memory (RAM) is also exposed as an array of bytes, so anything you can store in memory you can also store on disk in the exact same way. The main functional difference between memory and disk storage is that memory gets wiped when the system powers off, whereas data on a disk is *persistent* (rebooting the computer, unplugging it and so on doesn't change the data).
+
+People do sometimes build hash tables and binary search trees for data on disk, but it isn't so common. Despite the similarities between memory and disks, there's one big catch: they perform very differently!
 
 ### Disk Performance
 
-> The different parts of your computer don't run at the same speed. 
->
-> Copy table from, and link to https://www.prowesscorp.com/computer-latency-at-a-human-scale/
+The different parts of your computer don't run at the same speed, and reading and writing disks are some of the slowest things your can do. The following table gives a rough idea of just how much slower your disk is than the rest of your computer:
+
+| **Device**        | **Latency (Actual)** | **Latency (Human Scale)** |
+| ----------------- | -------------------- | ------------------------- |
+| CPU               | 0.4 ns               | 1 sec                     |
+| Memory            | 100 ns               | 4 min                     |
+| Disk (SSD)        | 50-150 μs            | 1.5-4 days                |
+| Disk (Rotational) | 1-10 ms              | 1-9 months                |
+| Network Request   | 65-141 ms            | 5-11 years                |
+
+*(Hat tip to [Prowess](https://www.prowesscorp.com/computer-latency-at-a-human-scale/) for the excellent visualization &mdash; which I have copied here shamelessly)*
+
+But even this isn't the full story: Take a look at these results from a little performance test I ran on my computer's main disk (an SSD):
+
+![Disk Access Latency vs I/O size graph](/assets/disk-access-latency.png)
+
+I generated these graphs by repeatedly executing disk reads and writes, measuring the latency (how long it took) for each, then averaging the results together. The graph shows these average latencies as a function of the number of bytes transferred, so the X axis (horizontal) is the number of bytes transferred in each disk I/O operation, and the Y axis (vertical) is how long it took to transfer that many bytes on average..
+
+Conventional wisdom goes that the time it takes to read or write data on a disk is proportional to the amount of data you read or write. Since the X axis of each graph ("bytes transferred") increases at an exponential rate, doubling progressively at each point, this should imply the graph of the latency vs bytes transferred rises exponentially ...
+
+... and, eventually, it does. But look at the left side of each graph: for smallish I/O sizes of about 64 KB or less, both graphs are roughly flat. This means something a little weird: the time it to read or write 1 KB of data was about the same as it was to read or write about 32 KB of data. Weird, right?
+
+(The main reason this happens is that the disk is a separate device inside your computer, and there's work that has to be done to have the CPU send a request to a disk, the disk to enqueue and process the request, and so on; this work is the same no matter how many bytes you're transferring, but only for larger I/O sizes does the time taken to actually read/write the data start to dominate this fixed per-request overhead cost.)
+
+Now that we have an idea of how disks perform, let's try to design a key/value map data structure that takes advantage of the good parts and avoids pitfalls.
 
 ### Caching
 
-> We see that RAM is a lot faster than disk, so maybe keep data in RAM instead of disk so we can retrieve it quickly. But there's a lot less space in RAM than there is on disk, so we have to cache selectively, guessing what will be useful (what will be read soon).
->
-> Cache heuristics: "temporal locality:" workload likely to revisit data it used before. "spatial locality:" workload likely to iterate over keys in ascending or descending order.
+The first basic observation we can make by looking at the table above is that reading from memory is faster than reading from a disk, so if we want queries to our key/value map to be fast, we should store the map in memory.
 
-### Hash Tables and Spatial Locality
+Of course, things are never so simple. One problem is that we need our key/value map to persist data across reboots and power loss, but memory isn't persistent. Another  is that memory is much more expensive per megabyte than disks are, so we will almost always have way less memory than we have disk storage, so even if we use all of the computer's memory we might not have enough room to store all the data we need.
 
-> Since we want to cache data, hash tables aren't a good fit for our storage system. They purposefully scramble data in an attempt to minimize hash collisions:
->
+A simple solution, then, is to selectively **cache** parts of our key/value map in memory. That is, the entire key/value map is stored on disk persistently, but we also store a copy of parts of the map in memory. If someone requests a part of the map that we happen to have in our in-memory cache, we can query the in-memory mappings and skip all disk I/O, saving a bunch of time. Nice!
+
+One of the tricky parts of designing a cache is the cache's policy: the rules you choose for determining which parts of your map are worth storing in memory and which are not. Most cache policies are built around two key observations:
+
+* **Spatial locality of reference**: client likely to visit key ranges near key ranges it previously queried
+* **Temporal locality of reference**: client likely to revisit key ranges it recently queried
+
+Putting these together and dropping the academic-speak, the basic suggestion is as follows: when a client reads a key from the mapping, store a copy of that key/value pair as well as nearby key/value pairs in memory, in case the client comes back for the same key or a nearby key soon.
+
+Looking back at hash tables and binary search trees, we immediately see a problem with caching data for hash tables: if we want to exploit spatial locality, we need a way to find and read in all keys that are 'near' the key the client just requested; but there isn't a good way to do that with a hash table, because hash tables *deliberately* scramble keys to minimize the likelihood of a hash collision:
+
 > Diagram: `A B C D E -> 3 1 5 4 2 -> C A E D B`
->
-> Binary trees keep data sorted in key order, maintaining a degree of spatial locality, making them closer to want we want out of a key-value mapping structure
+
+No bueno.
+
+Binary search trees are a little better in this regard, because they sort entries by key.
+
+
+
+
+
+
+
+---
+
+
 
 ### Access Times and I/O Sizes
 

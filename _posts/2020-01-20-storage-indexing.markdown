@@ -5,26 +5,26 @@ author: Dave
 draft: true
 ---
 
-Did you know there's a small set of basic data structures and algorithms that underpin just about every system that stores and retrieves data on disk, from databases to file systems and more?
+Did you know there's a small set of basic data structures and algorithms that underpin just about every software system that stores and retrieves data on disk, from databases to file systems and more?
 
-It turns out there's a fairly straightforward line of reasoning that you can follow to get more or less to today's state of the art &mdash; all you need is some basic familiarity with data structures like hash tables and binary trees:
+There's a fairly straightforward line of reasoning that you can follow to get more or less to today's state of the art &mdash; all you need is some basic familiarity with data structures like hash tables and binary trees. That lines of reasoning goes something like this:
 
 ## Let's Design a Store
 
-We'll start with one of the most basic kinds of storage systems: a key/value store, where we store both the keys and values on disk. We'll provide the following basic interface:
+We'll start with one of the most basic kinds of storage systems: a key/value store, where we store both the keys and values on disk with the following interface:
 
 * The client (our user) defines the structure of a **key** and a **value**
-* Our **write** method adds a key/value pair to our store
+* Our **write** method adds a key/value pair to add to our store
 * Our **read** method accepts a key, and reads the corresponding value from the store
 
 This interface should seem familiar: it's the basic key/value map interface provided by many programming languages and runtimes. If this seems like an odd interface to use for disk storage, keep in mind that most "real" storage systems rely on something that looks an awful lot like a key/value mapping, even if these systems don't specifically use the words *key* and *value*. For example:
 
-* Want to download a web page? You need to provide its URL (a key)
+* Want to open a web page? You need to provide its URL (a key)
 * Want to read a file? You need to provide its path (a key)
 * Want to load a value from memory? You need to provide its address (a key)
 * Want to query a database? You need to provide a primary *key*
 
-Later on we'll see how to gussy up an on-disk key/value store like this one to make it the core of a database, or a file system. But for now let's focus on how to build a store like this one efficiently.
+Later on we'll see how to gussy up an on-disk key/value store like this one to make it the core of a database, a file system, or maybe something else. But for now let's focus on how to build a store like this one efficiently.
 
 ## The Key Problem
 
@@ -44,39 +44,46 @@ Now that we know the goal, let's start looking at our options. We want a key/val
 
 ### Hash Tables
 
-Hash tables (also known as hash maps and dictionaries) are easily the most popular data stuctures for mapping keys to values. Most developers instinctively reach for one of these whenever they need a map, without considering alternatives; after all, hash tables provide constant time insert and lookup, so why bother with anything else?
+Hash tables (also known as hash maps or dictionaries) are easily the most popular data stuctures for mapping keys to values. Because they generally provide $O(1)$ insert and lookup, most developers reach for hash tables instinctively whenever they need a map. 
 
-The basic idea of a hash table is to store key/value pairs in an array, and use a hash function to map each possible key to an index in this array:
+The basic observation behind hash tables is that our computers already come pre-equipped with a map data structure implemented in hardware: namely memory, which most programming languages expose as arrays.
 
-> Diagram
+The main difference between an array and a general-purpose map is the 'key' type &mdash; arrays only accept integers between `0` and `array_size - 1` as keys, whereas general purpose maps accept any type. Hash tables reconcile this using a **hash function**, which is a function that takes an instance of a key (of any type) and maps it to a unique array index mathematically:
 
-Since both the hash function and array access run in constant time, the hash table is also constant time overall.
+```
+int hash<T>(T key) { ... }
+```
 
-Or is it? The main gotcha with hash tables is dealing with *hash collisions*: cases where two different keys happen to get mapped to the same array index:
+Assuming the `hash()` function can assign each key a unique array index, then all we need to do is map the key to an array index and get/put items by modifying the array item at that index, roughly like this:
 
-> Diagram
+```
+/* put: */ thearray[hash(key)] = value;
+/* get: */ return thearray[hash(key)];
+```
 
-This problem is hard to avoid: whenever there are more possible keys than there are array slots, there have to be cases where the hash function maps two keys to the same slot, because there simply aren't enough array slots for each key to gets its own (this is sometimes called the [pigeonhole principle](https://en.wikipedia.org/wiki/Pigeonhole_principle)). There's still ongoing academic research into finding better ways to avoid collisions, as well as better ways to deal with them ([Wikipedia](https://en.wikipedia.org/wiki/Hash_table) has a pretty good discussion of the approaches people have come up with).
+In real life, there are [only a few cases](https://en.wikipedia.org/wiki/Perfect_hash_function) where it's possible to uniquely map every key to an array index; usually there are more possible keys than there are slots in the array, for example. Cases where different keys map to the same array index are called **hash collisions**. 
 
-But even with all this research, every known strategy for handling collisions takes $O(N)$ time in the worst case, meaning in the worst case for a hash table, the time it takes to insert one key/value mapping is proportional to the number of key/value mappings already in the hash table. However, in the absence of collisions, hash table operations are $O(1)$, so hash tables are often said to be "constant time in the average case." In most cases, our hash functions and collision handling strategies work pretty well, so this assumption tends to hold.
+Much work has been done to design hash tables that handle collisions gracefully, as well as in designing hash functions that resist causing collisions in the first place. But the fact  remains that collisions are a fact of life, and no collision-handling strategy does better than $O(\log N)$. Even so, you can think of hash tables as having $O(1)$ insert and lookup as long as you don't have a lot of collisions, and you can generally achieve a low collision rate without much tuning as long as your data set is relatively small.
 
 ### Binary Search Trees
 
-Although they're less common, binary search trees are another perfectly valid way to build and search a key/value mapping.
+Although they're less common, binary search trees are another valid way to represent a key/value mapping.
 
 The basic idea is to construct a tree, where each node has a key/value pair as well as pointers to two child nodes. These nodes are sorted: given a node, all nodes that can be reached from the current node's left child pointer have keys that are 'less' than the current node's key, and all nodes reachable from the right child have keys 'greater' than the current node's key:
 
 > Diagram
 
-It can be shown that, with this data structure, it takes $O(\log{N})$ time to insert a key/value pair or to find a node with a given key. Even if this isn't technically constant time, the $\log$ function grows very slowly, so for most datasets this is close enough to constant time that the difference is barely discernable. Plus, for binary search trees, $O(\log N)$ is truly the worst case: a binary tree operation will never take $O(N)$ time (like a hash table can in the event you get a lot of collisions).
+This tree might not look so sorted if you read it top to bottom, but it clearly is if you start from the left and go right, allowing your eyes to jump up and down the different levels as needed (try it!).
+
+It can be shown that, with this data structure, it takes $O(\log{N})$ time to insert a key/value pair or to find a node with a given key. Even if this isn't technically constant time, the $\log$ function grows very slowly, and many datasets are small enough that the difference is barely discernable. Plus, for binary search trees, $O(\log N)$ is truly the worst case: we don't need to worry about tuning to keep the collision rate low.
 
 ## Maps on Disks
 
 The logical next question is: can we use these to implement our key/value store? Are these data structures good choices?
 
-You certainly *can* use hash tables or binary trees as the data structure for an on-disk key/value store: at the lowest level, disks expose an array of bytes just like memory does, so anything you can store in memory you can ultimately store on a disk in the exact same way. The only major difference between memory and disk interfaces is that memory gets wiped when the system powers off, whereas data on a disk is *persistent* across power cycles.
+You certainly *can* use hash tables or binary trees as the data structure for an on-disk key/value store: at the lowest level, disks expose an array of bytes just like memory does, so anything you can store in memory you can ultimately store on a disk in the exact same way. The only major difference between memory and disk interfaces is that memory gets wiped when the system powers off, whereas data on a disk is *persistent* across power cycles (that is, your computer turning off and on again).
 
-So we can build a hash table or a binary tree on disk; but should we? People sometimes do, but it isn't so common. Despite the similarities between memory and disks, there's one big catch: they perform very differently!
+So we can build a hash table or a binary tree on disk; but should we? People sometimes do, but it isn't so common. That's because, despite their similar interfaces, disks and memory have very different performance!
 
 ### Disk Performance
 
@@ -90,52 +97,44 @@ The different parts of your computer don't run at the same speed. The following 
 | Disk (Rotational) | 1-10 ms              | 1-9 months                |
 | Network Request   | 65-141 ms            | 5-11 years                |
 
-<center><i>(Hat tip to <a href="https://www.prowesscorp.com/computer-latency-at-a-human-scale/">Prowess</a> for this visualization)</i></center>
+<center><i>(Thanks to <a href="https://www.prowesscorp.com/computer-latency-at-a-human-scale/">Prowess</a> for this visualization)</i></center>
 
 As you can see, readng and writing data on a disk is one of the slower things your code can do: even with a fast SSD, accesing the same data in memory is hundreds of times faster!
 
-But even that isn't the full story: Take a look at these results from a little performance test I ran on my computer's main disk (an SSD):
-
-![Disk Access Latency vs I/O size graph](/assets/disk-access-latency.png)
-
-For this test, I executed many reads and writes from my disk using different I/O sizes (the number of bytes transferred per request). In the graphs above, the horizontal axis shows this I/O size, and the vertical axis shows the average latency (time to execute the transfer) for each I/O size in milliseconds.
-
-Conventional wisdom says the time it takes to read or write data is proportional to how much data you want to read or write; if this were true, we would expect to see the latency grow exponentially in these graphs, because the horizontal axis grows exponentially (it doubles at each point).
-
-On the right hand side of our graphs, we do eventually see this exponential curve, but notice the left sides are roughly flat. This means, on average, the time it took to transfer 1 KB of data is about the same as it took to transfer 32 KB of data. (Why? This happens because there's a fixed cost of setting up a disk I/O operation, which dominates the cost of actually reading/writing data unless you're trying to read or write a lot of data.)
-
-With these characteristics in mind, let's re-evaluate or two map data structures.
+This leads us to our first idea we have already: can we try to keep data in memory instead of on disk? This is tried and true technique called **caching**.
 
 ### Caching
 
-The first basic observation we can make by looking at the table above is that reading from memory is faster than reading from a disk, so if we want queries to our key/value map to be fast, we should store the map in memory.
+Here's the basic idea again: we need to store our map on disk, because disks persist data across power cycles. However, we'd like to serve map queries from memory, because accessing memory is much faster than accessing disk. How can we do that?
 
-Well, things are never so simple. One problem is that we need our key/value map to persist data across reboots and power loss, but memory isn't persistent. Another is that memory is much more expensive per megabyte than disks are, so we will almost always have way less memory than we have disk storage; even if we use all the computer's memory, we might not have enough room to store all the data we need.
+If the data set is pretty small, the simple answer is to keep a full copy of the data in memory. Basically, all write operations first write on disk, then write to the copy of the map in memory; reads only need to query the copy in memory. This works as long as the data set is small, but disks are much larger than memory. What if the data set is too large to (reasonably) fit in memory?
 
-A simple solution, then, is to selectively **cache** parts of our key/value map in memory. That is, the entire key/value map is stored on disk, persistently, but we also store copies of parts of the map in memory. If someone requests a part of the map that we happen to have in our in-memory cache, we can query the cached copy and skip the disk I/O entirely, saving a bunch of time. Nice!
+The answer is simply that we can only keep part of the map in memory; if a caller happens to request a key that's already cached in memory, then we can serve the request by querying the in-memory cached copy of the map; otherwise we take a performance hit and query the full map directly from disk.
 
-Caches like these generally take advantage of two common observations about how users use storage systems:
+How do we know which parts to keep in memory? To do a perfect job would require predicting the future, which is generally impossible to do perfectly without a time machine. Most caches for storage systems instead take advantage of two common observations about how users use storage systems:
 
 * **Spatial locality**: clients are likely to query key ranges nearby key ranges they previously queried
 * **Temporal locality**: clients are likely to revisit key ranges they recently queried
 
 Putting these together and dropping the academic-speak, the basic suggestion is: when a client reads a key from the mapping, store a copy of that key/value pair as well as nearby key/value pairs in memory, in case the client comes back for the same key or a nearby key soon.
 
-How easy is it to implement a cache like this on top of our two candidate map data structures?
+### Transfer Times and I/O Sizes
 
-For hash tables, we immediately see a problem: if we want to exploit spatial locality, we need an easy way to find all keys that are 'near' the key the client just requested; but there isn't a good way to do that with a hash table, because hash tables *deliberately* scramble keys to minimize the likelihood of a hash collision:
+Okay, so we know we want to cache our map to make at least some, hopefully a lot of queries faster by serving from memory. What else can we do to maximize performance?
 
-> Diagram: `A B C D E -> 3 1 5 4 2 -> C A E D B`
+Here's an interesting observation about the disk hardware performance: Take a look at these results from a little  test I ran on my computer's main disk (an SSD):
 
-No bueno.
+![Disk Access Latency vs I/O size graph](/assets/disk-access-latency.png)
 
-Binary search trees are a little better in this regard, because they sort entries by key; if you're already looking up a key, it's not too hard to find neighboring keys because the tree stores the keys in sorted order:
+For this test, I executed many reads and writes from my disk using different I/O sizes (the number of bytes transferred per request). In the graphs above, the horizontal axis shows this I/O size, and the vertical axis shows the average latency (time to execute the transfer) for each I/O size in milliseconds.
 
-> Diagram showing a sorted tree, where we read in a subtree in the cache and then return the requested key to a client
+Conventional wisdom says the time it takes to read or write data is proportional to how much data you want to read or write; if this were true, we would expect to see the latency grow exponentially in these graphs, because the horizontal axis grows exponentially (it doubles at each point) ...
 
-Score one for binary trees.
+.. and that is *eventually* what happens, but the left side of each graph is roughly flat. This means, on average, the time it took to transfer 1 KB of data is about the same as it took to transfer 32 KB of data. (How could that be? This happens because there's a fixed cost of setting up a disk I/O operation, which dominates the cost of actually reading/writing data unless you're trying to read or write a lot of data.)
 
-### Access Counts
+The conclusion, then, is that it's okay to read a few kilobytes of extra data any time we only need a handful of bytes from disk. (If you think about it, this ought to play nicely with the caching strategies we mentioned above, eh?)
+
+### Access Counts (Constants Matter!)
 
 Let's take another look at the latency table from earlier, but this time let's use the latencies to figure out how many 'things' we can do with each device per second:
 
@@ -149,29 +148,67 @@ Let's take another look at the latency table from earlier, but this time let's u
 
 (All I did here was invert each latency &mdash; for example, there are 2.5 billion 0.4-ns intervals per second.)
 
-The key observation I want you to draw from this table is that with a disk (especially rotational disks), you don't get all too many operations per second to work with. For our key/value store, we want to minimize the number of disk accesses per client request, because each disk access is already pretty costly. Do either hash tables or binary search trees do a good job of that?
+The key thing to notice is that disks don't give you all too many operations per second to work with, especially at the lower end (slower SSDs / rotational disks). Even if our map data structure has good big-$O$ performance, the absolute number of disk reads/writes is also important &mdash; if every client request causes us to do a few dozen disk operations, we'll exhaust the disk's throughput pretty quickly.
 
-For hash tables, the answer is a little tricky. When the client gives you a key, you would hash it to figure out where on disk the value should be, and go read that. If that was the value you wanted, you're done in just one disk access; but if there was a hash collision, you have to do something to go find the next key. In general, the number of reads needed is the number of collisions which exist for the given key &mdash; and in the worst case, you could have to read every single byte of data on your disk to find the value being requested!
+## Evaluating our Data Structures
 
-For binary search trees, the answer is more straightforward, but not what we want. It takes $\log_2 N$ time to search a binary search tree, so if you have a modestly large store with a million key/value pairs, you'll need to follow 20 nodes to get all the way from the root of the tree to a leaf. That's pretty bad: if you're using a disk that can do 1,000 reads per second, but you have to do about 20 reads per client query, you can only answer 50 client queries per second. Not very scalable at all!
+Putting together everything we just learned about disk hardware performance, here's how we can summarize the design criteria that we want to design our map data structure around:
 
-It would seem hash tables are sort of the winner here, but neither data structure is ideal.
+> Say we're storing **small key/value pairs** (say, around 100 bytes each).
+>
+> Our map data structure should **minimize the number of individual disk accesses** ...
+>
+> ... even if that means **each operation transfers more data than strictly needed** (up to a limit).
+>
+> And, we plan to **cache portions of this data structure** in memory to exploit **spatial and temporal locality** in the client's workload
 
-### Our Wish List
+So, how do hash tables and binary trees stack up?
 
-It's starting to look like neither a hash table or a binary search tree is a good data structure for implementing a key/value store, because neither performs particularly well on disk hardware.
+### Hash Tables
 
-What are some things we'd ideally like in a data structure for a key/value map on disk?
+TODO scrambling the keys destroys any inherent spatial locality in the data structure. But we can't not scramble the keys, or we'll get more frequent collisions and worse performance
 
-First, we want to keep keys in sorted order. That way we can easily implement a cache of our data structure which exploits both spatial and temporal locality of reference.
+TODO and on top of that, there's also no bound to how many disk accesses a single query might require. Sure it's *usually* just one disk read, which is great, but worst case collision handling can lead to lots of disk accesses.
 
-Second, in cases when the key being requested is not cached, we want to minimize the 'worst case' number of disk reads needed to search the data structure.
+TODO so we don't really like these
 
-Finally, we also want to store key/value pairs in a way that makes them easy to read in batch: after all, it takes roughly the same amount of time to read 32 bytes or 32 *kilo*bytes from the same disk, so we might as well read a little extra and cache it in case the client requests it soon.
+### Binary Trees
 
-There's a data structure that fits this bill: the **b-tree**.
+TODO now this feels like a step in the right direction: at least the data structure is sorted right? Wrong! The links between nodes might provide us with a logical sort order, but on disk the nodes are scrambled around anyways. (Diagram showing the same scrambling pattern as the hash table, except now there's a sentinel value labeled 'root of tree' and we add a bunch of inter-node arrows linking everything up. Showcase this side by side with the same 'logical' tree diagram as before.)
+
+TODO these also have a real problem in terms of access counts! Consider a tree with 1 million elements: $\log_2(1,000,000) \approx 20$ disk accesses per read, which on a rotational disk means $20 \times 10 ms = 200$ ms per read. That means a single disk serving a binary tree-based index could only serve a whopping 5 requests per second &mdash; talk about cost-inefficient!
+
+### What Did We Learn?
+
+TODO we want a sorted data structure, so that there's inherent spatial locality in the map itself
+
+TODO we want the items in this data structure to be sorted even on disk, so we can 'over read' and cache the results
+
+TODO and finally, we want to minimize the number of disk accesses needed to read an item
+
+TODO and it turns out there's a data structure that does a fairly good job at all of these ...
 
 ## B-Trees
+
+
+
+---
+
+TODO
+
+Okay, so we did a better job motivating how we're going to get from binary trees to b-trees, which means now we can start to spell it out.
+
+Basically, what I want to say is, start by noticing you can binary search a binary search tree by traversing it, but you can also binary search an array. What if our key value map was a gigantic array?
+
+Problem: Updates might require rewriting all data on the disk, holy cow that's slow
+
+Oh yeah, that binary tree structure was helping us on insert
+
+Okay, here's the size observation: writing a ~4-16K batch of items is about as fast as writing a single item. Reading a 4-16K batch of items is about as fast as reading a single item. So what if we 'smooshed' the binary tree down into 4-16K runs of sorted items? (Diagram.)
+
+And that's precisely the core idea behind a b-tree!
+
+---
 
 Intuitively, the basic idea of a b-tree is to start with a binary search tree and 'smoosh' it down, kind of like this:
 

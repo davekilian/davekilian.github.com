@@ -1,6 +1,6 @@
 ---
 layout: post
-title: Async Fanout
+title: Fanning Out with Async I/O
 author: Dave
 ---
 

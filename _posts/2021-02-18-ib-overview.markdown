@@ -5,7 +5,9 @@ author: Dave
 draft: true
 ---
 
-> Front matter to pick up from the previous post. Also a link back.
+This is the second post in a series on RDMA. In this post, we're going to cover some of the technical basics underpinning InfiniBand, the first technology to prominently feature RDMA.
+
+If you haven't already, you may want to start with [the first post in the series](/rdma-overview.html) and come back here once you're done.
 
 ## InfiniBand
 

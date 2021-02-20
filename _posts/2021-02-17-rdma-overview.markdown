@@ -71,7 +71,9 @@ From the program's perspective, all of this happens seamlessly: the program incl
 
 And that's memory mapped I/O, in a nutshell.
 
-One aside about that 'memory controller' chip I keep mentioning: it has a name, and you may even have heard of it (if you've researched and built a PC before, for example). It's usually actually two interconnected chips that work together: a [Northbridge](https://en.wikipedia.org/wiki/Northbridge_(computing)) and a [Southbridge](https://en.wikipedia.org/wiki/Southbridge_(computing)). The Northbridge connects the CPU, RAM, high-speed devices and the Southbridge together. The Southbridge fans out to a bunch of lower-speed protocols. Wikipedia has [a nice diagram](https://en.wikipedia.org/wiki/Southbridge_(computing)) showing how this works.
+> One aside about that 'memory controller' chip I keep mentioning: it has a name, and you may even have heard of it (if you've researched and built a PC before, for example). Clasically, it has been implemented as two interconnected chips that work together: a [Northbridge](https://en.wikipedia.org/wiki/Northbridge_(computing)) and a [Southbridge](https://en.wikipedia.org/wiki/Southbridge_(computing)). The Northbridge connects the CPU, RAM, high-speed devices and the Southbridge together. The Southbridge fans out to a bunch of lower-speed protocols. Wikipedia has [a nice diagram](https://en.wikipedia.org/wiki/Southbridge_(computing)) showing how this works.
+>
+> Over time, this functionality has been moving up into the CPU as consumer hardware has gotten faster and more bandwidth-hungry. Today, the Northbridge is usually a part of the CPU itself, rather than its own chip on the motherboard; however, its core function remains the same: arbitrate access between the CPU, RAM and peripherals.
 
 ## Copying Data
 

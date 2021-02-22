@@ -7,9 +7,9 @@ draft: true
 
 "*Everything you wanted to know about RDMA (but were too afraid to ask)*"
 
-If you've ended up here, you may be looking into RDMA, a networking technology popular with people building large, high-performance private networks, like for supercomputers or private clouds. I've never been able to find a good, straightforward lowdown on RDMA, so here's one of my own.
+If you've ended up here, you're probably looking into RDMA, a networking technology popular with people building large, high-performance private networks, like for supercomputers or private clouds. I've never been able to find a good, straightforward lowdown on RDMA, so here's one of my own.
 
-I'm a software developer by trade, so I'll try to stick to software terminology, and explain hardware-related terms as they come up. Like many posts on this blog, one of the reasons I'm writing this is to crystallize my own understanding of the topic; although I've tried to ensure everything below is true and correct, I recommend you verify anything you read here before using it to make important decisions :-)
+I'm a software developer by trade, so I'll generally stick to software terminology, and explain hardware-related terms as they come up. Like many posts on this blog, one of the reasons I'm writing this is to crystallize my own understanding of the topic; although I've tried to ensure everything below is true and correct, I recommend you verify anything you read here before using it to make important decisions :-)
 
 ## What is RDMA?
 
@@ -25,21 +25,19 @@ Here's a basic schematic of the inside of your computer.
 
 As we can see, your computer is a network of interconnected parts. The core parts of your computer are your CPU and your RAM.
 
-The CPU is an electric circuit that interprets a sort of programming language, which in turn is defined as part of something called the CPU's "[instruction set architecture](https://en.wikipedia.org/wiki/Instruction_set_architecture)" or ISA. (As you can see already, hardware people love three-letter acronyms, i.e. TLAs). To vastly oversimplify, the CPU is basically a bunch of little calculator circuits &mdash; an add circuit, a multiply circuit, a divide circuit, and so on &mdash; plus a 'circuit picker.' Your program gets fed into the CPU as a series of instructions, each of which is a number telling the picker which of the little calculation circuits to run next. By lining up the instructions strategically to make a program, you can calculate something nontrivial. For example, here's a program (sequence of instructions) which together calculate the 4th Fibonacci number:
+The CPU is an electric circuit that interprets a sort of programming language that's defined as part of something called the CPU's "[instruction set architecture](https://en.wikipedia.org/wiki/Instruction_set_architecture)" or ISA. (As you can see already, hardware people love three-letter acronyms, i.e. TLAs). To vastly oversimplify, the CPU is basically a bunch of little calculator circuits &mdash; an add circuit, a multiply circuit, a divide circuit, and so on &mdash; plus a 'circuit picker.' Your program gets fed into the CPU as a series of instructions, each of which is a number telling the picker which of the little calculation circuits to run next. By lining up the instructions strategically to make a program, you can calculate something nontrivial. For example, here's a program (sequence of instructions) which together calculate the 4th Fibonacci number:
 
 >  TODO show a basic x86 fibonacci with each instruction annotated
 
-As we saw in the example above, your CPU has circuitry to store a few onboard variables you're working on. For somewhat arcane reasons, these variables are called 'registers.' For cost reasons, a CPU only has a handful of registers (maybe a dozen or two); most programs need to store a lot more variables than can reasonably fit in these registers. 
+As we saw in the example above, your CPU has circuitry to store a few variables you're working on. For somewhat arcane reasons, these variables are called 'registers.' For cost reasons, a CPU only has a handful of registers (maybe a dozen or two); most programs need to store a lot more variables than can reasonably fit in these registers, which is why your CPU is connected to another device, called RAM. As far as your code is concerned, RAM is basically a big byte array; if you have 16 GB of RAM, for example, that means your RAM provides an array of 16 billion bytes that your CPU can store into and retrieve.
 
-That's why your CPU is connected to another device, called RAM. As far as your code is concerned, RAM is basically a big byte array; if you have 16 GB of RAM, for example, that means your RAM is physically an array of 16 billion bytes that your CPU can store into and retrieve.
+A computer's CPU and RAM are tightly coupled &mdash; the two are directly connected to each other, and the CPU's 'programming language' includes dedicated instructions for reading and writing elements in RAM. You need both CPU and RAM to have a working computer, because the instructions that your CPU executes are stored in RAM and are retrieved 'on-the-fly' as the CPU needs them. This is the basis of the [Von Neumann architecture](https://en.wikipedia.org/wiki/Von_Neumann_architecture) on which just about every computer in existence today is based on.
 
-A computer's CPU and RAM are tightly coupled &mdash; the two are physically connected to each other, and the CPU's 'programming language' (ISA) includes dedicated instructions for reading and writing elements in RAM. You need both CPU and RAM to have a working computer, because the instructions that your CPU executes are stored in RAM and are retrieved 'on-the-fly' as the CPU needs them. This is the basis of the [Von Neumann architecture](https://en.wikipedia.org/wiki/Von_Neumann_architecture) on which just about every computer in existence today is based on.
+So, in short, CPU + RAM = you have a computer. But a pretty useless one at that.
 
-So, in short, CPU + RAM = you have a computer. But these alone would make a pretty useless computer.
+Practically speaking, you need a lot more 'stuff' to make a computer useful &mdash; things like disks, SSDs, network cards, graphics cards, monitors, keyboards, mice, webcams, you name it! These devices are often called [peripherals](https://en.wikipedia.org/wiki/Peripheral) because, however useful, they're not core to your computer: you can have a computer without a keyboard, but a computer without a CPU is no computer at all.
 
-A real computer has a lot of additional devices attached to the core computer: disks, SSDs, network cards, graphics cards, monitors, keyboards, mice, webcams, you name it! These devices are often called [peripherals](https://en.wikipedia.org/wiki/Peripheral) because, however useful, they're not core to your computer &mdash; you can have a computer without a keyboard, but a computer without a CPU is no computer at all.
-
-Internally, peripherals are usually sort of like computers in their own right. Each usually has a little chip called a "logic board" which consists, among other things, of a 'controller' that does a job similar to what the CPU does for a full computer, and a little bit of onboard memory that works sort of like RAM. Some newer devices, like fancy DIY hackable mechanical keyboards, literally use low-cost CPUs and RAM in place of a purpose-specific logic controller!
+Internally, peripherals often include a 'logic board' that is sort of like a computer in its own right. A logic board usually has a chip that does a job similar to what the CPU does for a full computer, and a little bit of onboard memory that works sort of like RAM. Some newer devices, like fancy DIY hackable mechanical keyboards, literally use low-cost CPUs and RAM in place of a purpose-specific logic controller!
 
 ## I/O
 
@@ -47,37 +45,40 @@ So, how do we hook everything together? How does the main computer &mdash; that
 
 The act of a program sending a command to a peripheral or reading back the results is called [I/O](https://en.wikipedia.org/wiki/Input/output). Throughout the ages there have been several high-level approaches to I/O, but nowadays the dominant approach is a technique called [Memory Mapped I/O (MMIO)](https://en.wikipedia.org/wiki/Memory-mapped_I/O) (which, by the way, has no relation to the Unix memory mapped file I/O feature).
 
-Remember that the CPU already has first-class instructions for reading and writing RAM, and that peripheral devices have some onboard memory for buffering incoming commands from the CPU? Well here's the idea behind MMIO: let's make it so the CPU can directly read and write the peripheral's onboard memory!
+Remember that the CPU already has first-class instructions for reading and writing RAM, and that peripheral devices have some onboard memory for buffering incoming commands from the CPU? Well here's the idea behind MMIO: let's make it so the CPU can directly read and write the peripheral's onboard memory in order to submit commands (memory writes) and receive notifications (memory reads).
 
-How does this work? Remember from earlier that RAM is just a big byte array. Each index in this array is called an 'address.' Usually when a program needs to read or write RAM, you run a instruction on the CPU that either reads from RAM starting at a given memory address into a CPU register (onboard variable), or writes from a CPU register to RAM starting at a given memory address. There are hardware-level protocols involved in reading and writing memory, but those are handled internally by the hardware itself.
+To make this work, we need to find a way to make peripheral memory accessible via the CPU's read memory and write memory instructions. Those instructions each accept a memory address as an argument; previously, that address was just an address (byte array index) in RAM, but now we need to make it so some addresses refer to individual peripherals' device memory, while others continue to refer to RAM.
 
-The idea behind memory mapped I/O is to use the same 'read' and 'write' instructions to access not only RAM, but also peripheral device memory. Instead of changing anything about the CPU itself, we change the meanings of the memory addresses that programs pass to the CPU's existing 'read' and 'write' instructions.
+The key observation is that the size of RAM, however large, is finite, and there are more possible memory addresses than there are bytes in RAM, so a large chunk of possible addresses inevitably go unused. In memory mapped I/O, we use some of those unused addresses to refer to peripheral devices' memory. Then code running on the CPU can do reads and writes like normal; depending on the address, the hardware ends up reading from or writing to RAM or a peripheral's onboard memory.
 
-We start by shimming in a new chip, which you might call a 'memory controller,' in between the CPU and the RAM, like this:
+To implement this, we start by shimming in a new chip in between the CPU and the RAM, like this:
 
 > Diagram
 
-This chip's primary purpose is to lie to the CPU about memory addresses! The chip maintains a mapping table that combines RAM and all peripheral device memory into a single 'address space.' This is easiest to explain using an example.
+For the sake of this discussion, we'll call this new chip a 'memory controller.' Our memory controller chip's purpose is sort of to "lie" to the CPU about memory addresses, in order to redirect some unused addresses to peripheral device memory. It's easiest to explain how this works using an example.
 
-Say we had a very simple computer with some RAM and exactly two peripherals: a keyboard and a mouse. Our new memory chip might map the RAM and peripheral device memory into the CPU's address space like this:
+Say we had a very simple computer with a tiny amount of RAM and exactly two peripherals: a keyboard and a mouse, both of which expose peripheral memory to the CPU using memory mapping. This very small computer represents memory addresses using only 16 bits, meaning all addresses from 0-65,535 are possible.
+
+Our new memory controller chip might map all of this into the CPU's memory address space like this:
 
 | Device   | Memory Size (in Bytes) | Mapped Addresses |
 | -------- | ---------------------- | ---------------- |
 | RAM      | 10,000                 | 0-10,000         |
 | Keyboard | 2,000                  | 10,000-12,000    |
 | Mouse    | 500                    | 12,000-12,500    |
+| (unused) | ---                    | 12,500-65,535    |
 
-Let's say we have a program that needs to read input from the keyboard. That program will probably want to periodically read the keyboard's device memory to see which, if any keys are being pressed right now. The program code to do that knows (in ways too deep to get into here) that the keyboard's memory mapping starts at address 10,000. Let's say the program's keyboard query code wants to read from the keyboard's device memory at address 1,500. So it adds the memory address (1,500) to the keyboard's base address (10,000) to get a virtual address, 11,500. The program then executes a 'read' instruction at memory address 11,500 into a local register.
+Now let's say we have a program that needs to read input from the keyboard. That program will probably want to periodically read the keyboard's device memory to see which, if any keys are being pressed right now. The program code to do that knows (in ways too deep to get into here) that the keyboard's memory mapping starts at address 10,000. Let's say the program's keyboard query code wants to read from the keyboard's device memory at address 1,500. So it adds the memory address (1,500) to the keyboard's base address (10,000) to get a virtual address, 11,500. The program then executes a 'read' instruction at memory address 11,500 into a local register.
 
 Our new 'memory controller' chip intercepts this read and uses the table above to decode it. It sees 11,500 falls within the 'keyboard' mapped address range. It then subtracts the keyboard device's base address (10,000) to obtain the device memory address 1,500. (This is just the opposite of the calculation our code did in the previous paragraph.) Finally, the controller issues a read from the keyboard device memory at address 1,500.
 
-From the programmer's perspective, all of this happens seamlessly: the programmer includes a 'read' instruction with computed address 11,500 into some CPU register, and when the next instruction executes, it can assume the corresponding keyboard memory will have been copied into that CPU register.
+From the programmer's perspective, all of this happens seamlessly: the programmer includes a 'read' instruction with computed address 11,500 into some CPU register, knowing that when the CPU finally moves onto to execute the next instruction, the corresponding keyboard memory will have been copied into the specified CPU register. (And, of course, on a real computer this is all handled by operating system drivers &mdash; it's uncommon to have to write this kind of code nowadays, unless you're working on operating systems or peripherals specifically.)
 
 And that's memory mapped I/O, in a nutshell.
 
-> One aside about that 'memory controller' chip I keep mentioning: it has a few names, and you may even have heard of it if you've ever built your own PC or overclocked a CPU. Clasically, this memory mapping functionality has been implemented as two interconnected chips that work together: a [Northbridge](https://en.wikipedia.org/wiki/Northbridge_(computing)) and a [Southbridge](https://en.wikipedia.org/wiki/Southbridge_(computing)). The Northbridge connects the CPU, RAM, high-speed devices and the Southbridge together. The Southbridge fans out to a bunch of lower-speed protocols. Wikipedia has [a nice diagram](https://en.wikipedia.org/wiki/Southbridge_(computing)) showing how this works.
+> One aside about that 'memory controller' chip I keep mentioning: it has a few names, and you may even have heard one if you've ever built your own PC or overclocked a CPU. Clasically, this memory mapping functionality has been implemented as two interconnected chips that work together: a [Northbridge](https://en.wikipedia.org/wiki/Northbridge_(computing)) and a [Southbridge](https://en.wikipedia.org/wiki/Southbridge_(computing)). The Northbridge provides an interconnect between the CPU, RAM, high-speed devices and the Southbridge, which in turn is another interconnect for lower-speed protocols. Wikipedia has [a nice diagram](https://en.wikipedia.org/wiki/Southbridge_(computing)#/media/File:Motherboard_diagram.svg) showing how this works.
 >
-> Over time, this functionality has been moving up into the CPU as consumer hardware has gotten faster and more bandwidth-hungry. Today, there usually isn't a separate Northbridge chip; it's become part of the CPU itself. Even so, the core function remains the same: arbitrate access between the CPU, RAM and peripheral memory.
+> Over time, consumer hardware has been getting faster and more bandwidth-hungry, which has ended up pushing these chips 'up,' closer to the CPU. Today, there usually isn't a separate Northbridge chip &mdash; it's now integrated with the CPU itself. Even so, the core memory-mapping functionality remains critical to how computer code uses peripheral devices.
 
 ## Copying Data
 

@@ -25,7 +25,7 @@ Here's a basic schematic of the inside of your computer.
 
 As we can see, your computer is a network of interconnected parts. The core parts of your computer are your CPU and your RAM.
 
-The CPU is an electric circuit that interprets a sort of obtuse programming language, often referred to as its "[instruction set architecture](https://en.wikipedia.org/wiki/Instruction_set_architecture)" or ISA. (As you can see already, hardware people love three-letter acronyms, i.e. TLAs). To vastly oversimplify, the CPU is basically a bunch of little calculator circuits &mdash; an add circuit, a multiply circuit, a divide circuit, and so on &mdash; plus a 'circuit picker.' Your code consists of a series of instructions, each of which is a number which tells the picker which of the little calculation circuits to run next. By lining up the instructions strategically to make a program, you can calculate something nontrivial. For example, here's a program (sequence of instructions) which together calculate the 4th Fibonacci number:
+The CPU is an electric circuit that interprets a sort of programming language, which in turn is defined as part of something called the CPU's "[instruction set architecture](https://en.wikipedia.org/wiki/Instruction_set_architecture)" or ISA. (As you can see already, hardware people love three-letter acronyms, i.e. TLAs). To vastly oversimplify, the CPU is basically a bunch of little calculator circuits &mdash; an add circuit, a multiply circuit, a divide circuit, and so on &mdash; plus a 'circuit picker.' Your program gets fed into the CPU as a series of instructions, each of which is a number telling the picker which of the little calculation circuits to run next. By lining up the instructions strategically to make a program, you can calculate something nontrivial. For example, here's a program (sequence of instructions) which together calculate the 4th Fibonacci number:
 
 >  TODO show a basic x86 fibonacci with each instruction annotated
 
@@ -37,9 +37,9 @@ A computer's CPU and RAM are tightly coupled &mdash; the two are physically con
 
 So, in short, CPU + RAM = you have a computer. But these alone would make a pretty useless computer.
 
-A real computer has a lot of additional devices attached to the core computer: disks, SSDs, network cards, graphics cards, monitors, keyboards, mice, webcams, you name it! These devices are often called [peripherals](https://en.wikipedia.org/wiki/Peripheral) because, however useful, they're not core to your computer &mdash; you can have a computer without a keyboard, but a computer without a CPU is no computer at all!
+A real computer has a lot of additional devices attached to the core computer: disks, SSDs, network cards, graphics cards, monitors, keyboards, mice, webcams, you name it! These devices are often called [peripherals](https://en.wikipedia.org/wiki/Peripheral) because, however useful, they're not core to your computer &mdash; you can have a computer without a keyboard, but a computer without a CPU is no computer at all.
 
-Internally, peripherals are usually sort of like computers in their own right. Each usually has a little chip called a "logic board" which consists, among other things, of a 'controller' that does a job similar to what the CPU does for a full computer, and a little bit of onboard memory that works sort of like RAM. Some newer devices, like fancy DIY hackable keyboards, literally use low-cost CPUs and RAM in place of a purpose-specific logic controller!
+Internally, peripherals are usually sort of like computers in their own right. Each usually has a little chip called a "logic board" which consists, among other things, of a 'controller' that does a job similar to what the CPU does for a full computer, and a little bit of onboard memory that works sort of like RAM. Some newer devices, like fancy DIY hackable mechanical keyboards, literally use low-cost CPUs and RAM in place of a purpose-specific logic controller!
 
 ## I/O
 
@@ -88,11 +88,11 @@ Say you wanted to read 8 KB from a disk. (In modern terms, this isn't so much to
 > Diagram with numeric labels corresponding to the steps below
 
 1. The CPU does an MMIO write to a disk command buffer. The command buffer that was written tells the disk what data the program would like to read
-   
+  
 2. As soon as the command has been written to the disk's command buffer, the disk picks it up and actually carries out the read from physical media (magnetic platter, solid state storage, etc). The disk parks all read data into an onboard memory buffer for now.
-   
+  
 3. The disk notifies the CPU that the read has completed, via a mechanism called an [interrupt](https://en.wikipedia.org/wiki/Interrupt) (sort of the hardware equivalent of an event callback).
-   
+  
 4. The CPU copies the data into RAM. In each iteration of a loop, it does an MMIO read from the disk's onboard memory buffer into a CPU register, followed by a write into RAM with the CPU register data. This continues until the entire buffer has been copied into RAM.
 
 Note that the disk's onboard memory buffer (the one being copied into RAM at step 4) is limited in size. If the amount of data the program wants to read is larger than this buffer, then the program will need to use multiple disk reads to get all the data; each disk read has to follow the entire process above.
@@ -114,11 +114,11 @@ Here's what our disk read looks like with DMA:
 > Diagram
 
 1. The CPU does an MMIO write into a disk command buffer, just like before. Now, however, the command not only says what disk data to read, but also what memory address the CPU would like the data copied into
-   
+  
 2. Like before, the disk carries out the read as soon as it appears in its command buffer. The data is read from physical media into the disk's own onboard memory
-   
+  
 3. Here's the DMA part: the disk now copies the data out of its onboard memory and into RAM. This still requires a potentially large number of (4-8 byte) copies, but now the disk is doing the copy by itself &mdash; the CPU has been off doing something else since the end of step 1
-   
+  
 4. Finally, once the data has been copied into memory, the disk sends the CPU an interrupt to notify it that the read completed and the requested data has been copied into the CPU-specified RAM buffer
 
 Now the CPU is free to do other stuff while the device is handling data transfers, and as a plus we also made device access code simpler: now our code that uses peripheral devices just writes a command to the device (with MMIO) and goes on its merry way; when it gets an interrupt back from the device, the entire operation has already completed, and the CPU can directly operate on any data that was read in. Easy!
@@ -134,11 +134,11 @@ Let's go back to our disk read example, but now with two computers: one with our
 > Diagram
 
 1. Code running on computer A sends a network command to computer B saying it would like to read data from one of computer B's disks. The command specifies which disk to read, what data should be read from that disk, and a memory address on computer A where the data should 'end up.'
-   
+  
 2. Computer B receives this command and does a disk read into local memory, using regular old DMA
-   
+  
 3. Now comes the RDMA part: B now copies its copy of the data out of its local memory and into A's local memory. This might require multiple individual transfers. Importantly, the transfer is managed completely by networking hardware: both computers' CPUs can do other work while the transfer is ongoing
-   
+  
 4. Finally, B sends a network response to computer A notifying it the operation is complete. When A receives this network message, it knows the data is already present in its local RAM, so there's nothing else to do
 
 We happened to have computer B do a disk read in this example, but the disk read has nothing to do with RDMA. More generally, RDMA is a networking technology that allows computers to copy between local and remote RAM; the important thing is that these transfers are managed completely by hardware, without the involvement of either computer's CPU.

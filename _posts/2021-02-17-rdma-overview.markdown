@@ -172,11 +172,11 @@ Not confusing at all, eh? Well, if you stick around for a while, you'll get used
 
 ## How Does RDMA Work?
 
-We've spent an *obscene* amount of time just saying what RDMA is &mdash; although, to be fair, we may have learned some other stuff in the process. But just understanding "RDMA is hardware-offloaded cross-machine DMA" barely scratches the surface of how it works.
+Okay, so we just spent an obscene amount of time just saying what RDMA is. (To be fair, we may have learned some useful stuff along the way. But just understanding "RDMA is hardware-offloaded DMA between computers" barely scratches the surface of how it works &mdash; and there's some interesting stuff lying beneath the surface!
 
-For the remainder of this post, we're going to explore the InfiniBand spec at a high level. InfiniBand is a good technology to examine not only because it's fairly popular and broadly deployed, but also because it's sort of a lingua franca among RDMA technologies: just like how knowing C makes it easier to learn related programming languages, so does knowing the basics of InfiniBand also help in learning other RDMA technologies.
+For the remainder of this post, we're going to explore the InfiniBand spec at a high level. InfiniBand is a good technology to examine not only because it's fairly popular and broadly deployed (at least in the HPC world), but also because it's sort of a lingua franca among RDMA technologies: knowing InfiniBand is helpful to learning other RDMA technologies similar to how knowing C it helpful in learning a variety of popular programming languages.
 
-InfiniBand is a huge spec &mdash; we have no hope of covering it in detail, and that wouldn't be so useful anyways. Instead, we're going to cover some of InfiniBand's key architectural details. This will be the kind of stuff that's useful in programming distributed applications that run over InfiniBand networks, but maybe not so much the stuff you'd need to know to actually build something like InfiniBand yourself.
+InfiniBand is a huge spec &mdash; we have no hope of covering it in detail, and great detail wouldn't be very useful anyways. Instead, we're going to cover some of InfiniBand's key architectural details. This will be the kind of stuff that's useful in programming distributed applications that run over InfiniBand networks, but maybe not so much the stuff you'd need to know to actually build something like InfiniBand yourself.
 
 Let's start with a little history...
 
@@ -197,6 +197,8 @@ Let's start with a little history...
 > But there was one group of people who were really fascinated with InfiniBand: the high performance computing community, a.k.a. the folks that build supercomputers. Supercomputer builders generally  need to network together a lot of high-end computers, have a huge budget to work with, and often start with zilch, needing to purchase everything from scratch. So all technologies are in play &mdash; even ones that don't interop with existing commodity hardware/software &mdash; as long as they significantly improve the bottom line.
 >
 > The HPC group really likes InfiniBand for supercomputer networks because InfiniBand is designed around keeping the CPU out of the loop in network operations. This not only removes the CPU as a potential bottleneck for networking, thereby allowing the network to move more data faster, but also frees up the CPU to compute stuff, which is the whole reason you're building a supercomputer in the first place. Remember that a network with $N$ computers has $O(N^2)$ possible network connections, so as your computer scales linearly in size, the network utilization may scale super linearly! This makes it critical to manage the cost of networking overhead.
+>
+> Should we mention VIA in any of this? It seems influential
 
 ## InfiniBand Networking
 

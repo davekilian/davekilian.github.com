@@ -182,38 +182,26 @@ Let's start with a little history for context ...
 
 ## InfiniBand
 
-> This is a draft based on things I remember off hand, but history seems like something easily verified with research, so go do some research and revise as needed
->
-> InfiniBand first came around in a time where we were tapping out Ethernet and PCI &mdash; we had devices and applications which used all available bandwidth and wanted even more &mdash; so we were looking for a replacement
->
-> The dream of InfiniBand was to generalize all computer interconnects: why not replace disparate technologies like Ethernet and PCI with a single interconnect &mdash; InfiniBand &mdash; that works inside and in between computers? We can even replace some exotic technologies, like Fibre Channel, which already bends the inter-computer/intra-computer distinction anyways.
->
-> That's how you get RDMA: clearly we want to support DMA inside a computer, so why not support an inter-computer DMA flow? That's how you end up RDMA.
->
-> The architecture: everything new from scratch with a few on future scalability. New wiring specifications, signaling protocols, bus semantics and application interfaces. A whole new stack, from scratch, meant to replace a whole bunch of unrelated specs that have to interoperate today.
->
-> Well, we live in the future now, and we know InfiniBand wasn't a big winner. It turned all-new everything was too much to stomach, even if it meant replacing a bunch of technologies with just one. We ended up using evolutions of our existing technologies, like PCI-Express for PCI and 10GbE for Ethernet.
->
-> But there was one group of people who were really fascinated with InfiniBand: the high performance computing community, a.k.a. the folks that build supercomputers. Supercomputer builders generally  need to network together a lot of high-end computers, have a huge budget to work with, and often start with zilch, needing to purchase everything from scratch. So all technologies are in play &mdash; even ones that don't interop with existing commodity hardware/software &mdash; as long as they significantly improve the bottom line.
->
-> The HPC group really likes InfiniBand for supercomputer networks because InfiniBand is designed around keeping the CPU out of the loop in network operations. This not only removes the CPU as a potential bottleneck for networking, thereby allowing the network to move more data faster, but also frees up the CPU to compute stuff, which is the whole reason you're building a supercomputer in the first place. Remember that a network with $N$ computers has $O(N^2)$ possible network connections, so as your computer scales linearly in size, the network utilization may scale super linearly! This makes it critical to manage the cost of networking overhead.
->
-> Should we mention VIA in any of this? It seems influential
+InfiniBand first came about around the turn of the milliennium. At the time, the dominant specification for connecting high-bandwidth hardware peripherals to a CPU was an interconnect called [PCI](https://en.wikipedia.org/wiki/Peripheral_Component_Interconnect); however, it was becoming clear that PCI's days were numbered, as the most bandwidth-hungry top-of-the-line peripherals around were starting to run into PCI's fundamental bandwidth limitations. The industry as a whole was starting to look for a modernized, higher-bandwidth alternative.
 
-## InfiniBand Networking
+Today, we know the winner of this race was [PCI Express](https://en.wikipedia.org/wiki/PCI_Express), an interconnect that is still the dominant protocol for the highest-speed peripherals today, almost 20 years later. But there was another notable contender in this race &mdash; InfiniBand &mdash; which may never have been the dominant technology for consumer hardware, but has enjoyed widespread popularity in the high-performance computing space.
 
-> What makes InfiniBand's architecture different from conventional networks, and how do these differences help increase bandwidth while offloading networking tasks to free up the CPU?
->
-> Remember that the goal of InfiniBand, the technologies that were fed into its creation, is to unify the interconnects inside your computer, which connect your hardware peripherals together, and networking interconnects that link computers together. If you look it at this way, conventional networking kind of works like programmed I/O: the CPU is orchestrating a potentially large number of small hardware data transfers, getting frequently interrupted every time a small transfer competes so it can start the next one. We'd like to make it possible for the CPU to set up these kind of large transfers once, and only get interrupted (called back) when the whole transfer has completed. In other words, the main goal is build up a network that supports DMA across machines.
->
-> Here's the strategy the InfiniBand spec chose for offloading networking and minimizing CPU involvement. We'll explore each of these steps in more detail as part of this blog:
->
-> 1. Build a network that never loses packets, so that hardware never has to deal with packet loss
-> 2. Build sequencing natively into the network, which is easy to do once there's no packet loss
-> 3. Expose hardware command queues to the CPU, which is easy given the network is sequential
-> 4. Add DMA-style read/write operations built on top of this sequenced, lossless network
->
-> Let's go explore how all of this works, and what this ends up looking like to the applications running on top of this network
+InfiniBand itself was the merger of two competing standards &mdash; one called "Next Generation I/O" and another called "Future I/O" &mdash; and was heavily inspired by another specification called the [Virtual Interface Architecture](https://en.wikipedia.org/wiki/Virtual_Interface_Architecture) (VIA). The designers of all these specifications noticed the growing similarities between interconnects (which link peripherals inside a computer) and networks (which link computers), and were trying to build a single technology to serve both as a hardware interconnect and a network.
+
+Why would you want this? Certainly, the maxim "two is worse than one" applies here, and reducing CPU overhead is always a good idea. One key feature that becomes possible with a technology that bends the distinction between interconnects and networks is a feature called *disaggregation*.
+
+Imagine you're building a supercomputing cluster by networking together a bunch of identical computers: one problem you're going to run is figuring out how much disk storage to provision per machine; you waste money if you overprovision and you potentially bottleneck applications if you under-provision. Even if you manage the strike the right balance once, as the applications running on your supercomputer evolve so will the 'perfect' ratio. Wouldn't it be nice if you could break out all the disks into their own sub-cluster and scale your cluster's compute capacity and storage capacity independently? The result is a concept known as a [Storage Area Network](https://en.wikipedia.org/wiki/Storage_area_network) or SAN. Making this kind of thing easy yet performant is a key goal in bending the interconnect / network distinction in technologies like InfiniBand.
+
+In the end, InfiniBand ended up resolving some of the design differences between interconnects and networks in favor of interconnects (i.e. making the network work more like an interconnect). In several key ways, the spec revolves around RDMA, and bending the design of the network itself to fit the requirements of hardware-offloaded RDMA (without CPU interaction). You could summarize these changes as follows:
+
+1. Build a network that never loses packets, so that hardware never has to handle packet loss
+2. Build sequencing natively into the network, which is easy once there's no packet loss
+3. Expose hardware command queues to the CPU, ordered according to network sequecning
+4. Add DMA-style read/write operations built on top of this sequential, lossless network
+
+Let's go about looking at how InfiniBand went about doing all these things. Although we'll focus on InfiniBand for now, these principles generally carry over to non-InfiniBand RDMA technologies.
+
+We'll start from the bottom and go up, which also means we have to solve the hardest problem first! How do we go about building a network that never drops packets?
 
 ## Lossless Networking
 

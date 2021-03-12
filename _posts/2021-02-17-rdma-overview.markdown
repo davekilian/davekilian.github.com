@@ -7,13 +7,15 @@ draft: true
 
 "*Everything you wanted to know about RDMA (but were too afraid to ask)*"
 
-If you've ended up here, you've probably been looking into RDMA, a networking technology popular for building large, high-performance private networks for things like supercomputers or private clouds. I've never been able to find a good, straightforward lowdown on RDMA, so here I'm writing one of my own.
+Since you've ended up here, I'm guessing you're looking into RDMA, a networking technology popular for building large, high-performance private networks for things like supercomputers or private clouds. I've been working with RDMA networks on the job for a while now, and I've never been able to find a good, straightforward lowdown on RDMA, so here I'm writing one of my own.
 
-I'm a software developer by trade, so I'll generally stick to software terminology, and explain hardware-related terms and concepts as they come up. Like many posts on this blog, one of the reasons I'm writing this is to crystallize my own understanding of the topic; so although I've tried to ensure everything below is true and correct, do verify anything you read here before making important decisions :-)
+As a software developer by trade, I'm writing this guide with other software developers in mind. My goal is for you to walk away with an idea of how programming against RDMA networks is different from conventional Ethernet/IP/TCP networking, with a general idea what's going on in the network hardware and why the technologies are different.
 
-## What is RDMA?
+Let's get started with a little terminology:
 
-As 15 seconds on Google will tell you, RDMA stands for "Remote Direct Memory Access." That's a mouthful if I've ever heard one! Let's unpack this a little.
+## What is "RDMA?"
+
+15 seconds on Google will tell you that RDMA stands for "Remote Direct Memory Access." That's a mouthful if I've ever heard one! Let's unpack this a little.
 
 To get started, we need to know a thing or two about your computer's hardware internals. Quite a few things, actually. Let's dive in!
 
@@ -25,45 +27,51 @@ Here's a basic schematic of the inside of your computer.
 
 As we can see, your computer is a network of interconnected parts. Let's start by taking a look at the core parts of your computer: your CPU and your RAM.
 
-The CPU is an electric circuit that implements a very basic programming language. Usually, the language and the CPU itself are co-developed; together, the language and CPU designs are called the CPU's "[instruction set architecture](https://en.wikipedia.org/wiki/Instruction_set_architecture)" or ISA. (As you can already see, hardware people love three-letter acronyms, i.e. TLAs). To vastly oversimplify, the heart of the CPU is a bunch of little calculator circuits &mdash; an add circuit, a multiply circuit, a divide circuit, and so on &mdash; plus a 'circuit picker.' Your program consists of a sequence of instructions, each of which is a number telling that 'picker' which circuit to pick next. By lining up these instructions strategically, you can get the CPU to compute something non-trivial. For example, here's a program (sequence of CPU instructions) which together calculate the 4h Fibonacci number:
+The CPU is an electric circuit that implements a very basic programming language called 'machine code.' Usually, this language and the CPU itself are co-developed, and together, these two things are called the CPU's "[instruction set architecture](https://en.wikipedia.org/wiki/Instruction_set_architecture)" or ISA. (As you can already see, hardware people love three-letter acronyms, i.e. TLAs).
+
+To vastly oversimplify, the heart of the CPU is a bunch of little calculator circuits &mdash; an add circuit, a multiply circuit, a divide circuit, and so on &mdash; plus a 'circuit picker.' Machine code consists of a sequence of instructions, each of which is a number telling that 'picker' which circuit to pick next. As a software developer, your job is to line up these instructions strategically so that, together, they do 'something.' For example, here's a program (sequence of CPU instructions) which together calculate the 4h Fibonacci number:
 
 >  TODO show a basic x86 fibonacci with each instruction annotated
 
-As we saw in the example above, your CPU has circuitry to store a few variables for intermediate values you're not done working on. For historical reasons, these variables are called *registers*. It's only cost-effective for a CPU to have a handful of registers (maybe a dozen or two), and programs often need to store more state than the CPU has registers. That's why your CPU is connected to RAM: RAM provides a place to store variables that aren't actively being worked on right now. As far as code is concerned, RAM provides a big byte array for data storage: if you have 8 GB of RAM, for example, that means your RAM provides an array of 8 billion bytes to the CPU.
+As we saw in the example above, your CPU has circuitry to store a few variables for intermediate values you're not done working on. For historical reasons, these variables are called "registers." It's only cost-effective for a CPU to have a handful, and programs often need to store more state than the CPU has registers. That's why your CPU is connected to RAM: RAM provides a place to offload program variables that you don't need right now, but will need later.
 
-A computer's CPU and RAM are tightly coupled &mdash; the two are physically connected to each other, and neither works without the other. For the same reason the CPU doesn't have many registers, the CPU also doesn't have much room to store the code it's executing; so instead, the code is staged in RAM and read (implicitly) by the CPU whenever it needs the next set of instructions. (This is the basis of the [Von Neumann architecture](https://en.wikipedia.org/wiki/Von_Neumann_architecture) that all modern computers are based on.) Every ISA also includes dedicated memory read and memory write instructions, so code running on the CPU can also use RAM to store program state.
+RAM itself is structured as a big byte array. For example, if your computer has 8 GB of RAM, that means your RAM physically provides an array of 8 billion bytes for the CPU to read and write. Every ISA includes dedicated memory read and write instructions, so code running on the CPU can store and retrieve variables in RAM.
 
-So, in short, CPU + RAM = you have a computer. But it'd be a pretty useless computer!
+For the same reason the CPU doesn't have many registers, the CPU also doesn't have much room to store the code it's executing; so instead, the code is staged in RAM and read (implicitly) by the CPU whenever it needs the next set of instructions. (This is the basis of the [Von Neumann architecture](https://en.wikipedia.org/wiki/Von_Neumann_architecture) that all modern computers are based on.)
 
-Practically speaking, you need a lot more 'stuff' to make a computer people can do stuff with &mdash; things like disks, SSDs, network cards, displays, keyboards, mice, touchscreens, cameras, you name it! These devices are often called [peripherals](https://en.wikipedia.org/wiki/Peripheral) because, however useful, they're not core to your computer: you can have a computer without a keyboard, but a computer without a CPU is no computer at all.
+So, in short, CPU + RAM = you have a computer. But it'd be a pretty useless computer! Practically speaking, you need a lot more 'stuff' to make a computer people can do stuff with &mdash; things like disks, SSDs, network cards, displays, keyboards, mice, touchscreens, cameras, you name it! These devices are often called [peripherals](https://en.wikipedia.org/wiki/Peripheral) because, however useful, they're not core to your computer: you can have a computer without a keyboard, but a computer without a CPU is no computer at all.
 
-How do these peripherals work? In many cases, peripherals are controlled by onboard circuitry that works like a rudimentary computer in its own right. The 'logic board' that runs a peripheral device usually has a 'controller' chip that does something similar to the job of a CPU, and these boards often also include some RAM-like memory. Some devices even run some code (called [firmware](https://en.wikipedia.org/wiki/Firmware)). The key difference between these logic boards and the CPU/RAM is programmability: logic controllers are designed to drive the peripheral device and nothing else; they aren't meant to run general-purpose code.
+## Peripherals
 
-> Aside: Computers have now come down so far in price that some high-end hardware includes a full-fledged CPU with onboard RAM in order to control the device. For this class of hardware, the logic board controlling the device isn't 'like a rudimentary computer' &mdash; it's literally another full computer running inside the device!
->
-> High-end [DIY hackable mechanical keyboards](https://qmk.fm/keyboards/) work this way. What makes these keyboards 'hackable' is that the logic board is a full-fledged computer that runs an open source C program &mdash; you can 'hack on' these keyboards by building your own copy of the firmware program and writing it to the keyboard's onboard flash storage.
+How do peripherals work?
 
-To summarize, whatever device you're using to read this blog is actually a whole network of little computers talking to each other. Together, the CPU and RAM are the main programmable part of the computer, where all the software runs. This programmable core is hooked to a bunch of little auxiliary proto-computers which each run a device (maybe a display, a disk, a keyboard, a touchscreen, etc). Hooking everything together allows code running on the programmable core to interact with physical devices.
+Many peripherals include some onboard circuitry that works like a rudimentary computer in its own right. This 'logic board' usually has some kind of 'controller' chip that does something similar to the job of a CPU, and logic boards often also include some RAM-like memory. More advanced peripherals might even execute some onboard code (called [firmware](https://en.wikipedia.org/wiki/Firmware)). Some of the most expensive peripherals (like high-end [DIY hackable mechanical keyboards](https://qmk.fm/keyboards/)) actually include a full-fledged onboard computer for this purpose! (Albeit, a small, slow and inexpensive one.)
 
-But how exactly are these things all hooked together? How does that 'core' computer &mdash; your CPU and RAM &mdash; exchange information with the peripheral 'auxiliary' computers and make the hardware do stuff? It looks like we need to invent [I/O](https://en.wikipedia.org/wiki/Input/output) &mdash; that is, ways for code running on a CPU to submit commands to peripherals and read back information from the device.
+The key difference between these logic boards and your CPU/RAM is programmability: logic controllers are designed to drive the peripheral device and nothing else, whereas the CPU/RAM is designed to run general-purpose code.
+
+Putting it all together, it turns out the computer you're using to read this blog is actually a whole little network of mini-computers talking to each other. The CPU and RAM are the main programmable core of the computer, where all the software runs. This programmable core is hooked to a bunch of little auxiliary proto-computers, which each run a device such as a display, a disk, a keyboard, a touchscreen, etc. Because these are all hooked up together, code running on the CPU/RAM can interact with physical devices via their logic boards.
+
+> Basic schematic showing your CPU+RAM when your code is running, fanning out to a 'network' which is connected to logic boards, each of which has a device icon next to it.
+
+What we want to figure out next is how these are all hooked together. In other words, how does that 'core' computer &mdash; your CPU and RAM &mdash; exchange information with the peripheral 'auxiliary' computers and make the hardware do stuff? It looks like we need to invent [I/O](https://en.wikipedia.org/wiki/Input/output) &mdash; that is, ways for code running on a CPU to submit commands to peripherals and read back information from the device.
 
 ## I/O
 
-Throughout the ages there have been several high-level approaches to I/O, but the dominant approach today is a technique called [Memory Mapped I/O (MMIO)](https://en.wikipedia.org/wiki/Memory-mapped_I/O) (which, by the way, has no relation to the Unix memory mapped file I/O feature).
+Throughout the ages there have been many approaches to I/O, but the dominant approach today is a technique called [Memory Mapped I/O (MMIO)](https://en.wikipedia.org/wiki/Memory-mapped_I/O) (which, by the way, has no relation to the Unix memory mapped file I/O feature).
 
-Here's the idea: the CPU already has instructions for reading and writing RAM, and those peripheral devices already have some onboard memory. So why not make it so the existing CPU read/write instructions can directly read and write the peripheral's onboard memory? (At least some of it.) That would give programs a way to submit commands to a device (memory writes) and/or receive information (memory reads), depending on what the device supports.
+Here's the idea: the CPU already has instructions for reading and writing RAM, and peripherals already have some onboard memory that kind of works like RAM. So why not make it so the existing CPU read/write instructions can directly read and write the peripheral's onboard memory? (At least some of it.) That would give programs a way to submit commands to a device (memory writes) and/or receive information (memory reads), depending on what the device supports.
 
-To make this work, we need to invent a way to make peripheral memory accessible via the CPU's 'read memory' and 'write memory' instructions. Remember that all memory, whether it's RAM or a peripheral's onboard memory, is exposed to the CPU as an array of bytes. Each index in this array is called an *address*, and the CPU's read/write instructions both take a memory address as an input parameter. Originally, this address was simply interpreted as a RAM address, but now we're going to make it so some addresses refer to peripherals' device memory, while other addresses continue to refer to RAM.
+To make this work, we need to invent a way to make peripheral memory accessible via the CPU's 'read memory' and 'write memory' instructions. Remember that all memory, whether it's RAM or a peripheral's onboard memory, is exposed to the CPU as an array of bytes. Each index in this array is called an *address*, and the CPU's read/write instructions both take a memory address as input.
 
-The key observation needed to make this work is that, no matter how large RAM is, there will be more possible memory addresses than there are bytes of RAM, leaving a bunch of possible memory addresses unused (there's simply no corresponding RAM to be addressed). We can repurpose some of the unused addresses as a way of accessing peripheral device memory.
+The key observation about addresses we need to make memory-mapped I/O work is that there are more possible addresses than there are bytes in RAM, so some addresses inevitably go unused. We can repurpose some of the unused addresses as a way of accessing peripheral device memory!
 
-To implement this, we start by shimming in a new chip in between the CPU and the RAM, like this:
+The first step to making this work is to shim in a new chip in between the CPU and RAM, like this:
 
 > Diagram
 
-For the sake of this discussion, we'll call this new chip a 'memory controller.' Our hypothetical memory controller's purpose is to sort of "lie" to the CPU about memory addresses, in order to redirect some unused addresses to peripheral device memory. It's easiest to explain how this works using an example.
+For the sake of this discussion, let's call this new chip a 'memory controller.' Our hypothetical memory controller's purpose is to sort of "lie" to the CPU about memory addresses, in order to redirect some unused addresses to peripheral device memory. It's easiest to explain how this works using an example.
 
-Say we had a very simple computer with a tiny amount of RAM (only 10,000 bytes total), and say we only have two peripherals: a keyboard and a mouse. Let's have both expose peripheral memory to the CPU using memory-mapped I/O. For readability, let's say this very small computer represents memory addresses using only 16 bits, meaning all addresses from 0-65,535 are possible.
+Say we had a very simple computer with a tiny amount of RAM (only 10,000 bytes total), and say we only have two peripherals: a keyboard and a mouse. Let's have both expose peripheral memory to the CPU using memory-mapped I/O. To make it easier to read addresses, let's say this very small computer represents memory addresses using only 16 bits, meaning all addresses from 0-65,535 are possible.
 
 Our new memory controller chip might map all of this into the CPU's memory address space like this:
 
@@ -74,19 +82,19 @@ Our new memory controller chip might map all of this into the CPU's memory addre
 | Mouse    | 500                    | 12,000-12,500    |
 | (unused) | ---                    | 12,500-65,536    |
 
-Now let's say we have a program that needs to read input from the keyboard. That program will probably want to periodically read the keyboard's device memory to see which, if any keys are being pressed right now. The program code to do that knows (in ways too deep to get into here) that the keyboard's memory mapping starts at address 10,000. Let's say the program's keyboard query code wants to read from the keyboard's device memory at address 1,500. So it adds the memory address (1,500) to the keyboard's base address (10,000) to get a virtual address, 11,500. The program then executes a 'read' instruction at memory address 11,500 into a local register.
+Now let's say we have a program that needs to read input from the keyboard. That program will probably want to periodically read the keyboard's device memory to see which, if any keys are being pressed right now. The program code to do that knows (in ways too deep to get into here) that the keyboard's memory mapping starts at address 10,000. Let's say the program's keyboard query code wants to read from the keyboard's device memory at address 1,500. So it adds the memory address (1,500) to the keyboard's base address (10,000) to get a virtual address, 11,500. The program then executes a 'read' instruction at memory address 11,500 into a CPU register.
 
 Our new 'memory controller' chip intercepts this read instruction and uses the table above to decode the read address. It sees 11,500 falls within the 'keyboard' mapped address range. It then subtracts the keyboard device's base address (10,000) to obtain the device-specific memory address 1,500. (This is just the opposite of the calculation our code did in the previous paragraph.) Finally, the controller issues a read from the keyboard device memory at address 1,500. The keyboard returns the memory value to the memory controller chip, and the memory controller returns the value to the CPU, which stores it in a register. The read is now complete! (Whew.)
 
-From the programmer's perspective, all of this happens seamlessly: the programmer includes a 'read' instruction with computed address 11,500 into some CPU register, and can safely assume the value has been read into that register once the next instruction executes. (And, of course, on a real computer this is all handled by operating system drivers &mdash; it's uncommon to have to write this kind of code nowadays.)
+From the programmer's perspective, all of this happens seamlessly: the programmer includes a 'read' instruction with computed address 11,500 into some CPU register, and can safely assume the value has been read into that register upon the start of the next instruction. (And, of course, on a real computer this is all handled by operating system drivers &mdash; it's uncommon to have to write this kind of code nowadays.)
 
 > One aside about that 'memory controller' chip I keep mentioning: depending on the ISA, it has different names and appears in different places. A few years ago, if you had built your own PC or overclocked a CPU, you may have heard one of these names before.
 >
-> Clasically, this memory mapping functionality has been implemented as two interconnected chips that work together: a [Northbridge](https://en.wikipedia.org/wiki/Northbridge_(computing)) and a [Southbridge](https://en.wikipedia.org/wiki/Southbridge_(computing)). The Northbridge provides an interconnect between the CPU, RAM, high-speed devices and the Southbridge, which in turn is another interconnect for lower-speed devices that can't keep up with RAM speeds. Wikipedia has [a nice diagram](https://en.wikipedia.org/wiki/Southbridge_(computing)#/media/File:Motherboard_diagram.svg) showing how this works.
+> Clasically, this memory mapping functionality has been implemented as two interconnected chips that work together: a [Northbridge](https://en.wikipedia.org/wiki/Northbridge_(computing)) and a [Southbridge](https://en.wikipedia.org/wiki/Southbridge_(computing)). The Northbridge connects the CPU, RAM, high-speed devices and the Southbridge directly together; the Southbridge is a separate interconnects for lower-speed devices that can't keep up with RAM speeds. Wikipedia has [a nice diagram](https://en.wikipedia.org/wiki/Southbridge_(computing)#/media/File:Motherboard_diagram.svg) showing how this works.
 >
-> Over time, consumer hardware has been getting faster and more bandwidth-hungry, and ISA designers have responded by pushing these chips 'up,' closer to the CPU. Today, there often isn't a separate Northbridge chip on higher-end hardware &mdash; it has been subsumed into the CPU itself for maximum bandwidth.
+> Over time, consumer hardware has been getting faster and more bandwidth-hungry, and ISA designers have responded by pushing these bridges 'up,' closer to the CPU. On today's higher-end hardware,, there often isn't a separate Northbridge chip anymore &mdash; it has been subsumed into the CPU itself to maximize transfer bandwidth.
 >
-> No matter how the ISA is designed, the core memory-mapping and redirection functionality remains critical to how computer code uses peripheral devices.
+> But, no matter how the ISA is designed, the core memory-mapping and redirection functionality remains critical to how computer code uses peripheral devices today.
 
 ## Copying Data
 
@@ -97,42 +105,53 @@ Say you wanted to read 8 KB from a disk. (In the example earlier this would seem
 > Diagram with numeric labels corresponding to the steps below
 
 1. The CPU writes a command to the disk's memory, via a memory mapping, telling the disk what data the program would like to read.
-   
 2. Once it's ready, the disk dequeues the command and carries it out by reading from physical media (magnetic platter, solid state storage, etc). All data is temporarily stored in the disk's onboard memory.
-   
 3. The disk notifies the CPU that the read has completed, via a mechanism called an [interrupt](https://en.wikipedia.org/wiki/Interrupt) (sort of the CPU equivalent of an event callback).
-   
-4. The CPU copies data from disk memory to RAM. In a loop, it executes a read from disk memory into a CPU register, then a write from the register into RAM, continuing until all data has been copied.
+4. The CPU copies data from disk memory to RAM. In a loop, it does a read from disk memory into a CPU register, then a write from the CPU register into RAM, continuing until all data has been copied.
 
-The size of the disk's onboard memory is limited, and if more than that much data needs to be read, then the software will need to use multiple disk reads to get all the data; each read has to follow the full process above.
+The disk only has so much onboard memory for buffering data. If the amount of data to be read exceeds this buffer size, then the software will need to do multiple disk reads to get all the data. Each read has to follow the full process outlined above.
 
 In modern parlance, this scheme would be called [Programmed I/O](https://en.wikipedia.org/wiki/Programmed_input–output). This scheme works, and there have even been computers that work this way, but you're unlikely to see a modern computer do this, because it's so. darn. slowww.
 
 The problem is that loop in step 4. A CPU can only do one thing at a time, and while it's tied up copying data between the disk's onboard memory and RAM it can't run any of the code we bought our computer to run in the first place. The problem is made worse by just how long it's going to take to do that copy:
 
-* A CPU register is only 4-8 bytes, so the loop that copies data into memory in step 4 above can easily require upwards of a thousand iterations, just to read from a disk one time.
+* A CPU register is only 4-8 bytes, so the loop that copies data into memory in step 4 above can easily require more than a thousand iterations, just to read from a disk one time.
 * CPUs are a few hundred times faster than RAM, so a copy that takes 1,000 loops (for example) wastes hundreds of thousands of instructions worth of CPU time.
-* On, and device memory isn't usually as fast as RAM, further exacerbating the waste.
+* On, and device memory isn't usually as fast as RAM, so copying might take even longer than that.
 
-That's why modern I/O technologies employ a technique called [Direct Memory Access](https://en.wikipedia.org/wiki/Direct_memory_access) (DMA). The idea behind DMA is to cut the CPU out of the loop for that final copy step above by having the peripheral do it instead. This should be relatively easy to achieve now that we added our new 'memory controller' chip that links the CPU, RAM and peripherals anyways &mdash; all we need to do is add a way for peripherals to initiate RAM reads and writes without help from the CPU.
+That's why modern I/O technologies employ a technique called [Direct Memory Access](https://en.wikipedia.org/wiki/Direct_memory_access) (DMA).
+
+## DMA
+
+The idea behind DMA is to cut the CPU out of that final copy step above by having the disk copy data instead. The CPU is free to continue doing other stuff while the disk copies data into RAM, and doesn't need to get notified until all the requested data is already in RAM, ready to go!
+
+How does this work? Since we already have a 'memory controller' brokering access between the CPU, RAM and peripherals, this should be relatively easy to implement &mdash; all we need is a way for peripherals to execute their own memory reads and writes, without help from the CPU. In other words, instead of being a splitter that maps a bunch of devices together:
+
+> Diagram showing a tree rooted at the CPU -> memory controller -> branching out to a bunch of individual devices
+
+The memory controller is now a full network, allowing anyone to talk to anyone:
+
+> Similar diagram, but now it's a bunch of bidirectional links to/from the memory controller hub, with legs pointing to the CPU, RAM, and individual devices
 
 Here's what our disk read looks like with DMA:
 
 > Diagram
 
 1. The CPU writes a command to the disk's memory, via a memory mapping, telling the disk what data to read, *and* where to store the result in RAM.
-   
+  
 2. Like before, the disk dequeues the command and reads from physical media, temporarily storing the result in the disk's own onboard memory.
-   
+  
 3. Now for DMA: the *disk* copies data out of its onboard memory and into RAM. This is still a potentially a long loop, but now the disk executes the loop while the CPU does other stuff.
-   
+  
 4. Finally, the disk notifies the CPU everything is done by sending an interrupt (event callback). There's nothing more for the CPU to do now &mdash; the requested data is already in RAM!
 
-When DMA was first introduced, CPUs were typically much faster than peripheral devices and their corresponding memory tranfers, and DMA was key to ensuring CPUs weren't being bottlenecked on comparatively slower hardware. Today, with some of the highest-end hardware, the situation has been inverted: now we have super fast peripherals that need DMA to avoid being bottlenecked by the CPU!
+When DMA was first introduced, CPUs were typically much faster than peripheral devices and their corresponding memory transfers, and DMA was key to ensuring CPUs weren't being bottlenecked by peripherals. With some of today's highest-end hardware, the situation has been inverted: now we have some super fast peripherals that need DMA to avoid being bottlenecked by the CPU!
+
+The acronym "DMA" should be vaguely familiar ... what was this blog post supposed to be about again?
 
 ## RDMA?
 
-"Alright," you might say, "this has all been neat, but weren't we going to talk about RDMA?" Yup, let's talk about RDMA. If you still remember what "RDMA" stands for, in light of the above, you might see where all this is headed.
+Remember, our original goal was to figure out what the term "RDMA" means. If you still remember what "RDMA" stands for, in light of the above, you might already see where all this is headed ...
 
 You see, it's *technically* correct to expand "RDMA" fully to "Remote Direct Memory Access," and that's why you'll see most articles write it out that way. But it's arguably more enlightening to expand it as "Remote DMA," because the core idea of RDMA is to do a DMA transfer *across computers*.
 
@@ -144,72 +163,103 @@ Let's go back to our disk read example, but now with two computers: one with our
   
 2. Computer B receives this command and does a disk read into local memory, using regular old DMA
   
-3. Now comes the RDMA part: B now copies its copy of the data out of its local memory and into A's local memory. This might require multiple network transfers. Importantly, these network transfers are managed completely by networking hardware: both computers' CPUs can do other work while the transfer is ongoing
+3. Now comes the RDMA part: B now copies its copy of the data out of its local memory and into A's local memory. This might require many network transfers; importantly, neither computer's CPU is involved with these transfers, and can do other stuff while the network hardware copies memory.
   
-4. Finally, B sends a network response to computer A notifying it the operation is complete. When A receives this network message, it knows the data is already present in its local RAM, so there's nothing else to do
+4. Finally, B sends a network response to computer A notifying it the operation is complete. When A receives this network message, it knows the data is already present in its local RAM, so there's nothing left to do
 
-We included a disk read to show how the previous DMA example lines up with RDMA, but the disk read has nothing to do with RDMA &mdash; RDMA is just a networking technology that allows computers to copy data between local and remote RAM, such that the transfers are managed by the networking hardware (without the CPU getting involved). Like with DMA, this provides two-sided benefits: the CPU is freed from the burden of managing network transfers, and the network can scale to higher speeds than the CPU could feasibly handle.
+We included a disk read to show how the previous DMA example lines up with RDMA, but the disk read has nothing to do with RDMA &mdash; RDMA is just a networking technology that allows computers to copy data between local and remote RAM.
 
-If you look at RDMA like DMA, you can kind of see what its inventors were going for. You can look at conventional network as sort of working like programmed I/O: each network transmission is small (around a kilobyte, maybe), and we need programs on each computer to coordinate on how to break down data into individual transmissions on one end and reassemble them on the other. With RDMA, this coordination still needed, but it's handled by the networking hardware alone.
+If you look at RDMA like DMA, you can kind of see what its inventors were going for. You think of conventional networks as working sort of like programmed I/O: each network transmission is small (around a kilobyte, maybe), and we need programs on each computer to coordinate on how to break down data into individual transmissions on one end and reassemble them on the other. With RDMA, this coordination still needed, but it's handled by the networking hardware alone. Like with DMA, RDMA provides two-sided benefits: the CPU is freed from the burden of managing network transfers, and the network can scale to higher speeds than the CPU could feasibly handle. RDMA networks are deployed for both reasons.
 
-So far this all might sound a little too good to be true &mdash; if this makes both the CPU and the network more efficient, why don't all networks work this way? The short answer is that conventional networking is too hard to handle completely in hardware, so if you want Remote DMA, you first need to invent a completely different kind of network. This new kind of network requires peers to cooperate tightly &mdash; even one misbehaving peer could bring the whole thing down. That kind of tight cooperation isn't really possible on the Internet, and most consumer-grade networks are primarily a link to get users connected to the Internet. As such, most people end up using conventional, non-RDMA networks.
+So far this all might sound a little too good to be true &mdash; if this makes both the CPU and the network more efficient, why don't all networks work this way? The short answer is that conventional networking is too hard to handle completely in hardware, so if you want Remote DMA, you first need to invent a completely different kind of network. This new kind of network requires tight coordination between peers, and can break down completely if even one peer 'misbehaves.' That kind of tight cooperation isn't really possible on the Internet, and most consumer-grade networks are primarily a link to get users connected to the Internet. So most people end up using conventional, non-RDMA networks.
 
-The kind of tight cooperation you need for RDMA networks *is* feasible in privately operated networks built and operated by a single entity (academic institution, government agency, private business, etc). That's why you end up seeing RDMA almost ubiquitously in the context of big private networks, like supercomputers and private clouds, but pretty much nowhere else.
+The kind of tight cooperation you need for RDMA networks *is* feasible in privately operated networks built and operated by a single entity (academic institution, government agency, private business, etc). That's why you end up seeing RDMA almost ubiquitously in the context of things like supercomputers and private clouds, but pretty much nowhere else.
 
 But for now be happy, for you know the definition of RDMA! Or do you?
 
 ## RDMA (The Colloquial Definition)
 
-Everything we've said so far is correct in the technical sense, and if you search for RDMA on the Internet, the above is more or less what you're going to learn. But there's a second common meaning to the term "RDMA:" InfiniBand, and the technologies it has inspired.
+Everything we've said so far is correct in the technical sense, and if you search for RDMA on the Internet, the above is more or less what you're going to learn. But there's a second common meaning to the term "RDMA:" InfiniBand, and InfiniBand-related technologies.
 
-You see, InfiniBand was the first prominent technology to feature RDMA. The designers were trying to create one unified interconnect (InfiniBand) which works both *between* computers, like a conventional network, as well as *inside* a computer, linking peripherals to CPU/RAM "programmable core." In trying to do this, they found they needed to a way to extend conventional DMA to work across computers, and so "Remote DMA" was born.
+InfiniBand was the first prominent technology to feature RDMA. The designers were trying to create one unified interconnect (InfiniBand) which works both *between* computers, like a conventional network, as well as *inside* a computer, to link peripherals to CPU+RAM "programmable core." In trying to do this, they found they needed to a way to extend DMA to work across computers, and so "Remote DMA" was born.
 
-Although InfiniBand never really took off elsewhere, it gained a strong hold in the [High-Performance Computing](https://en.wikipedia.org/w/index.php?title=High-performance_computing&redirect=no) community, and eventually gave rise to several extensions and competing standards. This all happened organically, and the community never came up with a good umbrella term to describe all of them as a group. It's also preferable to avoid saying "InfiniBand" in marketing materials, because "InfiniBand" is a trademarked term. (Please remember to include the implicit "(TM)" every time you read the word "InfiniBand" in this article.)
+Although InfiniBand never really took off widely, it did gain a strong hold in the [High-Performance Computing](https://en.wikipedia.org/w/index.php?title=High-performance_computing&redirect=no) community, and eventually gave rise to several extensions and competing standards. This all happened organically, and the community never came up with a good umbrella term to describe all of this tech as a whole. It's also preferable to avoid saying "InfiniBand" in marketing materials, because "InfiniBand" is a trademarked term. (Please remember to include the implicit "(TM)" every time you read the word "InfiniBand" in this article.)
 
 Without a better option, the de facto term for all these technologies ended up being "RDMA." Which means, depending on the context, "RDMA" could refer to "Remote DMA," the thing we've spent so much time describing so far, or it could mean "networking technology that features Remote DMA" (and is probably related to, or at least inspired by InfiniBand).
 
-Not confusing at all, eh? Well, if you stick around for a while, you'll get used to it.
+Not confusing at all, eh? Well, stick around for a while and you'll get used to it.
 
 ## How Does RDMA Work?
 
-Okay, so we just spent an obscene amount of time just saying what RDMA is. (To be fair, we may have learned some useful stuff along the way.) But just understanding that "RDMA is hardware-offloaded DMA between computers" barely scratches the surface of how it works &mdash; and there's some interesting stuff lying beneath the surface!
+Now that we know what RDMA is, figuring out roughly how it works is a useful next step. For the remainder of this blog, we're going to explore the InfiniBand spec at a very high level. InfiniBand is a good technology to examine not only because it's fairly popular (at least in the HPC sphere), but also because it's sort of a lingua franca among RDMA technologies: knowing InfiniBand is helpful to learning other RDMA technologies the same way how knowing C it helpful in learning a variety of popular programming languages.
 
-For the remainder of this post, we're going to explore the InfiniBand spec at a high level. InfiniBand is a good technology to examine not only because it's fairly popular and broadly deployed (at least in the HPC sphere), but also because it's sort of a lingua franca among RDMA technologies: knowing InfiniBand is helpful to learning other RDMA technologies similar to how knowing C it helpful in learning a variety of popular programming languages.
-
-InfiniBand is a huge spec though &mdash; we have no hope of covering it in detail, and great detail wouldn't be very useful to many people anyways. Instead, we're going to cover some of InfiniBand's key architectural details. This will be the kind of stuff you'd need to know to program distributed applications running on an InfiniBand-like RDMA network, but maybe not so much the stuff you'd need to know to actually build something like InfiniBand yourself.
-
-Let's start with a little history for context ...
+InfiniBand is a huge spec though &mdash; we have no hope of covering it in detail, and great detail wouldn't be very useful anyways. Instead, we're going to cover some of InfiniBand's key architectural decisions. This will be the kind of stuff you'd need to know to program distributed applications running on an InfiniBand-like RDMA network, but maybe not so much the stuff you'd need to know to actually build something like InfiniBand yourself.
 
 ## InfiniBand
 
+When looking at a technology, it's often useful to understand the historical context in which it was invented.
+
 InfiniBand first came about around the turn of the milliennium. At the time, the dominant specification for connecting high-bandwidth hardware peripherals to a CPU was an interconnect called [PCI](https://en.wikipedia.org/wiki/Peripheral_Component_Interconnect); however, it was becoming clear that PCI's days were numbered, as the most bandwidth-hungry top-of-the-line peripherals around were starting to run into PCI's fundamental bandwidth limitations. The industry as a whole was starting to look for a modernized, higher-bandwidth alternative.
 
-Today, we know the winner of this race was [PCI Express](https://en.wikipedia.org/wiki/PCI_Express), an interconnect that is still the dominant protocol for the highest-speed peripherals today, almost 20 years later. But there was another notable contender in this race &mdash; InfiniBand &mdash; which may never have been the dominant technology for consumer hardware, but has enjoyed widespread popularity in the high-performance computing space.
+The industry came up with several specifications to try and meet that demand. Today, we know the winner of the race was [PCI Express](https://en.wikipedia.org/wiki/PCI_Express), an interconnect that is still the dominant protocol for the highest-speed peripherals 20 years later. But there was another notable contender in this race &mdash; InfiniBand &mdash; which may never have enjoyed widespread dominance, but did find itself a comfy niche in the high-performance computing space.
 
 InfiniBand itself was the merger of two competing standards &mdash; one called "Next Generation I/O" and another called "Future I/O" &mdash; and was heavily inspired by another specification called the [Virtual Interface Architecture](https://en.wikipedia.org/wiki/Virtual_Interface_Architecture) (VIA). The designers of all these specifications noticed the growing similarities between interconnects (which link peripherals inside a computer) and networks (which link computers), and were trying to build a single technology to serve both as a hardware interconnect and a network.
 
-Why would you want this? Certainly, the maxim "two is worse than one" applies here, and reducing CPU overhead is always a good idea. One key feature that becomes possible with a technology that bends the distinction between interconnects and networks is a feature called *disaggregation*.
-
-Imagine you're building a supercomputing cluster by networking together a bunch of identical computers: one problem you're going to run is figuring out how much disk storage to provision per machine; you waste money if you overprovision and you potentially bottleneck applications if you under-provision. Even if you manage the strike the right balance once, as the applications running on your supercomputer evolve so will the 'perfect' ratio. Wouldn't it be nice if you could break out all the disks into their own sub-cluster and scale your cluster's compute capacity and storage capacity independently? The result is a concept known as a [Storage Area Network](https://en.wikipedia.org/wiki/Storage_area_network) or SAN. Making this kind of thing easy yet performant is a key goal in bending the interconnect / network distinction in technologies like InfiniBand.
-
-In the end, InfiniBand ended up resolving some of the design differences between interconnects and networks in favor of interconnects (i.e. making the network work more like an interconnect). In several key ways, the spec revolves around RDMA, and bending the design of the network itself to fit the requirements of hardware-offloaded RDMA (without CPU interaction). You could summarize these changes as follows:
-
-1. Build a network that never loses packets, so that hardware never has to handle packet loss
-2. Build sequencing natively into the network, which is easy once there's no packet loss
-3. Expose hardware command queues to the CPU, ordered according to network sequecning
-4. Add DMA-style read/write operations built on top of this sequential, lossless network
-
-Let's go about looking at how InfiniBand went about doing all these things. Although we'll focus on InfiniBand for now, these principles generally carry over to non-InfiniBand RDMA technologies.
-
-We'll start from the bottom and go up, which also means we have to solve the hardest problem first! How do we go about building a network that never drops packets?
-
-## Lossless Networking
-
-> A key goal with InfiniBand is to offload network transfers and coordination to hardware, so that the CPU only needs to be notified once transfers have completed. The challenge in doing this is that digital circuitry gets infeasibly complex quickly compared to software, so all protocols and algorithms we intend to implement in hardware must be conceptually simple. There's one thing that makes network transfers conceptually complex: packet loss.
+> Does it sound weird to want to unify interconnects and networks with a single technology? Why would someone do that?
 >
-> Recap why conventional/non-RDMA networks are designed with the assumption of packet loss and the need for technologies like TCP to provide retries, ordering and congestion control.
+> Certainly, the maxim "two is worse than one" applies here, and reducing CPU overhead is always a good idea. One key feature that becomes possible with a technology that bends the distinction between interconnects and networks is a feature called *disaggregation*.
 >
-> All of this hopefully sounds exceptionally difficult to implement in hardware. The InfiniBand folks chose to sidestep this problem entirely, by designing a network that doesn't lose packets in the first place. [cue Eddie Murphy meme] If the network never needs to drop packets, then no hardware needs to deal with the contingency of lost packets, and pushing processing down to hardware circuits starts to look more feasible!
+> Imagine you're building a supercomputing cluster by networking together a bunch of identical computers. One problem you're going to run is figuring out how much disk storage to provision per machine; you waste money if you provision more disk storage and each computer needs, but provisioning too little could potentially bottleneck applications or rule some out altogether. Even if you manage to strike this balance perfectly, as the applications running on your supercomputer evolve so will the 'perfect' ratio. That makes this provisioning job seem kind of hopeless ...
+>
+> Wouldn't it be nice if you could build a separate sub-cluster of just disks, and have $M$ computers talking to $N$ disks? This is the core idea behind something called a [Storage Area Network](https://en.wikipedia.org/wiki/Storage_area_network) or SAN. Making this kind of thing easy yet performant is a key goal in bending the interconnect / network distinction in technologies like InfiniBand.
+
+In the end, InfiniBand ended up resolving some of the design differences between interconnects and networks in favor of interconnects (i.e. making the network work more like an interconnect). In several key ways, the spec revolves around RDMA, and bending the design of the network itself to fit the requirements of RDMA. You could summarize these changes as follows:
+
+1. Build a sequential network that never loses packets, to make hardware offload easier
+2. Expose hardware command queues to the CPU, ordered according to network sequencing
+3. Add DMA-style read/write operations built on top of this sequential, lossless network
+
+This will all make sense in due time. For now, let's start at the bottom of the stack and look at the network itself: how does InfiniBand networking differ from more conventional networking technologies, and why was it made to work that way?
+
+To start to answer that question, it'd be useful to remind ourselves how conventional networks work. Let's take a look at the most conventional of networking technologies today: Ethernet!
+
+## Ethernet
+
+> One liner for context
+
+Ethernet networks are built by linking computers together using special-purpose computer-like networking devices called 'switches.' Each switch has a set of Ethernet ports that you can connect up to a computer, or to another switch:
+
+> Picture
+
+The job of an Ethernet switch is to forward transmissions, which the Ethernet specification calls 'frames.' So when an Ethernet frame is received on one port of an Ethernet switch, the switch needs to figure out which Ethernet port it should forward the frame to, and transmit a new copy of that frame out on the chosen port. Once the frame has been forwarded, the switch can discard its local copy of the frame, since its work with the frame is done.
+
+Larger Ethernet networks can be built by linking switches together. In a multiple-switch Ethernet network, the job of each switch is to forward each incoming frame along to its next 'hop,' and a given frame may need to pass through multiple switches before reaching its destination. The sequence of switches a given frame passes through is often called a 'path' through the network.
+
+For example, consider the following small slice of a much larger network:
+
+> Client $A$ and server $B$ are connected through a diamond made of switches. Each possible path between the two is labeled with a different color
+
+In this configuration, we see that when $A$ sends an Ethernet frame to $B$, there are two possible paths (red an blue) that the frame may pass through. How this path gets chosen is an interesting question, but outside the scope of today's discussion.
+
+For various technical reasons, Ethernet networks impose fairly restrictive limits on the maximum size of an Ethernet frame (consumer-grade hardware usually limits frame sizes to 1-2 KB or so). If an application needs to transfer a buffer of data that doesn't fit in a single Ethernet frame, the software must break down the data into frame-sized chunks and transmit them all separately. Unfortunately, because of the way Ethernet works, actually getting a scheme like this to work is fraught with peril!
+
+One problem that can arise is **out of order delivery**. Take another look at the diagram above: an Ethernet frame can only take one of the two highlighted paths through the network, but there's no reason to assume all frames transmitted from $A$ to $B$ will follow the same path! (In fact, in some network setups it may be benficial to scramble the frames along different paths on purpose.) The problem is, different paths might deliver packets at different speeds, so $B$ might need receive frames in the same order $A$ originally sent them:
+
+> Diagram
+
+Another problem is **congestion**. TODO
+
+> Diagram?
+
+TODO mention TCP.
+
+TODO For RDMA, we absolutely don't want software to be involved in breaking up a transmission into frames and reassembling them on the other side. But solving these problems in hardware seems very challenging; even solving them in software is complex. Can we build a network that guarantees in-order delivery with no packet loss? Well, that's that idea of what InfiniBand did.
+
+## InfiniBand Networking
+
+> Adapt the following old draft content as an example scheme for how an InfiniBand network might work, then finish out by mentioning more advanced schemes that may be more practical in the real world, despite the higher complexity:
+>
+> ---
 >
 > There are a number of ways to implement a network that doesn't lose packets. The key observation is congestion is a problem of coordination, and we can avoid packet loss due to network congestion as long as every peer and every switch cooperates to ensure the network is never congested. This holds on networks that are owned and operated by a single entity &mdash; but this apporach doesn't work as well over the Internet, where it's not feasible (or practical) to expect so many users to cooperate.
 >
@@ -218,16 +268,8 @@ We'll start from the bottom and go up, which also means we have to solve the har
 > It's worth noting, however, that this negotiation step may itself be expensive and require a bunch of transmissions between switches and peers. With InfiniBand, setting up and tearing down connections tends to be slow compared to conventional networking, but once you have a connection it's generally faster and higher bandwidth than conventional networking on a similar class of hardware.
 >
 > There are more advanced schemes that provide losslessness without explicit buffer reservations, such as adding a 'backpressure' mechanism for switch to ask everyone to stop sending it data for a while so it can drain its buffers. Links to ECN or something, if it's not too early.
-
-## Network Sequencing
-
-> In the section above, we saw a couple ways to create a lossless network, where all transmissions for a single connection between peers travel over the same network path, and no transmissions are ever lost.
 >
-> One interesting side effect of this design is that connections are, natively, sequential.
->
-> Reminder of what TCP provides as a stream-oriented protocol that runs over a datagram-oriented protocol.
->
-> With InfiniBand, transmissions are already sequential, because of the way we set up network. Peers using the network don't have to do anything special to ensure stream-oriented transmissions work.
+> ---
 >
 > Describe sequence numbering scheme used to detect transmission errors. The sender maintains a counter, incrementing it on every transmission and including the counter value in the transmission. The receive maintains its own counter, incremeinting upon receipt of each transmission and checking it matches the value in the packet.
 >

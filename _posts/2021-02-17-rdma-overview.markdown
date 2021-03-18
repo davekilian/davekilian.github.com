@@ -163,71 +163,29 @@ In the end, InfiniBand ended up resolving some of the design differences between
 2. Expose hardware command queues to the CPU, ordered according to network sequencing
 3. Add DMA-style read/write operations built on top of this sequential, lossless network
 
-We'll cover all of this below. For now, let's start with the first bullet: how wouldyou make a network that never loses packets, and why would you want that?
+Let's start at the bottom level in the technology stack our way up: what does it mean for a network to be 'sequential' and 'lossless,' why does it matter, and how do you implemet something like that?
 
-## Lossless Networking
+## Sequential, Lossless Networking
 
-
-
-
-
----
-
->  TODO: fundamentally, where we want to get is to say that hardware is good at fast computation of large amounts of streaming data, but is very bad at handling conditions and contingencies, so to build network cards that can manage RDMA transfers on their own, we want to remove contingencies like out-of-order delivery and packet loss from the network itself.
+> Networks fundamentally work by connecting computers together and copying messages between them so they arrive at their network. Special-purpose computers called 'switches' are responsible for bridging multiple of these point-to-point connections together.
 >
-> Can we do this without getting into this much detail on Ethernet?
-
----
-
-To start to answer that question, it'd be useful to remind ourselves how conventional networks work. Let's take a look at the most conventional of networking technologies today: Ethernet!
-
-## Ethernet
-
-> One liner for context
-
-Ethernet networks are built by linking computers together using special-purpose computer-like networking devices called 'switches.' Each switch has a set of Ethernet ports that you can connect up to a computer, or to another switch:
-
-> Picture
-
-The job of an Ethernet switch is to forward transmissions, which the Ethernet specification calls 'frames.' So when an Ethernet frame is received on one port of an Ethernet switch, the switch needs to figure out which Ethernet port it should forward the frame to, and transmit a new copy of that frame out on the chosen port. Once the frame has been forwarded, the switch can discard its local copy of the frame, since its work with the frame is done.
-
-Larger Ethernet networks can be built by linking switches together. In a multiple-switch Ethernet network, the job of each switch is to forward each incoming frame along to its next 'hop,' and a given frame may need to pass through multiple switches before reaching its destination. The sequence of switches a given frame passes through is often called a 'path' through the network.
-
-For example, consider the following small slice of a much larger network:
-
-> Client $A$ and server $B$ are connected through a diamond made of switches. Each possible path between the two is labeled with a different color
-
-In this configuration, we see that when $A$ sends an Ethernet frame to $B$, there are two possible paths (red an blue) that the frame may pass through. How this path gets chosen is an interesting question, but outside the scope of today's discussion.
-
-For various technical reasons, Ethernet networks impose fairly restrictive limits on the maximum size of an Ethernet frame (consumer-grade hardware usually limits frame sizes to 1-2 KB or so). If an application needs to transfer a buffer of data that doesn't fit in a single Ethernet frame, the software must break down the data into frame-sized chunks and transmit them all separately. Unfortunately, because of the way Ethernet works, actually getting a scheme like this to work is fraught with peril!
-
-One problem that can arise is **out of order delivery**. Take another look at the diagram above: an Ethernet frame can only take one of the two highlighted paths through the network, but there's no reason to assume all frames transmitted from $A$ to $B$ will follow the same path! (In fact, in some network setups it may be benficial to scramble the frames along different paths on purpose.) The problem is, different paths might deliver packets at different speeds, so $B$ might need receive frames in the same order $A$ originally sent them:
-
-> Diagram
-
-Another problem is **congestion**. TODO
-
-> Diagram?
-
-TODO mention TCP.
-
-TODO For RDMA, we absolutely don't want software to be involved in breaking up a transmission into frames and reassembling them on the other side. But solving these problems in hardware seems very challenging; even solving them in software is complex. Can we build a network that guarantees in-order delivery with no packet loss? Well, that's that idea of what InfiniBand did.
-
-## InfiniBand Networking
-
-> Adapt the following old draft content as an example scheme for how an InfiniBand network might work, then finish out by mentioning more advanced schemes that may be more practical in the real world, despite the higher complexity:
+> Conventional networks don't place a lot of restrictions on what these switches can and can't do. Here are some things that commonly occur in conventional networks (and on the Internet as a whole):
 >
-> ---
+> Packet loss: some transmissions never make it to the intended recipient. Interestingly, it isn't always an all-or-nothing affair: you can send 100 transmissions to a single recipient and the recipient might lose a random subset of those messages
 >
-> There are a number of ways to implement a network that doesn't lose packets. The key observation is congestion is a problem of coordination, and we can avoid packet loss due to network congestion as long as every peer and every switch cooperates to ensure the network is never congested. This holds on networks that are owned and operated by a single entity &mdash; but this apporach doesn't work as well over the Internet, where it's not feasible (or practical) to expect so many users to cooperate.
+> One common reason this happens is congestion. If you look at a switch, you'll see it's possible for multiple input lines to all try to send to a single output line, which can overwhelm it. The typical way switches handle this is to randomly pick all the transmissions it can deliver in time and drop the rest.
 >
-> A simple scheme for lossless networking might use buffer reservations: when peer A wants to connect to peer B, both peers as well as all network switches together negotiate a single path through the network, as well as a buffer size in bytes that will be reserved along every hop of that path. As long as the sender never puts more data on the wire than can be stored in intermediate buffers, you guarantee there's always enough buffer along the connection to accept all the data you put on the wire. Nobody ever gets overloaded, so nothing ever gets dropped!
+> Because of packet loss, and for other, more esoteric reasons, it's completely possible for 
+>
+> Handling conditions like packet loss and out-of-order delivery typically requires complex software code heavily laden with conditions and tuneable policies; this is the kind of thing that doesn't work very well in hardware, the circuits just end up becoming infeasibly large and complex. So instead, InfiniBand does away with both!
+>
+> Here's an example scheme that accomplishes this:
+>
+> The basic idea is to use buffer reservations. When peer A wants to connect to peer B, both peers as well as all network switches together negotiate a single path through the network, as well as a buffer size in bytes that will be reserved along every hop of that path. As long as the sender never puts more data on the wire than can be stored in intermediate buffers, you guarantee there's always enough buffer along the connection to accept all the data you put on the wire. Nobody ever gets overloaded, so nothing ever gets dropped!
 >
 > It's worth noting, however, that this negotiation step may itself be expensive and require a bunch of transmissions between switches and peers. With InfiniBand, setting up and tearing down connections tends to be slow compared to conventional networking, but once you have a connection it's generally faster and higher bandwidth than conventional networking on a similar class of hardware.
 >
 > There are more advanced schemes that provide losslessness without explicit buffer reservations, such as adding a 'backpressure' mechanism for switch to ask everyone to stop sending it data for a while so it can drain its buffers. Links to ECN or something, if it's not too early.
->
-> ---
 >
 > Describe sequence numbering scheme used to detect transmission errors. The sender maintains a counter, incrementing it on every transmission and including the counter value in the transmission. The receive maintains its own counter, incremeinting upon receipt of each transmission and checking it matches the value in the packet.
 >
@@ -321,3 +279,4 @@ TODO For RDMA, we absolutely don't want software to be involved in breaking up a
 ## Additional Reading
 
 > Link dump
+

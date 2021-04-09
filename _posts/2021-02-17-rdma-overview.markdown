@@ -5,9 +5,7 @@ author: Dave
 draft: true
 ---
 
-"*Everything you wanted to know about RDMA (but were too afraid to ask)*"
-
-You're here, so you must be looking into RDMA, a networking technology popular for building large, high-performance private networks for things like supercomputers or private clouds. I've been working with RDMA networks on the job for a while now, and I've never been able to find a good, straightforward lowdown on RDMA, so here I'm writing one of my own.
+RDMA is a family of networking technologies popular for building high-performance networks for things like supercomputers or private clouds. I've been working with RDMA networks on the job for a while now, and I've never been able to find a good, straightforward lowdown, so here I'm writing one of my own.
 
 ## What is "RDMA?"
 
@@ -17,33 +15,119 @@ To get started, we need to know a thing or two about your computer's hardware in
 
 ## Inside Your Computer
 
-Here's a basic schematic of the inside of your computer.
+Your computer is a network of interconnected parts. The two core parts are your CPU and your RAM.
 
-> TODO
+Your CPU is a circuit that implements an extremely simple programming language: the [machine code](https://en.wikipedia.org/wiki/Machine_code) defined as part of the CPU's "[instruction set architecture](https://en.wikipedia.org/wiki/Instruction_set_architecture)" or ISA. Machine code is a sequence of numbers (called 'instructions') that each select a function implemented as a subcircuit of the CPU (e.g. 'add' or 'multiply' numbers). Your code is ultimately compiled to a seqeunce of these instructions which, together, do something interesting.
 
-As we can see, your computer is a network of interconnected parts. Let's start by taking a look at the core parts of your computer: your CPU and your RAM.
+Your RAM ([Random Access Memory](https://en.wikipedia.org/wiki/Random-access_memory), often just called 'memory') is a circuit for storing binary numbers. Your program (sequence of instructions) is stored in RAM; the CPU reads instructions from RAM automatically as they are needed. Your CPU also supports instructions that allow you to read and write RAM, giving your program place to temporarily store the data it's working on.
 
-A CPU is a circuit that implements an extremely simple programming language: the [machine code](https://en.wikipedia.org/wiki/Machine_code) defined as part of the CPU's "[instruction set architecture](https://en.wikipedia.org/wiki/Instruction_set_architecture)" or ISA. To vastly oversimplify, machine code is an ordered list of numbers called 'instructions' that tell the CPU what to do &mdash; maybe the number `1` means 'add' and `2` means 'multiply' and so on &mdash; and a CPU is a set of little subcircuits that implement each instruction, plus a 'circuit picker' that activates one of those subcircuits based on which instruction is currently being executed.
+Your CPU and RAM are co-dependent &mdash; neither works without the other &mdash; but once you put the two together, you have a full-fledged computer! Albeit, not a very useful one ...
 
-A CPU has a little onboard storage for holding variables (which are called [registers](https://en.wikipedia.org/wiki/Processor_register) for historical reasons), but not enough to store all the temporary data most programs need. Plus, the CPU has no space on board to store the program itself! For that reason, your computer also has [Random Access Memory](https://en.wikipedia.org/wiki/Random-access_memory) (often shortened to "RAM" or just "memory.")
+A practical computer needs more parts: things that add additional functionality, like disks for data storage or network adapters for accessing the Internet, and of course we'll need ways for us humans to interact with the computer, with things like keyboards, displays, touchscreens, etc. All of these things are called [peripherals](https://en.wikipedia.org/wiki/Peripheral) because, however useful they may be, they're not part of the programmable 'core' of your computer, which is your CPU and RAM.
+
+How do peripherals work? Each is different, but they all share one thing in common: they need some way to interact with programs running on your computer. For this reason, each peripheral includes a little circuitry which is connected to the CPU/RAM 'core' of your computer. This circuitry often looks a little like a rudimentary computer in its own right &mdash; but, unlike a full computer, this circuitry isn't programmable; it's just a means of driving the device.
+
+So, putting it all together, your computer is a CPU (which executes sequences of instructions), RAM (which stores the instructions as well as temporary program data), and peripherals that each talk with the CPU/RAM 'core' of your computer. In some ways, your computer is actually like a little network of mini-computers!
+
+Let's take a closer look at how this network of peripherals works ...
+
+## I/O
+
+The act of a computer program interacting with a peripheral is called [I/O](https://en.wikipedia.org/wiki/Input/output), which is an abbreviation for 'input/output'. There are a few ways programs commonly interact with peripherals:
+
+* Get data from a device (e.g. check which keys on a keyboard are being pressed)
+* Send data to a device (e.g. change the image being displayed on a screen)
+* Submit commands to a device (e.g. eject the disc in the disk drive)
+* Receive an event notification (e.g. the user tapped the screen)
+
+Exactly how programs do all of these things is defined by whoever made the CPU; in other words, I/O is part of the [ISA](https://en.wikipedia.org/wiki/Instruction_set_architecture) mentioned earlier.
+
+> In case you're interested in the nitty-gritty details:
+>
+> Today, most ISAs use some form of [memory-mapped I/O](https://en.wikipedia.org/wiki/Memory-mapped_I/O) (which, by the way, has no relation to Unix memory-mapped files). The basic idea is there are more possible [memory addresses](https://en.wikipedia.org/wiki/Memory_address) than there are bytes of RAM, so some of the unused addresses can be repurposed to refer to memory onboard a peripheral device instead of RAM. Programs can then use the CPU's 'write memory' to send data and commands to a peripheral, and the 'read memory' instruction to get data and the results of completed commands. 
+>
+> One thing you can't implement with memory-mapping is a event notification mechanism; notifications are typically implemented using an unrelated CPU mechanism called an [interrupt](https://en.wikipedia.org/wiki/Interrupt).
+
+No matter how your ISA's I/O mechanisms work, there's one tricky problem you need to tackle for high-speed devices like storage disks and network adapters: copying large memory buffers.
+
+TODO expand on what we mean by large memory copies
+
+
+
+
+
+---
+
+
+
+TODO
+
+* One tricky problem is efficiently handling large data buffers. Devices like high-speed disks and networks.
+* What you don't want is code that manually copies between device buffers and RAM; programmed I/O is slow. Say why.
+* What you do want: the device does this instead. DMA
+
+
+
+
+
+
+
+---
+
+> TODO something like this:
+>
+> * Fundamental goals: write data out, read data in, submit commands, receive notifications
+> * Many schemes for doing this. Memory-mapped I/O is one.
+> * Limitation: these are based on (slow) memory reads and writes, each of which is small
+> * What about devices that need to transfer large buffers? High-speed disks and networks.
+> * What you don't want: the CPU doing all of these steps, and why
+> * What you do want: let the device do these steps
+> * DMA
+>
+> Older discussion:
+>
+> In the existing draft we got pretty deep into this. How deep do we want to go? Is the fact that we're redirecting memory addresses really worthwhile to the reader?
+>
+> Also, I'm not even positive we need to get into memory-mapped I/O details at all. It seems like I may have accidentally started writing the corresonding primer chapter here.
+>
+> What *do* we need to say?
+>
+> We need to build up to the 'who copies the buffer' problem. Which means we need enough of an idea of basic mechanics to understand that someone needs to copy a buffer.
+>
+> Ideally, mentioning memory-mapped I/O is a side subject and not a core concept for this discussion.
+>
+> We may need to mention what kinds of things you want to accomplish, but hopefully we can sidestep. The basic things are
+>
+> * Write onboard memory (e.g. image to display on screen)
+> * Read onboard memory (e.g. poll keyboard for input)
+> * Submit a command (e.g. eject the disc)
+> * Receive a callback (e.g. the user tapped the screen)
+>
+> What's the basic structure then?
+
+---
+
+
+
+
+
+
+
+
+
+
+
+---
+
+TODO move this to where we start talking about I/O
+
+A CPU has a little onboard storage for holding variables (which are called [registers](https://en.wikipedia.org/wiki/Processor_register) for historical reasons), but not enough to store all the data programs need. Plus, the CPU has no space on board to store the program itself! For that reason, your computer also has [Random Access Memory](https://en.wikipedia.org/wiki/Random-access_memory) (often shortened to "RAM" or just "memory.")
 
 RAM is structured as an array of bytes. Each index in the array is called an [address](https://en.wikipedia.org/wiki/Memory_address). The CPU is directly connected to RAM, and is always tracking the address (array index) of the next instruction; when each instruction has been executed, the CPU's circuitry automatically fetches the next instruction from memory in order to know what to do next. CPUs also provide 'read memory' and 'write memory' instructions, so that programs can use memory as well.
 
-The CPU and RAM are co-dependent &mdash; neither works without the other &mdash; but put the two together and you now have a full-fledged computer that can run programs!
+---
 
-Albeit, not a very useful one. A practical computer needs some more parts &mdash; things that add additional functionality, like disks for data storage or network adapters for accessing the Internet, and of course we'll need ways for us humans to interact with the computer, with things like keyboards, displays, touchscreens, etc.
-
-These things are called [peripherals](https://en.wikipedia.org/wiki/Peripheral) because, although they're very useful to have, they're not part of the core computer (i.e. CPU and RAM).
-
-Each peripheral is different, but all peripherals share one thing in common: they need to communicate with the programmable 'core' of your computer &mdash; that is, the CPU and RAM, together. To make this work, each peripheral will have a little onboard circuitry dedicated to bridging the device itself to the core of your computer. In many cases, this circuitry looks a lot like a rudimentary computer in its own right; but unlike the CPU/RAM core of your computer, this circuitry isn't general-purpose: it drives the peripheral, and nothing else.
-
-So, putting it all together, your computer is a CPU (which executes instructions being fed into), RAM (which stores the instructions as well as temporary program data), and a network of peripherals that each talk with the CPU/RAM 'core' of your computer. In some ways, your computer is actually like a little network of mini-computers all talking to each other!
-
-The question that will interest us the most going forward is: how do they communicate? It looks like we need to invent [I/O](https://en.wikipedia.org/wiki/Input/output) &mdash; that is, ways for code running on a CPU to submit commands to peripherals and read back information from the device.
-
-## I/O: A Deep Dive
-
-Throughout the ages there have been many approaches to I/O, but the dominant approach today is a technique called [memory-mapped I/O](https://en.wikipedia.org/wiki/Memory-mapped_I/O) (which, by the way, has no relation to the Unix memory-mapped file I/O feature).
+Throughout the ages there have been many approaches to I/O, but the dominant approach today is a technique called [memory-mapped I/O](https://en.wikipedia.org/wiki/Memory-mapped_I/O).
 
 Here's the idea: we want a way for code to submit commands to peripheral devices' onboard memory, and read results back from peripheral memory too. We already have instructions to read and write RAM, which is also memory. Why not make it so the read memory / write memory instructions can access both RAM, and peripheral device memory?
 

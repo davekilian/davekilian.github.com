@@ -77,37 +77,23 @@ If any of this went too fast, don't worry &mdash; we're going to circle back to
 
 ## Switched Fabrics
 
-> This is a case where InfiniBand has *less* functionality than its contemporary peers. So it's worth looking at what conventional networks support that InfiniBand doesn't, so we can see why to deliberately drop support.
->
-> Earliest networking technology envisioned as 'shared media' &mdash; basically, connect a bunch of cables together with splitters. Lots of machines on the network.
->
-> The problem you need to deal with here: collisions. Ethernet is just a bunch of impulses &mdash; an impulse is a binary 1 and a lack of impluse is a binary 0 &mdash; which means you can only have one transmitter on the network at a given time, and all transmissions go to all peers, who then have to figure out whether or not the transmission is for them.
->
-> What if you have multiple transmitters trying to use the network at the same time? Then you have a collision. Many strategies for detecting and resolving collisions so that everyone can use the media fairly. Link to some.
->
-> Okay, so nobody builds Ethernet networks out of shared cables and splitters anymore. But we do still (sometimes) use hubs, which are just repeaters. Whenever a signal is received on one wire's incoming line, the hub transmits that signal on all outgoing line. All the collision stuff applies there too.
->
-> And, fun fact: this also applies to wireless networks, because Wi-Fi is just Ethernet, except with radio impulses over the air instead of electrical impulses over a cable. All the same collision stuff totally applies.
->
-> Anyways, the world as we've described it so far is kind of inefficient.
->
-> One problem is collision avoidance: if you make it *proactive*, then unused time slices are wasted. If you make it *reactive*, then you waste some of your time detecting collisions and stopping transmission. Eventually, as you grow the network to a certain size, you end up with so many peers that in theory, the collisions should dominate over, you know, actually useful traffic.
->
-> We're also wasting a lot of bandwidth too. Say you have a hub with four machines, A, B, C and D. Say A wants to send a frame to B and C wants to send a frame to D. Ideally we should be able to send both of those frames in parallel; but instead, our network only supports one frame at a time; so either A has to wait for C or vice versa. And, a lot of frames are being repeated to nodes who are ultimately going to ignore them.
->
-> So, for high-performance networking applications, we figured out a better way to do things a long time ago: network switches. A switch is basically a smarter hub: instead of repeating an incoming frames to *all* outgoing lines, it figures out who the frame is addressed to and which port that peer is connected on, and transmits the frame *only on that port*.
->
-> Bandwidth wastage? Gone! The frame only goes on the port to which the recipient is connected.
->
-> Parallelizable? Yup! As long as two frames are addressed to different transmit ports, the switch can totally transmit them in parallel.
->
-> Now imagine for a second that the *only* way you connect peers in the network is using switches; if you have more peers than you have ports on a switch, then you join switches together with more switches, forming a hierarchy. Now you get something interesting: a network that has no Ethernet collisions! Because each connection in the network is either between one peer and one switch, or between two switches. 
->
-> Mention Clos networks as a practical way of realizing this.
->
-> Back to InfiniBand: InfiniBand deliberately *does not* support any kind of shared media and does not support collisions, so the only way to build an InfiniBand network is with switches. There simply isn't such a thing as an InfiniBand hub.
->
-> Why? Well, (a) switches were already cheap and ubiquitous by the time InfiniBand came around, and (b) it obviates the need for a bunch of complicated, performance-sapping collision logic.
+Say you were building a cluster of computers, either for a data center or a supercomputer. How would you wire up the network?
+
+We have some computers &mdash; probably a lot of them, actually &mdash; and they all need to be able to exchange data with one another. Without knowing anything a priori about the software we intend to run on these nodes, we'll have to assume that each node may need to exchange data with any other node. So we'll want to wire up a network that connects all the nodes together, providing equal access from any node to any node.
+
+The easiest way to do this is to hook up all our nodes to a [network switch](https://en.wikipedia.org/wiki/Network_switch). A switch is a kind of purpose-built computer designed solely to handle network data transmissions. The front face of a switch consists of network ports, each of which can be connected to a computer, or even to another switch. In a process called [packet switching](https://en.wikipedia.org/wiki/Packet_switching), a switch listens for incoming network transmissions on every port, examining each to determine what network address each incoming transmission is intended for; the switch then determines which port is connected to said address, and retransmits the same data on the said port. For the sake of efficiency, high-end switches can do this multiple times in parallel: that is, a 4-port switch with ports $A$ $B$ $C$ and $D$ might be able to forward a transmission from port $A$ to $B$ in parallel with another transmission to from $C$ to $D$.
+
+Going back to our example, we'd want to get a switch and wire up each port to a different node in our cluster. That way, whenever software running on a node wants to send data to another node, it sends a transmission addressed to that other node to the switch; the switch then figures out which of its ports is connected to that node, and passes the data along. Simple!
+
+One hitch: the more ports you put on a switch, the more expensive the switch becomes, so it'd probably be cost-prohibitive to hook up the *entire* cluster to a single switch. Instead, we'll buy many smaller switches (fewer ports, lower cost per switch) and wire them together such that the network of interconnected switches does the same job as a single, larger switch. If you're interested in how this is done, feel free to go read about [Clos networks](https://en.wikipedia.org/wiki/Clos_network).
+
+Anyways, that's really all there is to how we'll build our network. If this all seems kind of obvious, well, it kind of is! But it's worth talking about this because this style of network has a name &mdash; a **switched fabric**. If you start reading about networks for data centers, supercomputers and the like, you'll see this term fairly often, especially in marketing materials, so it's useful to know what it means. Although it sounds fancy (and is indeed something of a buzzword), it just refers to the simple setup we described above. Let's break it down:
+
+The word 'fabric' is something of a buzzword, so it's hard to pin down a precise definition. The term originally came from the diagrams of data center networks like the ones we described above; those often contain regularly repeating criss-crossing elements that remind some people of the interwoven threads of a piece of fabric. Over time, the term has morphed to generally mean a network, with the connotation that the network is large and high-speed. (Well, sort of, anyways.)
+
+The 'switch' in 'switched fabric' just refers to the fact that the network which connects all these nodes &mdash; that is, the fabric &mdash; is itself either a single switch or (more commonly) a network of interconnected switches working together.
+
+Interestingly, none of this was new when InfiniBand arrived on the scene: 'switched fabrics' using conventional networking technologies were already in the norm in data centers and supercomputer clusters of the time. InfiniBand went a step further in *only* supporting this style of laying out networks. In the next section, we'll see how this allows InfiniBand to push additional functionality on the switches in order to build a new kind of network ...
 
 ## Lossless Networking
 

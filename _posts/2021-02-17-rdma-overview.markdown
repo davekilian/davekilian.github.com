@@ -75,53 +75,79 @@ Keep in mind that these aren't high-level APIs; these are the lowest-level opera
 
 If any of this went too fast, don't worry &mdash; we're going to circle back to each of these ideas in a bit more detail below. Let's start at the lowest layer, with how InfiniBand networks are built out of network switches.
 
-## Switched Fabrics
+## A 'Switched Fabric'
 
-Say you were building a cluster of computers, either for a data center or a supercomputer. How would you wire up the network?
+Most data center and supercomputer neworks are wired in a pattern often called a 'switched fabric.' This means something much less fancy than it sounds: it just means all the computers are wired together using network switches.
 
-We have some computers &mdash; probably a lot of them, actually &mdash; and they all need to be able to exchange data with one another. Without knowing anything a priori about the software we intend to run on these nodes, we'll have to assume that each node may need to exchange data with any other node. So we'll want to wire up a network that connects all the nodes together, providing equal access from any node to any node.
+A [switch](https://en.wikipedia.org/wiki/Network_switch) is a wired networking device. The front face of a switch consists of several network ports, each of which is connected to something else (a computer or another switch, usually). In a process called [packet switching](https://en.wikipedia.org/wiki/Packet_switching), a switch listens for incoming network transmissions on every port, examining each to determine what network address each incoming transmission is intended for; the switch then determines which port is connected to said address, and retransmits the data to that port.
 
-The easiest way to do this is to hook up all our nodes to a [network switch](https://en.wikipedia.org/wiki/Network_switch). A switch is a kind of purpose-built computer designed solely to handle network data transmissions. The front face of a switch consists of network ports, each of which can be connected to a computer, or even to another switch. In a process called [packet switching](https://en.wikipedia.org/wiki/Packet_switching), a switch listens for incoming network transmissions on every port, examining each to determine what network address each incoming transmission is intended for; the switch then determines which port is connected to said address, and retransmits the same data on the said port. For the sake of efficiency, high-end switches can do this multiple times in parallel: that is, a 4-port switch with ports $A$ $B$ $C$ and $D$ might be able to forward a transmission from port $A$ to $B$ in parallel with another transmission to from $C$ to $D$.
+The de facto standard way to wire up a large network like for a supercomputer or a data center is to hook up your computers together using a network of switches. In an ideal world, you can hook up all the computers to a single switch, but if you have enough computers to fill a warehouse, you'd have a hard time finding a switch with enough network ports to accommodate them all; instead, you can build a 'virtual' switch of the required size using smaller switches. (If you're interested in how to do this, see [Clos networks](https://en.wikipedia.org/wiki/Clos_network).)
 
-Going back to our example, we'd want to get a switch and wire up each port to a different node in our cluster. That way, whenever software running on a node wants to send data to another node, it sends a transmission addressed to that other node to the switch; the switch then figures out which of its ports is connected to that node, and passes the data along. Simple!
+This network of switches used to interconnect the nodes of your supercomputer / data center / what have you is often called a *fabric*. The term is a bit of a buzzword, so it's hard to pin down a crsip definition, but you can loosely think of a fabric as a network that facilitates high-speed communication between many computers. The term originally came from the diagrams of data center style networks, which often contain regularly repeating criss-crossing elements that remind some people of the interwoven threads of a piece of fabric.
 
-One hitch: the more ports you put on a switch, the more expensive the switch becomes, so it'd probably be cost-prohibitive to hook up the *entire* cluster to a single switch. Instead, we'll buy many smaller switches (fewer ports, lower cost per switch) and wire them together such that the network of interconnected switches does the same job as a single, larger switch. If you're interested in how this is done, feel free to go read about [Clos networks](https://en.wikipedia.org/wiki/Clos_network).
+If you crack open the InfiniBand spec (maybe some light bedtime reading?), you'll find that the term 'switched I/O fabric' appears right at the beginning of the spec. InfiniBand assumes you will build your network as a network of switches that connect a bunch of computers together. Interestingly, this wasn't a new idea what InfiniBand came around &mdash; this had already been the standard long before InfiniBand came around &mdash; but InfiniBand went a step further in *only* allowing networks to be build this way.
 
-Anyways, that's really all there is to how we'll build our network. If this all seems kind of obvious, well, it kind of is! But it's worth talking about this because this style of network has a name &mdash; a **switched fabric**. If you start reading about networks for data centers, supercomputers and the like, you'll see this term fairly often, especially in marketing materials, so it's useful to know what it means. Although it sounds fancy (and is indeed something of a buzzword), it just refers to the simple setup we described above. Let's break it down:
-
-The word 'fabric' is something of a buzzword, so it's hard to pin down a precise definition. The term originally came from the diagrams of data center networks like the ones we described above; those often contain regularly repeating criss-crossing elements that remind some people of the interwoven threads of a piece of fabric. Over time, the term has morphed to generally mean a network, with the connotation that the network is large and high-speed. (Well, sort of, anyways.)
-
-The 'switch' in 'switched fabric' just refers to the fact that the network which connects all these nodes &mdash; that is, the fabric &mdash; is itself either a single switch or (more commonly) a network of interconnected switches working together.
-
-Interestingly, none of this was new when InfiniBand arrived on the scene: 'switched fabrics' using conventional networking technologies were already in the norm in data centers and supercomputer clusters of the time. InfiniBand went a step further in *only* supporting this style of laying out networks. In the next section, we'll see how this allows InfiniBand to push additional functionality on the switches in order to build a new kind of network ...
+In the next section, we'll see how this allows InfiniBand to push additional functionality on the switches in order to build a new kind of network ...
 
 ## Lossless Networking
 
-> To understand 'lossless' networking, we have to understand what makes networks 'lossy'
->
-> Let's say you have a switch with four ports. That means you have 4 receiving lines and 4 transmit lines. Assume, like pretty much all switches out there, the lines are balanced: all top out at the same maximum bandwidth. Now let's say ports A and B are using 100% of their bandwidth to transmit to line C. Now what?
->
-> Look at this for a little while and it'll quickly become clear that the *network* physically can't fix this problem. You might think buffering is the answer, but (a) you can only buffer so long before this problem comes back, and (b) buffers drive up latency (link out to bufferbloat). So, once we're in this situation, the switch really has one option: transmit as much as it can, and forget about anything it couldn't.
->
-> This situation is called 'congestion' (link out). 
->
-> One way or another, A and B will have to slow down enough that sum(incoming on A + incoming on B) is leq (outgoing on C). The obvious policy is for A and B to each ratchet down to 50% link utilization, but in some cases you might want to prioritize one over the other (link out to QoS).
->
-> So how do A and B avoid overloading switch? On a conventional network, this is typically done *reactively* by the peers. Peers send as much data as they feel like, and watch for signs that their transmissions might not have reached the remote peer. If they detect loss (or what they think is loss), then they slow down until they stop losing packets, then slowly start to ramp up again until they hit packet loss again.
->
-> Link out to two generals, which arises directly out of this decision.
->
-> One thing that's nice about this scheme is that it's robust &mdash; A and B never have to communicate with one another, they can be completely unaware of one another, and they don't even need to have the same backoff and ramp up policies. That's why this kind of reactive adjustment is how computers utilize conventional networks, and the Internet with it.
->
-> InfiniBand instead takes a *proactive* approach, meaning A, B, C and the switch all work together to make sure that the switch never gets overloaded in the first place.
->
-> Here's one possible scheme: bandwidth reservation. 
->
-> A slightly more robust scheme: credit schemes
->
-> Another idea: explicit congestion notifications and backpressure
->
-> In theory, other things are possible. AFAIK, modern deployments typically use credit schemes between the peers and ECN at the switch, but don't quote me. (Also research this before making any statements.)
+RDMA technologies generally use a technique called 'lossless networking' (InfiniBand included). To understand what it means for a network to be 'lossless,' we first need to understand what it means for a conventional network to be 'lossy.'
+
+### Network Congestion
+
+Congestion is a situation which occurs when transmissions are pushed into any link faster than that link can transmit. The result is a situation where at least some of those transmissions cannot be delievered.
+
+Let's illustrate with an example:
+
+Most networking technologies use [full-duplex](https://en.wikipedia.org/wiki/Duplex_(telecommunications)) cabling with separate transmit/receive lines at each end. This is just a fancy way of saying the cable can carry transmissions in two directions, and usually accomplished by having two separate internal cables wrapped up inside the plastic sheath. Usually, the lines are balanced, which means they both transmit at the same rate. Let's say you have a 1 gigabit network device / cable: that means something plugged into the cable can simultaneously transmit and receive, each at a rate of 1 gigabit (1 billion bytes) every second.
+
+Let's say you have a switch with four full-duplex gigabit ports, which we'll label $A$, $B$, $C$ and $D$. What happens if both $A$ and $B$ transmit at a rate of 1 gigabit per second, and all of those transmissions are directed at port $C$?
+
+Clearly we have a problem: the switch's job is to forward each of those incoming transmissions from $A$ and $B$ and transmit them all to $C$, but the switch is receiving 2 gigabits of data per second, and can only copy those forward at a rate of 1 gigabit per second. Port $C$ is overloaded (by a factor of 2, in this case), and the result is what we call 'congestion.'
+
+What are we going to do about this?
+
+One trick that's been tried before is buffering: we transmit as much as we can, and the store the remainder in some buffer memory so we can transmit it later. This isn't a silver bullet: if $A$ and $B$ sustain their high transmit rates long enough, eventually the switch will run out of buffer memory, and we'll be left back where we started. Even if we don't run out of memory, buffering still turns out not to be great: large network buffers are [known to degrade performance](https://en.wikipedia.org/wiki/Bufferbloat).
+
+If not buffering, than what? Perhaps unsatisfyingly, the short answer is: nothing. The best answer we've come up with over the decades is [best-effort delivery](https://en.wikipedia.org/wiki/Best-effort_delivery): forward along as many of the transmissions as port $C$ can handle, and forget about the rest of the transmissions. Once a switch is in this situation, there isn't anything better you can do.
+
+So the question becomes, how do we avoid getting into this situation?
+
+### Congestion Control
+
+One way or another, $A$ and $B$ will have to slow down so that the sum of their transmit rates is less than $C$'s maximum transmit rate, which is 1 gigabit per second. That *probably* means we want $A$ and $B$ to both transmit at half a gigabit per second, but there are some applications where you might want one to take priority over another. (We won't worry about that here.)
+
+Conventionally, this is done 'reactively' in software. As it sends data over the network, the software watches for signs that some of its transmissions may not have reached the remote peer. Any time a transmission appears to be lost, the software assumes some link must be congested, so it ratchets down its transmit rate and retransmits the data that was lost. Over time, the software slowly increases its transmission rate in the hopes that the network has become less congested, until it once again sees transmission losses and has to ratchet back down. In this way, all users of the network are always 'feeling around' for a transmission rate that the network can handle right now.
+
+There are some nice facets to this scheme. The first is that it does indeed work &mdash; $A$ and $B$ will eventually negotiate their way to a net transmit rate that $C$ can handle. This scheme is also robust: $A$ and $B$ don't have to explicitly communicate with each other, or the overloaded switch, to figure out what their transmit rates need to be. In fact, they don't need to share anything at all: they can all use completely different implementations with unrelated backoff and ramp-up policies, and things will generally work.
+
+The downside is that the software that manages transmission rates and monitors transmissions is complex and heavyweight: you need a full software implementation of [TCP](https://en.wikipedia.org/wiki/Transmission_Control_Protocol) and all its complexities running in between your application code and the network hardware. If you're building a supercomputer, you'd want to look for an alternate approach with less software!
+
+### Proactive Approaches
+
+RDMA technologies generally pick more 'proactive' approaches to talking this problem. In other words, $A$, $B$, $C$ and the switch will all work together to make sure the link never gets overloaded in the first place.
+
+Here are some basic approaches you might take to implementing this:
+
+**Bandwidth reservation**: Have the switch allocate some of $C$'s outgoing bandwidth when, e.g., $A$ establishes its connection with $C$. The switch notifies $A$ how much bandwidth it actually gets, and $A$ makes sure never to transmit faster than that. The switch reserves that portion of $C$'s bandwidth exclusively for $A$'s connection to $C$, so as long as $A$ stays below that transmission rate, it can be certain there will always be available bandwidth. Simple, but inflexible!
+
+**Credit schemes**: Improve on the above by dynamically reserving bandwidth using a system of 'credits.' Each peer/switch in the network grants credits to its neighbors; each credit permits that neighbor to transmit a certain number of bytes back to the original peer/switch. Every transmission 'uses up' some of those credits, and if a peer/switch runs out of credits for a given link, then transmissions along that link must wait until more credits have been granted. This way, if a device starts to get overloaded, it can throttle traffic before actually reaching its limits, by simply reducing the rate at which it grants credits to its neighbors. ([The devil is in the details](https://www.nap.edu/read/5769/chapter/4#9), of course.)
+
+**Congestion notifications**: A different approach entirely! Peers and switches operate on a best-effort basis, but when a link starts to get overloaded, the device sends back a 'pause' command on that link, directing that neighbor to stop transmitting. Once buffers have been cleared, the device can then send a 'resume' command to unblock the link and resume receiving transmissions. 
+
+In practice, these are all elements of a complete solution; credit schemes and congestion notifications can coexist in a single implementation, for example. This list is also by no means exhaustive.
+
+Note that these schemes all require peers and switches to maintain state about each other, and every peer must abide by the limits set by their neighbors &mdash; even one peer transmitting more than its allotted share can throw off the whole system. You would never put something like this on the Internet, because you can't trust everyone on such a large network to cooperate with you so nicely; but these schemes work fine in a data center, where you own and operate all the equipment yourself.
+
+### In InfiniBand
+
+As we previously alluded, InfiniBand uses a lossless networking scheme like the ones we just described. (The specification outlines a credit-based scheme but leaves many of the implementation details to the networking hardware vendor.) This decision lets higher levels of the stack make a few key assumptions:
+
+First, becuase InfiniBand networks are 'lossless' in that links don't ever reach the point where transmissions have to be dropped due to congestion, peers can assume that all transmissions will be delivered. A lost transmission is a sign of a more serious error, and is typically grounds for terminating the whole connection.
+
+Second, in order to set up these lossless connections, an InfiniBand fabric first needs to negotiate a path through the network between the two peers, in order to set up things like flow control credits. This means, in the end, there's only *one* path through the network for all transmissions along that connection. In the absence of any way for transmissions to take different paths and 'race' with each other, this allows InfiniBand to guarantee that all transmissions arrive at the destination in the same order they were sent.
+
+So, in short, Infiniband guarantees reliable, in-order delivery of data transmissions. This has important ramifications for the next layer of the stack ...
 
 ## Hardware Frame Assembly
 
@@ -131,9 +157,7 @@ Interestingly, none of this was new when InfiniBand arrived on the scene: 'switc
 >
 > So, we're going to have to make TCP 'go away.' The network has to support the semantics that applications want out of TCP.
 >
-> The first part is already done for us: the network is lossless, so you can't lose frames and they never need to be retransmitted.
->
-> The second part is preventing reordering. Here's the idea: when we're setting up an IB conection, we will negotite a single path through the network between the peers. (If we're using a reservation-based lossless networking scheme, we already had to do this anyways!) If we can guarantee all frames flow through the same path, then the transmit order will be the same as the receive order, because there's no way for frames to 'race'
+> But actually, we did this already! The network is already lossless, so you can't lose frames and they never need to be retransmitted. And, in order to set up a lossless connection, we already had to forge a *single* path through the fabric between the peers. So all frames flow through the same path, losslessly, which means there isn't a way frames could arrive out of order &mdash; they just can't 'race.'
 >
 > So then how does the hardware segment and reassemble frames? Now it's pretty easy, because the only thing we need to do is make sure frames haven't been lost or reordered. Here's an example scheme:
 >
@@ -165,6 +189,40 @@ Interestingly, none of this was new when InfiniBand arrived on the scene: 'switc
 > Details on the six main things you can do: send/receive, register/invalidate, read/write
 >
 > If we want to explain any basic examples that illustrate patterns, that might be good. At least we should hint that send/receive is the only way to tell other nodes what memory addresses you've shared with them.
+
+## InfiniBand &mdash; Recap
+
+A slightly different way of doing this section that might be enlightening:
+
+The über-goal is to minimize software overhead. Give CPU cycles back to the software, and allow the CPU and network to scale independently
+
+What is the network code doing, that we want to remove?
+
+It handles transmission reordering, loss and rate limiting due to congestion. We'll build a self-rate-limiting network that never reorders or loses transmissions, so that this problem 'goes away' from the software's perspective.
+
+It handles segmenting large messages into smaller transmissions and reassembling them. We'll do this in hardware.
+
+It virtualizes the network card, so multiple programs can share the NIC without affecting each other. We'll create a virtual interface in hardware and expose it to userspace programs using mapped memory buffers.
+
+TODO probably want to mention RDMA semantics here too ...
+
+Do all that and you have InfiniBand.
+
+I wonder also whether we want to rejigger the intro section on 'how InfiniBand works' to cover more or less that same stuff, but at a higher level with no jargon
+
+---
+
+So, what did we learn?
+
+> Recap the basic design points
+
+What was the point of doing all this?
+
+The software overhead for using the network has now been reduced to a minimum &mdash; close to a theoretical minimum, even. When a software application wants to send a memory buffer to a remote peer, it just writes a few bytes to device memory, and the network takes care of the rest. Incoming data is received just as simply, by polling device memory at the software's discretion. With RDMA, some transfers don't require any software interaction at all!
+
+In theory, reducing software overhead doesn't just free up CPU time to be used by other parts of the software &mdash; it also decouples the CPU from the networking hardware, potentially allowing both to scale independently of one another.
+
+Of course, there some drawbacks to this scheme &mdash; we'll get into those later &mdash; but for the right use cases, InfiniBand has proven to be a useful tool for achieving better network scalability.
 
 ## Beyond InfiniBand
 

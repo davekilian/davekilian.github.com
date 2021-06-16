@@ -1,6 +1,6 @@
 ---
 layout: post
-title: RDMA
+title: RDMA (deprecated)
 author: Dave
 draft: true
 ---

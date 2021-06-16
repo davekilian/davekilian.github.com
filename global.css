@@ -109,6 +109,12 @@ div.post-content img
     max-width: 100%;
 }
 
+div.post-content h2
+{
+    padding-bottom: .1em;
+    border-bottom: 1px solid #eee;
+}
+
 body
 {
     font-size: 100%;

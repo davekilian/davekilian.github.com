@@ -1,6 +1,6 @@
 ---
 layout: post
-title: Trouble with Best Practices
+title: Not-Always-Best Practices
 author: Dave
 ---
 

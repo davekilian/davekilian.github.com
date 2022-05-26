@@ -44,12 +44,24 @@ Let's say this was the crashing function:
 In the debugger, we were seeing the app crash at line 8, while dereferencing `data->myvalue`.
 It turns out `data` was `nullptr` at that point.
 
-What's particularly strange about this invalid pointer read is we know `data` was allocated successfully; otherwise, we would have returned from `main()` on line 4.
-We could verify the pointer was valid up until line 6 when we called `process()`, but stepping through the program, we could see the value changing as soon as `process()` returned.
-Then we would crash the first time we read the null pointer (line 8).
+> Okay, now, at this point you're probably saying, "Yeah Dave, this is a super obvious bug, something inside `process()` clearly freed the pointer. Why are you blogging this?"
+> **No**. Read again!
+> *Before* the call to `process()`, the `data` variable stores a *non-null* pointer ... but after `process()` returns, `data` points to null!
+> Look at the code and tell me how that's possible! :-)
 
-It looked like `process()` was nulling the `data` pointer, but that shouldn't have been possible: C functions pass parameters by value, not by reference.
-Yet we could clearly see the value change when `process()` returns.
+We confirmed nobody's using C++'s references feature to mess around with the pointer being passed in.
+`process()` just accepts a pointer to a `mystruct` using the language's usual, default, pass-by-value semantics.
+The function's signature looks like this:
+
+~~~cpp
+void process(mystruct *data);
+~~~
+
+And yet, somehow, that call is nulling our pointer.
+That's weird, right?
+
+According to the language rules, there's no way for `process()` to have changed what `data` points to.
+On line 4, we confirm that `data` is non-null; line 6 has no way to change what `data` points to, and yet by line 8, `data` has changed to null.
 
 How can that be?
 
@@ -60,10 +72,11 @@ We saw the pointer get initialized in register `esi`.
 During the call to `process()` from `main()`, we saw the compiler correctly generate `push esi` and `pop esi` instructions to store the value on the stack.
 Everything was looking fine so far.
 
-Then we noticed something fishy: the stack pointer value was different for the `push esi` and `pop esi` instructions, meaning we were restoring _the wrong value_ into `esi`. 
-That's why `data` magically changed into a null pointer when `process()` returned.
+Then we noticed something fishy: the stack pointer address was different for the initial `push esi` and eventual `pop esi` instructions.
+So we were trying to restore `data` from the call stack, but we popped from *the wrong address*; instead of restoring its actual value, we read from an adjacent region on the stack, which so happened to be `0`.
+That's why `data` magically changed into a null pointer when `process()` returned!
 
-Since the stack pointers weren't lining up, we could conclude that someone had pushed more bytes to the stack than they had popped.
+Based on the way the stack pointers weren't lining up, we could conclude that someone had pushed more bytes to the stack than they had popped.
 This class of issue is called an _unbalanced stack_.
 That term was a new one for me; I suppose this type of problem isn't very common nowadays :-)
 
@@ -71,25 +84,25 @@ So came the question: how did the stack get unbalanced?
 
 ## Calling Conventions
 
-To answer that question, we need to review the assembly-level convention for passing function parameters in C.
-Specifically, when you call a function in C:
+To answer that question, we need to review the assembly-level convention for passing function parameters in C and C++.
+Specifically, when you call a function in C and C++ on an x86 processor, ...
 
 * The **caller** pushes all arguments to the stack
 * The **callee** pops all arguments from the stack
 
 Even though the caller pushes and the callee pops, as long as the number of arguments is the same on both ends, the stack ends up balanced.
-Your C compiler uses these rules in most cases, with only a few exceptions:
+Your compiler uses these rules in most cases, with only a few exceptions:
 
 * When you use varargs, the caller has to clean up, because only the caller knows how many arguments it pushed to begin with.
 * You can explicitly tell the compiler to use other calling convetions, and it will generally comply.
 
 ## Gone Awry
 
-Once we had figured out we were dealing with an unbalanced stack, we spent several a lot more time searching for the problem.
+Once we had figured out we were dealing with an unbalanced stack, we still had some investigation left.
 Eventually, we found the problematic function call nested a half dozen function calls below `process()`.
 
-The function we were calling had been loaded using Windows's `LoadLibrary` and `GetProcAddress` APIs, which allow you to manually load a DLL and extract a bare pointer to a specific function.
-The code looked something like this:
+The function we were calling had been loaded using Windows's `LoadLibrary` and `GetProcAddress` APIs, which allow you to manually load a DLL and extract a bare pointer to a specific function wherever the DLL's code was loaded into memory.
+The code to load the DLL and extract the function address looked something like this:
 
 ~~~cpp
 typedef void (*MyFunction)(int arg1, int arg2);

@@ -1,0 +1,130 @@
+---
+layout: post
+title: "Elegance and Overfitting"
+author: Dave
+draft: true
+---
+
+> **elegant**
+>
+> *adjective*
+>
+> 1. pleasingly graceful and stylish in appearance or manner.
+> 2. An elegant idea, plan, or solution is smart but simple, and therefore attractive.
+>
+> (from the [Cambridge Dictionary](https://dictionary.cambridge.org/us/dictionary/english/elegant))
+
+In STEM fields, "elegant" is usually used in the second sense defined above: an elegant approach to solving a problem is simple, concise, and easy to understand. From the outside, it can sometimes seem like STEM folk have an irrational obsession with elegance. What's so great about a solution being "smart but simple?" It's not because we're all simpletons (well, maybe not *only* becaue we're all simpletons!), and it's not just because we find elegant solutions satisfying or pleasing, even if we often do. There are some very good, practical reasons to find elegant solutions to problems:
+
+* Elegant approaches to solving problems are **robust**. These solutions tend to work in a wide variety of situations, not just ones that the inventor originally thought up.
+* Elegant solutions are also often **meaningful** as well. The way these approaches solve problems tells us something about the nature of the problem itself. 
+
+Thus, an elegant solution to a problem is often better in and of itself.
+
+<center>* * *</center>
+
+In machine learning, "overfitting" is when your model is too well matched to its training data. A good machine learning model works by extracting a few key attributes from the input data and running some function over them to produce an answer. An overfitted model essentially works by instead memorizing all the examples it was trained on. A model like this works fine if you check it on one of its training examples, but if you give it a completely *new* input, the answer is often nonsense.
+
+For example, say you had training data in the form of points $(x, y)$, where $x$ is an example input and $y$ is the output you want the model to produce:
+
+[ diagram of a set of points ]
+
+You and I can take one look at this and tell the points roughly fall on a line; a good machine learning algorithm should model this situation as a line-of-best-fit, not unlike the kinds you might have calculated by hand in primary or secondary school:
+
+[ diagram of a best-fit line through the points ]
+
+Overfitting crops up when the learning algorithm has too much freedom to add bends and turns to the best-fit function:
+
+[ diagram of the same fit, with an overfitted model going through ]
+
+If you run this overfitted function on any of the original $x$ values in your training set, it always produces the right answer (or, at least, whatever data was in your training set):
+
+[ diagram, but highlight one of the existing input points ]
+
+But if you try a number $x'$ not in the training set, the output doesn't seem to mean anything:
+
+[ diagram, but add another point where the model produces an insane result ]
+
+An overfitted model is the machine learning equivalent of memorizing your math textbook. If one of the book's example problems appears verbatim on your exam, you know exactly how to solve it! But you're hosed if the problem is even a little different from what was in the book. Similarly, an overfitted machine learning model can only reliably tell you what was in your training set, and little else &mdash; it can only solve problems you've already solved!
+
+What we want our machine learning algorithm to do, instead of overfitting, is to find a more *elegant* rule for explaining the data in our training set.
+
+Overfitting isn't just a problem in machine learning: it also crops up in in scientific models, mathematical proofs and computer algorithms. When these things are overfitted, they're brittle, and they work without seeing any kind of underlying structure to the problem. A sign of overfitting in these is when you find yourself amending your approach every time you think of something new. For example, a computer algorithm design is overfitted to its example test cases if you keep finding new inputs it fails on &mdash; and keep finding yourself having to add special cases to compensate!
+
+In this context, "elegant" means the opposite of overfitted. Elegant approaches are simple. They work in a wide variety of situations without the need to be constantly amended, and they are frequently based somehow on the underlying structure of the problem being solved. 
+
+For an example from the sciences, consider the [Ptolemaic system](https://en.wikipedia.org/wiki/Geocentric_model#Ptolemaic_system), an early accurate model of celestial motion. Ptolemy's model was geocentric: it took Earth to be the center of the universe and modeled the motion of all other celestial objects relative to the Earth. The system was genius, but complex. Different approaches were needed to model different celestial bodies:
+
+|   Object(s)   |                         Observation                          |                      Modeling mechanism                      |
+| :-----------: | :----------------------------------------------------------: | :----------------------------------------------------------: |
+|     Stars     |  Westward motion of entire sky in ~24 hrs ("first motion")   | Stars: [Daily westward motion](https://en.wikipedia.org/wiki/Diurnal_motion) of [sphere of stars](https://en.wikipedia.org/wiki/Celestial_sphere), carrying all [other spheres](https://en.wikipedia.org/wiki/Celestial_spheres) with it; normally ignored; other spheres have additional motions |
+|      Sun      | Eastward motion yearly along [ecliptic](https://en.wikipedia.org/wiki/Ecliptic) |         Eastward motion of Sun's sphere in one year          |
+|      Sun      |       Non-uniform rate along ecliptic (uneven seasons)       |      Eccentric orbit (Sun's deferent center off Earth)       |
+|     Moon      |          Monthly eastward motion compared to stars           |           Monthly eastward motion of Moon's sphere           |
+| The 5 planets | General eastward motion through [zodiac](https://en.wikipedia.org/wiki/Zodiac) | Eastward motion of deferents; period set by observation of planet going around the ecliptic |
+|     (...)     |                            (...)                             |                            (...)                             |
+
+(For the rest of the table, see the [Wikipedia article](https://en.wikipedia.org/wiki/Geocentric_model#Ptolemaic_system) on Ptolemy's system.)
+
+Today, nobody uses Ptolemy's system. Newtonian physics suggests a simpler, more elegant model: that the movement of celestial bodies can be predicted using only their gravitational affect on one another. To oversimplify, Newtonian physics predicts that 'little stuff orbits bigger stuff.' In Newton's system, the different kinds of movement Ptolemy cataloged were essentially just a hierarchy of orbits: the moon orbits Earth, Earth and other planets orbit the sun, the sun and other stars orbit the center of the Milky Way galaxy.
+
+In hindsight, we can see how Ptolemy's system was perhaps overfitted to the observations of celestial bodies he and his contemporaries had mde. His system worked for every kind of body he knew about, but it would have to be have been continually amended for observations we've made since then. In contrast, Newton's more elegant system continues to successfully describe the motion of celestial bodies that have been discovered hundreds of years after Newton's death. Whereas Ptolemy's system is a catalog of behaviors, Newton's system suggests an underlying structure: that the movement of celestial objects is governed by gravity.
+
+I'm not trying to praise Newton or bash Ptolemy &mdash; they were both pretty smart dudes, and they both contributed a great deal to our understanding of our universe. This story is a contrast between an elegant approach and an overfitted approach.
+
+Newton's approach is used today while Ptolemy's isn't, because Newton's requires fewer rules to account for the same behavior as Ptolemy's. It's simpler. But simplicity isn't what makes Newton's approach better: it's better because it's robust, and it's better because it tells us something insightful about the movement of celestial bodies &mdash; something which at first can seem confusing or arbitrary.
+
+Overfitting occurs in algorithm design too. Say you're in a coding interview and someone gives you this problem:
+
+> ### [Generate Parentheses](https://leetcode.com/problems/generate-parentheses/)
+>
+> Given `n` pairs of parentheses, write a function to *generate all combinations of well-formed parentheses*. 
+>
+> **Example 1**: 
+>
+> * Input: `n = 3`
+> * Output: `["((()))","(()())","(())()","()(())","()()()"]`
+>
+> **Example 2**:
+>
+> * Input: `n = 1`
+> * Output: `["()"]`
+>
+> &nbsp;
+
+TODO here's a recursion that works for the examples but not even at n=4
+
+* `"()" + generate(n-1)`
+* `generate(n-1) + "()"`
+* `"(" + generate(n-1) + ")"`
+
+TODO here's a recursion which actually works
+
+```c++
+void generate(vector<string> &out, string &str, int open, int close) {
+  
+    if (open == 0 && close == 0) {
+        out.push_back(str);
+        return;
+    }
+        
+    if (open > 0) {
+        str.push_back('(');
+        generate(out, str, open - 1, close);
+        str.pop_back();
+    }
+        
+    if (close > open) {
+        str.push_back(')');
+        generate(out, str, open, close - 1);
+        str.pop_back();
+    }
+}
+```
+
+TODO then show the solution. Show how the result is simpler, and show how it relates to the structure of the problem: at each character we can either close an existing parens or open another one.
+
+What can we learn from this discussion?
+
+For one, next time you find a theory, algorithm or proof is "inelegant," try seeing if it makes sense to call it "overfitted" to something instead. It might mean the same thing, but the implications are different. To call an algorithm "not elegant" is only to imply a better approach might exist &mdash; something that doesn't necessarily need to be addressed right away, if ever. But if an algorithm is overfitted, you're saying it might be wrong &mdash; you're saying the algorithm may work in the situations we've considered so far, but that you have a feeling it's broken and you just haven't found the input that breaks it, yet.
+

@@ -152,27 +152,54 @@ Now we can see clearly how, each time we add another digit, we make some progres
 
 In fact, now we can see that, even if we walk forever, the set of numbers our diagonalization 'missed' will also grow forever. The trend never reverses; no longer how long we walk, we can never catch up. We can never even stop falling further behind!
 
-> TODO It would seem we have arrived at two different kind of infinities. The $\infty$ and the $10\infty$ kinds.
->
-> And boom &mdash; there are Cantor's "countable" and "uncountable" infinities. 
+What we've done so far isn't a formal proof, but we have a high level idea for one. It seems like we've found at least two infinite numbers here:
 
-## How many numbers did we miss, anyways?
+* Our diagonal walk, if run forever, visits infinitely many numbers
+* The set of all decimals between $0$ and $1$ has infinitely many numbers
 
-> TODO in fact, if you've done precalc, you can characterize what's going on with a limit: at step i there are 10^i numbers overall, and we've covered i of them. So the ratio is 10^i / i. If you take the limit as i approaches infinity, 10^i dominates i asymptotically, and you get infty.
+These two infinite quantities are not equal: there are more decimals in the set than there are decimals visited by a diagonal walk. So it would seem there are at least two infinite numbers that are not equal: the size of the diagonal walk, and the size of the set.
+
+This is what Cantor was talking about with "countable" and "uncountable" infinity: "countable" refers to the length of the diagonal walk, whereas "uncountable" refers to the size of the set.
+
+> How many numbers does an infinite diagonal walk miss, anyways? If you've done some precalculus and know what a limit is, you alreeady know enough to find out yourself!
 >
-> Which is kind of startling: it turns out, even if we run an infinite diagonal walk, even though we visit $\infty$ numbers during our walk, we miss $\infty$ numbers per every number we do hit!
+> Per the table above, remember that if you do a finite diagonalization on $i$-digit decimals, your diagonal crosses $i$ of the $10^i$ numbers in the set. The proportion of "numbers missed per numbers hit" would thus be $\frac{10^i-i}{i}$. If you unconstrain $i$ and thus allow for infinitely many decimal places, the proportion would be characterized by the following limit:
 >
-> Alephs.
+> <center>$\lim_{(i \to \infty)} \dfrac{10^i-i}{i}$</center>
+>
+> If limits are new or unfamiliar, this expression asks the question, "as $i$ grows unbounded, what happens to $\frac{10^i-i}{i}$?" Limits on fractions can go one of three ways:
+>
+> 1. If the numerator grows faster, the fraction will grow forever
+> 2. If the denominator grows faster, the fraction will approach $0$
+> 3. If both are proportional, the fraction will approach that proportion
+>
+> For us, $10^i - i$ grows asymptotically faster than $i$ (a lot faster), so we're in case 1. So this limit approaches $\infty$ as $i$ approaches $\infty$.
+>
+> To summarize, it seems if you diagonalize the set of all decimals, your diagonal will certainly cross infinitely many numbers, but, for each number you *do* cross, you will have missed infinitely many more!
 
 ## Cantor, Correctly
 
+If I'm going to claim I don't like the way Cantor's diagonalization argument is usually presented, it seems only fair to propose a better way.
+
+
+
 > TODO Recast the proof. Basically, it's 
 >
-> Say you have a set of all real numbers
+> Say you have a set of $R$ all real numbers over some interval, e.g. $[0, 1)$
 >
-> Set the set is 'square' - the infinity of number of numbers is the same infinity as the number of digits per numbeer
+> Represented as infinite decimal expansions
 >
-> Then I can diagonalize and obtain a number that I never saw once during diagonalization
+> Let $\infty$ be the length of an infinite decimal expansion
+>
+> Then $|R| > \infty$. Proof:
+>
+> I can diagonalize and obtain a number that I never saw once during diagonalization
+>
+> Diagonalization algorithm as before.
+>
+> Diagonalization covers $\infty$ elements of $R$.
+>
+> But diagonalization produces a number distinct from what it covered
 >
 > Therefore the diagonal didn't hit every number
 >
@@ -184,4 +211,6 @@ In fact, now we can see that, even if we walk forever, the set of numbers our di
 
 ## Beyond Infinity
 
+> Alephs?
+>
 > Plug the book I liked, also a good time to cover anything else worth saying about the 'weirdness' of infinity, or having to poke at it indirectly using finite brains and finite math.

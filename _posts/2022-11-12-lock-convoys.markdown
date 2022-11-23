@@ -1,6 +1,6 @@
 ---
 layout: post
-title: "The Complete Guide to Lock Convoys"
+title: "A Complete Guide to Lock Convoys"
 author: Dave
 ---
 

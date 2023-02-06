@@ -1,5 +1,19 @@
 @import url('https://fonts.googleapis.com/css?family=Source+Sans+Pro:400,400i,700&display=swap');
 
+html
+{
+    -webkit-font-smoothing: antialiased;
+}
+
+body
+{
+    font-family: "Source Sans Pro", sans-serif;
+    font-size: 17px;
+    font-weight: 400;
+    line-height: 1.618;
+    color: black;
+}
+
 ul.nav
 {
     list-style-type: none;
@@ -56,7 +70,7 @@ div.post-blurb:hover
 
 div.post-container
 {
-    max-width: 720px;
+    max-width: 40em;
     margin-left: auto;
     margin-right: auto;
 }
@@ -68,9 +82,6 @@ div.post-date
 
 div.post-content
 {
-    font-family: "Source Sans Pro", sans-serif;
-    font-size: 17px;
-    font-weight: 400;
 }
 
 div.post-content h1,
@@ -113,11 +124,6 @@ div.post-content h2
 {
     padding-bottom: .1em;
     border-bottom: 1px solid #eee;
-}
-
-body
-{
-    font-size: 100%;
 }
 
 p

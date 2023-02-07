@@ -174,11 +174,13 @@ pre
     border: 1px solid #ccc;
     border-radius: 5px;
     box-shadow: 0 .2em 0 #eee;
+    overflow-x: scroll;
 }
 
 pre code
 {
     font-size: 14px;
+    white-space: pre;
 }
 
 blockquote

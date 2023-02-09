@@ -56,7 +56,7 @@ public:
 };
 ```
 
-We will be iterating on this code throughout the post, so make sure you get it before moving on. All good/ Then here's a puzzle for ya:
+We will be iterating on this code throughout the post, so make sure you get it before moving on. All good? Then here's a puzzle for ya:
 
 There's a bug in this queue, and I'm wondering if you can find it. When you run this on a real computer, sometimes `poll()` returns true without giving you an entry. That is, `poll()` returns true, but `entry` is still null &mdash; even though the producer enqueued something non-null. Here's a repro program that sometimes demonstrates the issue:
 
@@ -126,7 +126,7 @@ Wouldn't it be nice if the CPU could work ahead while it waits for the data? The
 
 ```c++
 unsigned i = tail % size;
-tail++;
+tail++; // <-- do this early
 entries[i] = entry;
 ```
 
@@ -149,7 +149,11 @@ Well, that explains it: `poll()` sometimes returns true without an entry, becaus
 
 ![](/assets/cpu-is-wrong.jpeg)
 
-Well, this time, Principal [Software Engineer] Skinner might have a point. We wrote correct code, and in trying to dynamically optimize it, the CPU transformed our correct code into broken code. Yet, if we talked to someone who designs CPUs, they would likely turn this around on us: *our* code is wrong because *we* were wrong to assume linearizabile memory. Who's to blame for this problem is an old argument hashed out many times on remote corners of the Internet (not always productively), and ultimately, what matters is CPUs aren't going to change, which means our code has to.
+Well, this time, Principal [Software Engineer] Skinner might have a point. We wrote correct code, and in trying to dynamically optimize it, the CPU transformed our correct code into broken code. Yet, if we talked to someone who designs CPUs, they would likely turn this around on us: *our* code is wrong because *we* were wrong to assume linearizabile memory. 
+
+![](/assets/code-is-wrong.jpeg)
+
+Who's to blame for this problem is an old argument hashed out many times on remote corners of the Internet (not always productively), and ultimately, what matters is CPUs aren't going to change, which means our code has to.
 
 ## So what do we do now?
 
@@ -159,9 +163,9 @@ Atomics are useful for solving a different problem. Atomics resolve conflicts be
 
 Hm, then what exactly *is* our problem? It's **memory ordering**.
 
-When we put an entry in the queue, we need to update *two* variables: the queue entry and the tail pointer. We are very certain that order matters: we want to write the entry first and *then* increment the tail, because the latter step is what indicates to the consumer that the former has completed. If the consumer polls the queue after we've written the entry but before we've incremented the tail, it passes by without 'seeing' the partially completed put operation. Which is all a perfectly good plan.
+When we put an entry in the queue, we need to update *two* variables: the queue entry and the tail pointer. We are certain that order matters: we want to write the entry first and *then* increment the tail, because the latter step is what indicates to the consumer that it's good to start polling. If the consumer polls the queue after we've written the entry but before we've incremented the tail, it passes by without 'seeing' the partially completed put operation. This is all a perfectly good plan.
 
-The only reason this didn't work is we don't have the *memory ordering guarantees* we thought we did. We were very reasonable, but ultimately wrong in thinking we could write two lines of code in order to make the CPU execute them in that order. Now that we know a CPU might shuffle our code around in the name of making progress faster, we need some way to tell the CPU no, you can't do that, order matters here.
+The only reason this didn't work is we don't have the *memory ordering guarantees* we thought we did. We were very reasonable, but ultimately wrong in thinking writing two lines of code in order would make the CPU execute them in order. Now that we know a CPU might shuffle our code around in the name of making progress faster, we need some way to tell the CPU no, you can't do that, order matters here.
 
 **Fences** are the tool we get for doing that.
 
@@ -235,7 +239,7 @@ Seems like a good time to actively prove our queue works.
 
 ## Reasoning about Fences
 
-No more shooting from the hip and reasoning based on what we expect. To show the bug is fixed, we need to understand what guarantees the CPU gives us, and use those to be rules lawyers, just like that friend you keep inviting to your DnD sessions for some reason.
+No more shooting from the hip and reasoning based on what we expect. To show the bug is fixed, we need to understand what guarantees the CPU gives us, and use those to justify what we did. We need to that rules-lawyering friend you keep inviting to your DnD sessions for some reason.
 
 There are four steps needed to hand off an entry through the queue:
 
@@ -423,7 +427,9 @@ I'd like to point out how *very* similar this list of steps is to another list o
 3. On poll, a consumer sees `tail` was incremented
 4. The entry is read from `entries[i]`
 
-That's right, we need to establish ordering guarantees between the write-release, the read-acquire, and the surrounding code. What are the minimal guarantees we need? Remember, our ultimate goal is to come up with weak guarantees so the CPU has maximum flexibility to run our code.
+That's right, it's the same basic pattern as the queue, which means it's susceptible to the same memory ordering problems we just fixed in our queue. We need to establish ordering guarantees between the write-release, the read-acquire, and the surrounding code.
+
+What are the minimal guarantees we need? Remember, our ultimate goal is to come up with as weak a guarantee as possible, so the CPU has maximum flexibility to run our code the fastest way it knows how.
 
 ## Acquire and Release Semantics
 
@@ -453,12 +459,12 @@ If you think about it, the `fence()` calls we added before actually help us here
 
 But can we do better than a full `fence()`?
 
-Well, remember that a fence is bidirectional. A `fence()` means "nothing after this starts until everything before this is finished." But isn't bidirectionality more than we need? For a write-release, we only care that stuff *before* the write has completed; it's totally fine if the CPU works ahead on something else! Similarly, for a read-acquire, we only care that stuff *after* the read has to wait; it's fine if stuff *before* that gets delayed.
+Well, remember that a fence is bidirectional. A `fence()` means "nothing after this starts until everything before this is finished." But isn't bidirectionality more than we need? For a write-release, we only care that stuff *before* the write has completed; it's totally fine if the CPU works ahead on something else! Similarly, for a read-acquire, we only care that stuff *after* the read waits; it's fine if stuff *before* that gets delayed.
 
 So, instead of two full fences, how about two half fences? Let's try these rules on for size:
 
-* A **write-release** guarantees that all **preceding** code comes **before** the write-release itself
-* A **read-acquire** guarantees that all **following** code comes **after** the read-acquire itself
+* A **write-release** guarantees that all **preceding** code completes **before** the write-release itself
+* A **read-acquire** guarantees that all **following** code starts **after** the read-acquire itself
 
 These two rules are called **acquire and release semantics**. In the case where your code is handing off ownership of memory across threads, this can be significantly cheaper than using full fences, because it constrains half as much code as our `fence()`-based code. And remember, the more freedom a CPU has to reorder the code, the faster it runs!
 
@@ -551,55 +557,4 @@ Sequential consistency can be useful if you have multiple threads racing to set 
 
 This makes it easy to write buggy lock-free code that also happens to work flawlessly 🙂. If you forget to tag a variable access as an acquire or release, it may still work just fine because your CPU is always upgrading *every* read to read-acquire and write to write-release. But the first time you try to run your code on *somebody else's* CPU, you should try putting your ear against their computer's case so you can hear all the looney tunes "bang boom pow" sounds coming from their CPU as it executes your code.
 
-## Advice and Takeaways
-
-So how do we use memory ordering guarantees in our code? In the end, you ideally want to end up with the weakest memory ordering guarantees that don't break your code. Here are some examples:
-
-Obviously, any variable that isn't shared should be relaxed: either make it a stdatomic type for which you always specify `relaxed` memory ordering, or even better, just make it as a plain C/C++ variable.
-
-This advance also applies to variables which happen to be stored in shared memory, but in practice can only be used by one thread. The toy queue's `head` is an example of this, as it's only ever read or written by the consumer thread:
-
-```c++
-bool poll(void **entry) {
-  unsigned t = tail.load(memory_order::acquire);
-  if (t > head) {
-    unsigned i = head % size;
-    *entry = entries[i];
-    head++;
-    return true;
-  } else {
-    return false; // empty
-  }
-}
-```
-
-Atomic read-modify-write operations can often be relaxed too, if its updates don't need to synchronize with anything else. A common example is a standalone counter that just tracks the number of times your program did something; you can often tag these as `relaxed` so they imposes no ordering requirements on the surrounding code:
-
-```c++
-atomic_uint lucky_sevens;
-// ...
-if (user_id % 1000 == 777) {
-	lucky_sevens.fetch_add(1, memory_order::relaxed);
-}
-```
-
-This tends to work well for tracking observability metrics.
-
-Finally, you frequently find that operations can be relaxed if you just did a read-acquire, or you know a write-release is coming. For example, our `put()` code doesn't need to impose any memory ordering guarantees when we update `entries[i]`, because we know the upcoming write-release will ensure the update is visible to the consumer:
-
-```c++
-void put(void *entry) {
-
-  unsigned t = tail.load(memory_order::relaxed);
-  unsigned i = t % size;
-  entries[i] = entry;
-
-  tail.store(t + 1, memory_order::release);
-}
-```
-
-Of course, not every operation can be relaxed. If you have a single variable update that gates visibility of some update across threads, you need the update to be a `release` and the check to be an `acquire`, whether that check is passive (such as `toy_queue::poll()` reading the queue tail) or active (such as `toy_lock::try_lock` compare-and-swapping the lock state).
-
-Finally, if you're ever not sure what level of guarantees you need, you can always start by specifying `seq_cst` ordering guarantees and relaxing them later. In fact, that's the direction stdatomic will push you by default: if you *don't* specify a memory ordering requirement, you get sequential consistency. If you go down this route, then once you have code that works, you can experiment with weaker ordering. Just be careful not to fall into the guess-and-test trap, lest you end up with buggy code that happens to work on your CPU but somebody else's!
-
-Anyways, hopefully that helped and I wasn't too boring. See you next time!
+Anyways, that's all I got! Hopefully that helped and I wasn't too boring. See ya next time!

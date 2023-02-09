@@ -451,3 +451,53 @@ draft: true
 >
 > In this new light, maybe the `fence()` method is overkill for the situation we're in. Can we do something else, something with weaker (meaning more flexible) memory ordering guarantees, without breaking our queue? The meta-gamer in you knows I'm about to tell you the answer is yes. Let's think about a very common pattern for sharing memory in multithreaded code:
 
+> ## Advice and Takeaways
+>
+> So how do we use memory ordering guarantees in our code? In the end, you ideally want to end up with the weakest memory ordering guarantees that don't break your code. Here are some examples:
+>
+> Obviously, any variable that isn't shared should be relaxed: either make it a stdatomic type for which you always specify `relaxed` memory ordering, or even better, just make it as a plain C/C++ variable.
+>
+> This advance also applies to variables which happen to be stored in shared memory, but in practice can only be used by one thread. The toy queue's `head` is an example of this, as it's only ever read or written by the consumer thread:
+>
+> ```c++
+> bool poll(void **entry) {
+>   unsigned t = tail.load(memory_order::acquire);
+>   if (t > head) {
+>     unsigned i = head % size;
+>     *entry = entries[i];
+>     head++;
+>     return true;
+>   } else {
+>     return false; // empty
+>   }
+> }
+> ```
+>
+> Atomic read-modify-write operations can often be relaxed too, if its updates don't need to synchronize with anything else. A common example is a standalone counter that just tracks the number of times your program did something; you can often tag these as `relaxed` so they imposes no ordering requirements on the surrounding code:
+>
+> ```c++
+> atomic_uint lucky_sevens;
+> // ...
+> if (user_id % 1000 == 777) {
+> 	lucky_sevens.fetch_add(1, memory_order::relaxed);
+> }
+> ```
+>
+> This tends to work well for tracking observability metrics.
+>
+> Finally, you frequently find that operations can be relaxed if you just did a read-acquire, or you know a write-release is coming. For example, our `put()` code doesn't need to impose any memory ordering guarantees when we update `entries[i]`, because we know the upcoming write-release will ensure the update is visible to the consumer:
+>
+> ```c++
+> void put(void *entry) {
+> 
+>   unsigned t = tail.load(memory_order::relaxed);
+>   unsigned i = t % size;
+>   entries[i] = entry;
+> 
+>   tail.store(t + 1, memory_order::release);
+> }
+> ```
+>
+> Of course, not every operation can be relaxed. If you have a single variable update that gates visibility of some update across threads, you need the update to be a `release` and the check to be an `acquire`, whether that check is passive (such as `toy_queue::poll()` reading the queue tail) or active (such as `toy_lock::try_lock` compare-and-swapping the lock state).
+>
+> Finally, if you're ever not sure what level of guarantees you need, you can always start by specifying `seq_cst` ordering guarantees and relaxing them later. In fact, that's the direction stdatomic will push you by default: if you *don't* specify a memory ordering requirement, you get sequential consistency. If you go down this route, then once you have code that works, you can experiment with weaker ordering. Just be careful not to fall into the guess-and-test trap, lest you end up with buggy code that happens to work on your CPU but somebody else's!

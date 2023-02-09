@@ -555,5 +555,3 @@ Finally, if you enjoyed going on a romp through CPU hardware, operating system a
 
 * *[Operating Systems: Three Easy Pieces](https://www.ostep.org)*, a wonderful (and free!) online e-textbook on operating systems and the hardware interfaces underneath.
 * *[The Art of Multiprocessor Programming](https://www.elsevier.com/books/the-art-of-multiprocessor-programming/herlihy/978-0-12-415950-1)*, a textbook that dives deep on lock design.
-
-> One final PSA: I'm on the market! If you're looking for a systems software engineer to help bust your bottlenecks like we talked about in this post, shoot me a mail! You can reach me via dave at [thisdomainname.com]

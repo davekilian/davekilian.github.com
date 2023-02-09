@@ -77,7 +77,8 @@ div.post-container
     padding-right: 10px;
 }
 
-div.post-content img
+div.post-content img,
+div.post-content blockquote
 {
     display: block;
     max-width: min(100%, 36em);
@@ -111,7 +112,6 @@ pre code
     font-size: 14px;
     white-space: pre;
 }
-
 
 div.post-date
 {

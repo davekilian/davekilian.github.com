@@ -1,17 +1,23 @@
 ---
 layout: post
-title: Using Acquire and Release Semantics
+title: Making Sense of Memory Order
 author: Dave
 draft: true
 ---
 
-"Memory ordering semantics" like *acquire* and *release* are confusing. Plenty of people who are perfectly competent at writing lock-free code in native languages like C, C++ or Rust, don't fully get what these things do or when to use them. I'm hoping this post can help clear up some of the confusion.
+One of my favorite undergrad classes was a course called *Multiprocessor Synchronization*, a class based on the (what I consder to be) seminal *Art of Multiprocessor Programming* text, taught by the book's author. It was a fun mix of theory and practice, starting with a theoretical framework that motivates the need for 'strong' consensus priitives like atomic memory operations, and finally moving into the internal designs of locks and lock-free data structures. The problems required careful thinking and bending intuition, but ultimately could be stated clearly and and solved in simple, orderly ways.
 
-I think you'll know everything you need about these things once you can answer this question:
+Then I tried applying this stuff in C, and found out why this course was given in Java. 🙂
+
+Moving from managed to native, I expected to have a harder time for not having a garbage collector; I did not expect to have my entire model of multithreading turned upside down! You see, Java goes to some length to hide weird stuff your hardware does under the hood, and when you're working in a native language like C, C++ or Rust, you're not insulated from anything.
+
+My goal of this post is to introduce you to the "other half" of lock-free programming &mdash; the one you only get to see when you move down into native languages, and one you don't typically see discussed in textbooks or classrooms. I want to introduce you to the problems of *memory order*.
+
+In order to have something to build to, this post will focus on *acquire and release semantics*. Plenty of people who are perfectly competent at writing lock-free code in native languages like C, C++ or Rust, don't fully get what these things do or when to use them. I think you'll know everything you need about these things once you can answer this question:
 
 <center><i>What</i> is being acquired and released?</center>
 
-The short answer is *ownership of other memory*. But I'm guessing that leaves you with more questions than answers! Let's back it up ... a lot. In figuring out how these acquire-release things are supposed to help us, we might find ourselves questioning our most basic assumptions of  how computers run code. It'll be a long climb, but I think you'll like the view from the top!
+The short answer is *ownership of other memory*. But I'm guessing that leaves you with more questions than answers! So let's get started. It'll be a long climb, but I think you'll like the view from the top.
 
 Read this in your best [Gilfoyle](https://www.hbo.com/silicon-valley/cast-and-crew/bertram-gilfoyle) impression: *If memory worked the way you thought it did, you'd never need to acquire or release anything. Unfortunately, memory doesn't work the way you think it does.*
 
@@ -360,7 +366,7 @@ void consumer() {
 }
 ```
 
-Looks familiar, huh? 🙂 Look how the queue accomplishes the same basic ownership handoff as the lock. The producer starts off with implicit ownership of `an_entry`, and releases it by putting the entry in the queue. Later, the consumer dequeues the entry, thus obtaining ownership of the memory. In between, while the item is still in the queue, nobody owns the entry's memory.
+Look how the queue accomplishes the same basic ownership handoff as the lock. The producer starts off with implicit ownership of `an_entry`, and releases it by putting the entry in the queue. Later, the consumer dequeues the entry, thus obtaining ownership of the memory. In between, while the item is still in the queue, nobody owns the entry's memory.
 
 Abstracting, both of these seem to be doing some kind of "two-phase handoff" pattern. A thread which owns the memory does something to release it, notifying everybody it is no longer the current owner; later, a thread comes by and acquires ownership of the memory. When you put it in such a generic way, it seems likely this handoff scheme is useful in a wide variety of situations, don't you think?
 

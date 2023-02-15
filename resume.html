@@ -4,6 +4,10 @@
 		<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
 		<title>Dave Kilian's Resume</title>
 		<style type="text/css">
+            html {
+                -webkit-font-smoothing: antialiased;
+            }
+
 			div.left { float: left }
 
 			div.right {
@@ -11,8 +15,11 @@
 				text-align: right;
 			}
 
-			.section-header {
-				font-size: 150%;
+			h2 {
+				font-size: 200%;
+                font-family: "Source Sans Pro";
+                font-weight: 700;
+                margin-bottom: .3em;
 			}
 
 			.bottom-border {
@@ -23,65 +30,56 @@
 			}
 
 			a { color: #555 }
+
+            li { padding-bottom: .3em }
 		</style>
+        <link rel="preconnect" href="https://fonts.googleapis.com">
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link href="https://fonts.googleapis.com/css2?family=Libre+Baskerville:wght@400;700&display=swap" rel="stylesheet">
+        <link href="https://fonts.googleapis.com/css2?family=Source+Sans+Pro:wght@700&display=swap" rel="stylesheet">
 	</head>
-	<body>
-		<div style="width: 750px; margin-left:auto; margin-right: auto">
+	<body style="font-family: 'Libre Baskerville'; font-size: 11pt; line-height: 1.4">
+		<div style="width: 880px; margin-left:auto; margin-right: auto">
 
 			<!-- Contact information -->
 			<table style="width: 100%"><tr>
 				<td style="width: 80px; height: 80px">
                     <img src="http://www.gravatar.com/avatar/45adbee0467afae3e26db7d060e0b386.png" 
-                         width="70px" height="70px" alt="" style="vertical-align: middle; border: 1px solid #aaa">
+                         width="70px" height="70px" alt="" style="vertical-align: middle">
 				</td>
 				<td>
-					<span style="font-size: 200%">Dave Kilian</span><br>
+					<span style="font-size: 220%">Dave Kilian</span><br>
 
-					<div class="left">
+					<div class="left" style="font-size: 95%">
                         https://www.davekilian.com<br>
 						dave@davekilian.com
 					</div>
 				</td>
 			</tr></table>
-
-			<div style="width: 100%" class="bottom-border"></div>
-
-			<!-- Summary -->
-            <p>For the past year, I've been on a career break, focusing on my very young kids (three, three years and under, baby!).<br>
-            Before that, I was a Principal Software Engineer for Microsoft, working on storage performance for the Azure cloud.<br>
-            I graduated from Brown University with a B.S. in Computer Science in 2013.</p>
-
-            <p>I love computer systems!
-            I have experience working on distributed data systems, multithreaded native code optimization, storage drivers,
-            RDMA networking, and kernel programming. I also have interests in computer graphics, cryptography and
-            operating systems.</p>
-
-            <p>I love to learn and teach! 
-            I used to do a well-loved  1&half; hour "boot camp" technical presentation on Azure Storage a few times a year,
-            and I was a teaching assistant for 6 classes over 5 semesters during my undergrad.</p>
+            <p>
+            Ex-Microsoft Azure Principal Software Engineer experienced in architecting for low latency at scale in C and C++.
+            Interested in foundational software like databases, distributed storage, file systems, multithreading, operating systems and game engines.
+            Skilled technical writer and in-person presenter with a knack for explaining difficult technical concepts.
+            Proud dad of three little wild men.
+            Graduated from Brown University in 2013.
+            Lifetime learner.
+            Licensed high school teacher in Washington state.
+            </p>
+            <p>
+            I am looking for a next career step that will allow me to leverage my existing knowledge and skillset while also giving me the chance to learn something new.
+            I value being able to work with smart, intellectually honest people, as well as just getting stuff done!
+            </p>
 
 			<!-- Work Experience -->
-			<span class="section-header bottom-border">Work Experience</span><br>
+            <h2>Work Experience</h2>
 
 			<span style="font-size: 125%">Principal Software Engineer, Azure Storage, Microsoft, 2017-2021</span><br>
 
             <ul>
-                <li>Next-gen proof of concept for high performance Azure virtual machine disks
-                    <ul>
-                        <li>Spearheaded project based on own performance analysis, and obtained buyoff for project</li>
-                        <li>Co-designed and developed optimized, wire-compatible implementation of Azure disk engine</li>
-                        <li>Achieved &gt;1 million IOPS per node with sub-millisecond latency, an orders-of-magnitude improvement</li>
-                    </ul>
-                </li>
-                <li>Contributed to a project optimizing internal network data flow using InfiniBand RDMA</li>
-                <li>Designed and gave in-depth tech talk for onboarding new hires ("Azure Storage Boot Camp")
-                    <ul>
-                        <li>Organically grew from notes to a talk to headliner of new all-day "boot camp" event</li>
-                        <li>I was flown out to give my talk at our Shanghai, Hyderabad and Bengaluru offices</li>
-                    </ul>
-                </li>
+                <li>Spearheaded, co-architected and co-developed proof-of-concept next-generation Azure virtual machine disk storage, capable of serving over 1 million IOPS per server blade with half-millisecond latency.</li>
+                <li>Developed and presented architecture deep-dive talk for new hires. Grew organically from notes to headliner of new all-day "boot camp" event, given at our Redmond, Shanghai, Hyderabad and Bengaluru offices, and recorded for posterity.</li>
+                <li>Made significant contributions to a project optimizing network flow using InfiniBand RDMA</li>
             </ul>
-
 			<span style="font-size: 125%">Software Engineer II, Windows Deployment, Microsoft, 2013-2017</span><br>
 
             <ul>
@@ -92,7 +90,7 @@
 
 			<span style="font-size: 125%">Teaching Assistant for Brown University Computer Science, 2010-2013</span><br>
             <ul>
-                <li>For graduate- and undergraduate-level courses in graphics, operating systems, and cybersecurity</li>
+                <li>Assisted graduate- and undergraduate-level courses in graphics, operating systems, and cybersecurity</li>
                 <li>As regular TA, developed course materials, graded assignments, ran coding labs and held office hours</li>
                 <li>As head TA, hired and managed teams of undergrad TAs, organized courses, developed course content</li>
 			</ul>
@@ -104,16 +102,16 @@
             </ul>
 
 			<!-- Technologies -->
-			<span class="section-header bottom-border">Technology Experience</span>
+			<h2>Technology Experience</h2>
 
-            <p><b>Most recently:</b> C/C++, Windows Driver Model, InfiniBand RDMA.
+            <p><b>Most recently:</b> C/C++, Windows Driver Model, InfiniBand RDMA, B-Trees and Log-Structured Merge.
             These are all still top of mind.</p>
 
             <p><b>In the past:</b> OpenGL, Qt, Python, Java, Linux shells, C#, HTML, CSS, JavaScript, PHP, SQL.
             I have used these for nontrivial projects in the past, but it's been a while.</p>
 
 			<!-- Education -->
-			<span class="section-header bottom-border">Education</span>
+			<h2 style="page-break-before: always">Education</h2>
             <p>I graduated from Brown University in 2013 with a B.S. in Computer Science, with a 3.8 GPA.
             Relevant coursework:</p>
 			<ul style="list-style-type: none">

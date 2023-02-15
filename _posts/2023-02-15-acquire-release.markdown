@@ -1,19 +1,21 @@
 ---
 layout: post
-title: Making Sense of Memory Order
+title: Making Sense of Acquire-Release Semantics
 author: Dave
 draft: true
 ---
 
-*Multiprocessor Synchronization* was one of my favorite undergrad classes &mdash; theory and practice with a clear progression, from the theory of consensus numbers to atomic operations to synchronization primitives and lock-free data structures, all built from first principles. With careful thought and a little intuition-bending, every problem could be stated clearly and solved in a neat, orderly way ... in Java.
+*Multiprocessor Synchronization* was one of my favorite classes during my undergrad &mdash; theory and practice with a clear progression, from the theory of consensus numbers to atomic operations to synchronization primitives and lock-free data structures, all built from first principles. With careful thought and a little intuition-bending, every problem could be stated clearly and solved in a neat, orderly way ... in Java.
 
 Later on, when I tried to translate what I learned into C, I learned why the course was taught in Java. 🙂
 
-I had anticipated it'd be hard to reclaim memory in lock-free code, but I was wrong to think the pain would end there. Native languages like C, C++ and Rust expose you to problems that Java does a good job hiding &mdash; stuff you don't usually run into in classrooms or textbooks. In this post, I want to explain what those problems are and give you a couple tools for dealing with them. Once we're done, you should have a good idea of what "memory order" means in the context of lock-free code.
+Java does a lot more to help you write correct multithreaded code than I had first realized. I knew having a garbage collector was helpful, and I guess I know of knew `volatile` did *something*, but I didn't appreciate the extent of what that *something* is. The algorithms and techniques I learned in my multiprocessor course still apply in native languages, but coding those correctly required a much deeper understanding of how computers run code at the most basic level.
 
-Since it's hard to talk about this kind of thing in a void, let's set an even more concrete goal: by the end of this post, you should understand how to use the *acquire and release semantics* offered by C, C++ and Rust. Many people who are perfectly competent at writing lock-free native code have trouble understanding what these things do or when to use them, but I think mastery lies in being able to answer one question:
+In this post, I want to introduce, or maybe re-introduce you to *acquire-release semantics*. Plenty of developers who can competently write lock-free code in native languages like C, C++ and Rust still have a fuzzy idea of what these are or when to use them. They're actually not so hard in and of themselves &mdash; what makes them difficult is the misconceptions you may be carrying about what goes on at the hardware level when your code is running. So, in a way, that's really what I want to explain in this post.
 
-<center><i>What</i> is being acquired and released?</center>
+When we're done, you should be able to answer the following question confidently:
+
+<center>When I use acquire or release semantics, <i>what</i> is being acquired and released?</center>
 
 The short answer is *ownership of other memory*, but that probably leaves you with more questions than answers. So let's start from the beginning! It'll be a long climb, but I think you'll like the view from the top!
 

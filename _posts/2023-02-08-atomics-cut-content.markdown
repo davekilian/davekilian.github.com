@@ -501,3 +501,43 @@ draft: true
 > Of course, not every operation can be relaxed. If you have a single variable update that gates visibility of some update across threads, you need the update to be a `release` and the check to be an `acquire`, whether that check is passive (such as `toy_queue::poll()` reading the queue tail) or active (such as `toy_lock::try_lock` compare-and-swapping the lock state).
 >
 > Finally, if you're ever not sure what level of guarantees you need, you can always start by specifying `seq_cst` ordering guarantees and relaxing them later. In fact, that's the direction stdatomic will push you by default: if you *don't* specify a memory ordering requirement, you get sequential consistency. If you go down this route, then once you have code that works, you can experiment with weaker ordering. Just be careful not to fall into the guess-and-test trap, lest you end up with buggy code that happens to work on your CPU but somebody else's!
+
+> ##  What's it like to get fenced?
+>
+> Imagine you're trying to get a big release out the door; there's a bug bash, people are triaging bugs and forking them over to devs using Jira or something; you're watching your tickets and working through them as they arrive. You code valiantly, squashing bug after bug and putting out fix after fix. Eventually, your backlog starts to look pretty empty: you still have several bugs assigned to you, but they're all in various stages of code review, CI validation, etc. You continue to shepherd your fixes through these processes, but you're now working less hard, as there aren't any more bugs for you to work ahead on. Life is good!
+>
+> A day or two later, you close out your very last bug, and then *pop!* A dozen new bugs instantly appear all at once! What? As if clairvoyant, you boss drops by seconds later to ask how all those bugs are going, and you're forced to admit you know nothing about any of them, let alone had you been working on them. 
+>
+> What happened? Turns out someone accidentally assigned you an obscure kind of Jira ticket called a "fence." The fence made all new tickets invisible to you until you had completely cleared out all your existing tickets. That's a shame, because you had plenty of spare time to start working on those bugs, if you had known they even existed. But now you're behind schedule. Sucks, huh? Well, that's how your CPU feels about fences too.
+>
+> Just as triaging, designing, coding, validating, reviewing and merging a fix is a whole production for you, so too is executing a single assembly instruction a whole production for a CPU. And just as you can often make the work go faster by breaking each fix down and doing the little steps out of order, so too does the CPU finish faster if it's allowed to break down and reorder the little steps of your program's instructions. But fences mess it all up. They force your CPU to completely close out (or "retire") all in-progress instructions before seeing what's next. Artifically preventing the CPU from keeping its pipelines full slows it down.
+>
+> The moral of this story is: **more reordering is more better**.
+>
+> The more you constrain a CPU, the less ability it has to rearrange its work so it gets done sooner; so, the slower things get done. That's exactly what happens each time you use a fence. It's also why CPU vendors stubbornly refuse to give us linearizable memory no matter how nicely we keep asking, or how much money we offer to throw at them: it'd be the CPU equivalent of only letting you see one Jira ticket at a time!
+>
+> In this new light, maybe the `fence()` method was overkill for what we're trying to do. Can we do something else, something with weaker (meaning more flexible) memory ordering guarantees?
+>
+> Well, it's tricky. There are a lot of things you can do in hardware *in principle*, but you only have space for so many transistors, which means anything you're going to put in hardware had better be for something a lot of software can use. Anything we invent here has to work for lots of multithreaded programs, not just our queue. Luckily, our queue happens to use a *very* common pattern we can certainly optimize for:
+
+> ## In Summary
+>
+> So, what have we learned?
+>
+> For one, we learned that **CPUs change our code in the name of optimization**. Just like how you sometimes interleave different pieces of Jira tickets or work items or whatever so that you spend less time waiting and get stuff done faster, so too will CPUs break down and interleave different pieces of your program's assembly instructions in the name of getting stuff done faster. We learned that these changes are always "innocuous" from a single-threaded perspective, but sometimes, you can see their effects in multithreaded code. 
+>
+> Then we learned **we can set limits on how the CPU changes our code**. We described a hypothetical `fence()` method that enacts a barrier within our code that no instruction can cross. If a CPU wants to pull up an instruction so it happens earlier, or push it out so it happens later, it can do so long as the instruction never crosses a call to our `fence()` method. However, because fences force CPUs to spin down and back up again, they come with a performance cost. We set out to try to find something more flexible (less performance impact) than `fence()`.
+>
+> That's when we came up with **acquire-release semantics**. These work any time we have shared memory that belongs to one thread at a time, and we want to hand off ownership of that memory from one thread to another. We found that the handoff protocol consists of two steps:
+>
+> * A **release operation** which is a write to one variable, somewhere in memory, indicating the memory is no longer owned by the calling thread. This write has **write-release semantics**, which means it cannot happen until all preceding memory changes have been carried out; however, the CPU may work ahead on something else if it so wishes.
+> * An **acquire operation** to complete the handshake, which includes some kind of read to observe the write described in the previous bullet. This read has **read-acquire semantics**, which means the CPU cannot work ahead until this read has completed; however, the preceding operations do not need to be closed out before the read, so the CPU can delay work if it so wishes.
+>
+> Finally, it turns out these acquire-release semantics are a natural fit for **locks, queues, and a variety of threading primitives**. Any time you're handing off memory from one thread to another, where the ownership change is synchronized using changes to a single variable, you can almost certainly use acquire-release semantics to ensure handoff is clean:
+>
+> * The new owner sees everything the previous owner did before releasing it
+> * The previous owner cannot use the memory after releasing it
+>
+> <div class="tenor-gif-embed embedded-figure" data-postid="10381649" data-share-method="host" data-aspect-ratio="1.37" data-width="100%"></div> <script type="text/javascript" async src="https://tenor.com/embed.js"></script>
+>
+> It's been a long journey, but hopefully you now have a better handle on memory ordering and ordering semantics!

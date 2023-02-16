@@ -2,7 +2,6 @@
 layout: post
 title: Making Sense of Acquire-Release Semantics
 author: Dave
-draft: true
 ---
 
 *Multiprocessor Synchronization* was one of my favorite classes during my undergrad &mdash; it had a clear progression from theory to practice, starting at the theory of consensus numbers and moving onto atomic operations and then synchronization primitives and lock-free data structures, all from first principles. With careful thought and a little intuition-bending, every problem could be stated clearly and solved in a neat, orderly way ... in Java.
@@ -139,7 +138,7 @@ entries[i] = entry;
 tail++;
 ```
 
-Remember, your CPU doesn't directly read and write memory; memory is many times slower than a CPU, so the CPU reads and writes memory through a cache. Maybe when running this code, it so happens that we get a cache hit for `tail` and `size`, but we miss on `entries[i]`. Now we're blocked: we can't execute the second line of this function until the memory contents come into the cache, and memory is slow, so that might take a while. Wouldn't it be nice if the CPU could work ahead while it waits? The people who designed your CPU may have thought so!
+Remember, your CPU doesn't directly read and write memory; memory is many times slower than a CPU, so the CPU reads and writes memory through a cache. Maybe when running this code, it so happens that we get a cache hit for `tail` and `size`, but we miss on `entries[i]`. Now we're blocked: we can't execute the second line of this function until the memory contents come into the cache, and memory is slow, so that might take a while. Wouldn't it be nice if the CPU could work ahead while it waits?
 
 How about we execute the third line of code while we're blocked on the second? In other words, why not run the program *as if* it were written like this?
 
@@ -168,25 +167,25 @@ Well, that explains it: `poll()` sometimes returns true without an entry, becaus
 
 ![](/assets/cpu-is-wrong.jpeg)
 
-Well, this time, Principal [Software Engineer] Skinner might have a point. We wrote correct code, and in trying to dynamically optimize it, the CPU transformed our correct code into broken code. But if we were to lodge this complaint with someone who designs CPUs, they would likely turn this around on us: *our* code is wrong because *we* were wrong to assume linearizabile memory. 
+Well, this time, Principal [Software Engineer] Skinner might have a point. We wrote correct code, and in trying to dynamically optimize it, the CPU transformed our correct code into broken code. But if we were to lodge this complaint with someone who designs CPUs, they might turn this around on us: *our* code is wrong because *we* were wrong to assume linearizable memory. 
 
 ![](/assets/code-is-wrong.jpeg)
 
-In fact, this is an old argument hashed out many times on remote corners of the Internet (not always productively). Regardless of your position, ultimately what matters is CPUs aren't going to change, which means our code has to.
+This is an old argument hashed out many times on remote corners of the Internet. Regardless of your position, ultimately what matters is CPUs aren't going to change, which means our code has to.
 
 ## So what do we do now?
 
 If you're meta-gaming, you might think this is the point we break out the atomics &mdash; add some fetch-and-adds or compare-and-swaps and our problems will disappear, right? Not quite, I'm afraid.
 
-Atomics are useful for solving a different problem: they resolve conflicts between parallel updates to the same variable. For example, if we had multiple threads trying to increment `tail` at the same time, we could use an atomic fetch-and-add to serialize the updates so each thread does something meaningful. But there are no such conflicts in our queue. We have exactly one producer thread managing all updates to `entries` and `tail`, and one consumer thread managing `head`. If all updates to a variable always come from the same thread, then updates are always serial, so there are no conflicts to resolve. No need for atomics.
+Atomics are useful for solving a different problem: they resolve conflicts between parallel updates to the same variable. For example, if we had multiple threads trying to increment `tail` at the same time, we could use an atomic fetch-and-add to serialize the updates so each thread does something meaningful. But there are no such conflicts in our queue. We have exactly one producer thread managing all updates to `entries` and `tail`, and one consumer thread managing `head`; those three are our only variables. And if all updates to a variable always come from the same thread, then updates are always serial, so there are no conflicts to resolve. There are never conflicting updates to any variable in our queue, so we have no need for atomics.
 
 Our problem is **memory ordering**.
 
-When we put an entry in the queue, we need to update *two* variables: the queue entry and the tail pointer. Order matters: we want to write the entry first and *then* increment the tail, because updating the tail is what tells the consumer an entry is ready to be polled. If the consumer tries to poll while we're updating, as long as we haven't incremented the tail yet, the consumer will pass by without 'seeing' our in-progress update yet.
+When we put an entry in the queue, we need to update *two* variables: the queue entry and the tail pointer. Order matters: we want to write the entry first and *then* increment the tail, because updating the tail is what tells the consumer an entry is ready to be polled. If the consumer tries to poll while we're updating, as long as we haven't incremented the tail yet, the consumer will pass by without 'seeing' our in-progress update yet. It's a good plan! The only reason this didn't work is we don't have the *memory ordering guarantees* we thought we did. We were completely reasonable, but ultimately wrong in thinking writing two lines of code in order would make the CPU execute them in that order. Now that we know a CPU might shuffle our code around, we need some way to tell the CPU no, you can't do that, order matters here.
 
-It's a good plan! The only reason this didn't work is we don't have the *memory ordering guarantees* we thought we did. We were completely reasonable, but ultimately wrong in thinking writing two lines of code in order would make the CPU execute them in that order. Now that we know a CPU might shuffle our code around in the name of making progress faster, we need some way to tell the CPU no, you can't do that, order matters here. We can say that using **fences**.
+We can say that using **fences**. (Fences are also known as *barriers* &mdash; but for this post, I'll use the term *fence*).
 
-Fences are CPU instructions, but as CPU instructions go, fences are a little odd. They don't do anything; they just sit there in your code, marking points in your code like mile marker signposts on a freeway. We call them"fences" because they enact boundaries. If a CPU decides it's a good idea to push an instruction down so it happens later, or pull one up so it happens sooner, but the instruction runs into a fence along the way, then *bonk!* the instruction stops moving. Instructions can't cross a fence.
+Different CPUs express the idea of a fence in different ways. As a first-order approximation, you can think of a fence as a kind of CPU instruction, but an odd one at that: these 'fence' instructions don't do anything, they just sit there, marking points in your code like mile marker signposts on a freeway. We call them "fences" because they enact boundaries. If a CPU decides it's a good idea to push an instruction down so it happens later, or pull one up so it happens sooner, but the instruction runs into a fence along the way, then *bonk!* the instruction stops moving. Instructions can't cross a fence.
 
 To see how this works in practice, let's imagine we have a method called `fence()` that gets compiled to a CPU fence instruction like I just described. Then here's how we might use `fence()` to fix our queue:
 
@@ -214,7 +213,7 @@ public:
   
   bool poll(void **entry) {
     if (tail > head) {
-      fence(); // <-- new!
+      fence();
       unsigned i = head % size;
       *entry = entries[i];
       head++;
@@ -233,7 +232,7 @@ But hang on ...
 
 ![](/assets/fence-in-poll.jpeg)
 
-There was a second bug all along! 😀 Just as the producer must make sure the entry is written before making it visible (by incrementing the tail), so too must the consumer ensure the entry is visible (tail was incremented) before reading the entry itself. Without that `fence()` call in `poll()`, a CPU would be allowed in principle to change `poll()` so the entry is read *before* the tail is checked, like this:
+There was a second bug all along! 😀 Just as the producer must make sure the entry is written before making it visible (by incrementing the tail), so too must the consumer ensure the entry is visible (tail was incremented) before reading the entry itself. Without that `fence()` call in `poll()`, a CPU would be allowed in principle to change `poll()` so the entry is read *before* the tail is checked, kind of like this:
 
 ```c++
 unsigned i = head % size;
@@ -264,7 +263,7 @@ poll: return true;
 
 Notice how `temp` will be null, because `put()` really hadn't started yet; but the return value will be `true` because, by the time we checked the tail, `put()` had already completed. This is a new bug with the same symptoms: the return value is true but the entry isn't initialized. That's what the new fence in `poll()` fixes.
 
-Now I don't know about you, but I find this second bug kind of worrying. So far the CPU has come up with two different ways to break our code, and both were the kinds of subtle, impossible-to-repro problems that can slip through review and testing and then run roughshod through production. Even worse, the second bug had the exact same symptoms as the first one; imagine finally finding and fixing the first bug, only to find the same thing is still happening in prod! When is this going to end? How do we know when the CPU is out of tricks? Can we ever declare our queue correct?
+Now I don't know about you, but I find this second bug concerning. So far the CPU has come up with two different ways to break our code, and both were the kinds of subtle, impossible-to-repro problems that can slip through review and testing and then run roughshod through production. Even worse, the second bug had the exact same symptoms as the first one; imagine finally finding and fixing the first bug, only to find the same thing is still happening in prod days after the rollout! When is this going to end? How do we know when the CPU is out of tricks? Can we ever declare our queue correct?
 
 Maybe we should try to *prove* our queue works now.
 
@@ -316,11 +315,11 @@ Note we have no guarantee how long it takes after the producer writes the tail (
 
 And there you go. Even though the CPU might start step 1 way earlier than you might expect, and even though step 4 might start way late, and even if plenty of time could pass between steps 2 and 3, none of the matters; we've established that the relative order of all four steps will always be 1-2-3-4 using rules backed by guarantees from the CPU's designers. We have finally rid ourselves of that bug! 🎉
 
-At this point, our queue works, and we *could* declare ourselves done. But you want to go the extra step, right? Because, the `fence()` method we came up with here works, but it isn't particularly efficient. And besides, we don't even know how to implement the `fence()` method yet. But for now, let's focus on the performance aspect:
+Our queue now works, so we *could* declare ourselves done ... but you want to go the extra step, right? Because, the `fence()` method we came up with here works, but it isn't particularly efficient. And besides, we don't even know how to implement the `fence()` method yet. But for now, let's focus on the performance aspect:
 
-Think about it this way: if you have a bunch of bugs assigned to you, and you have a fix in code review, what do you do? I mean, if the answer is "sit around and wait until my code is merged," yo, I don't judge; but I think many people would start working on the next bug in the meantime. If that's you, then you understand the value of being able to take work items, break them down into smaller pieces, and then interleave those smaller pieces of work to stay busy so you get things done sooner. That's pretty much what a CPU is doing when it "works ahead" in the way that was breaking our multithreaded code. The more you limit a CPU's ability to break down the work and shuffle the pieces around, the more time it has to spend waiting instead of getting things done.
+Consider this: when you have a bunch of bugs assigned to you, and you have a fix in code review, what do you do? I mean, if the answer is "sit around and wait until my code is merged," yo, I don't judge; but I think many people would start working on the next bug in the meantime. If that's you, then you understand the value of being able to take work items, break them down into smaller pieces, and then interleave those smaller pieces of work to stay busy so you get things done sooner. That's pretty much what a CPU is doing when it "works ahead" in the way that was breaking our multithreaded code. The more you limit a CPU's ability to break down the work and shuffle the pieces around, the more time it has to spend waiting instead of getting things done.
 
-In that light, `fence()` might be overkill. Can we do something else, something with weaker (meaning more flexible) memory ordering guarantees?
+In that light, `fence()` *might* be overkill. Can we do something else, something with weaker (meaning more flexible) memory ordering guarantees?
 
 Well, it's tricky. There are a lot of things you can do in hardware *in principle*, but you only have space for so many transistors, which means anything you're going to put in hardware had better be for something a lot of software can use. Whatever we invent here has to work for lots of multithreaded programs, not just our queue. Luckily, our queue happens to use a *very* common pattern we can certainly optimize for:
 
@@ -328,7 +327,7 @@ Well, it's tricky. There are a lot of things you can do in hardware *in principl
 
 In most multithreaded code, memory is owned by a single thread.
 
-That's obvious when you have threads working independently, each with its own private memory. But even when threads share memory, you almost always set it up so the threads *take turns* with it. In this setup, you could claim the memory has a single owner, because at any given point in time, you can identify a single thread that owns the memory: namely, whichever thread is taking its turn right now. (By the way, this is the principle underlying Rust's `RefCell<>` type.)
+That's obvious when you have threads working independently, each with its own private memory. But even when threads share memory, you almost always set it up so the threads *take turns* with it. In this setup, you could claim the memory has a single owner, because at any given point in time, you can identify a single thread that owns the memory: namely, whichever thread is taking its turn right now. (By the way, this also happens to be the principle underlying Rust's `RefCell<>` type.)
 
 One-at-a-time ownership ... that's how locks work, isn't it?
 
@@ -384,7 +383,7 @@ By the way, look how we've started to use words like "acquire" and "release" and
 
 Okay, since we're already thinking about this asynchronous handoff process at a very abstract level, let's keep going. Abstractly, what can we say about *all* algorithms where one thread releases ownership of shared memory, and another thread asynchronously acquires ownership of said memory later?
 
-First of all, it's always possible for one thread to start handoff in parallel with another thread checking if it can complete handoff; these two steps have to be serialized. That means there should be exactly one memory operation to acquire ownership, and exactly one to release it. Let's call these the **acquire** and **release** operations, respectively. Since the acquire and release operations must be serialized, they need to operate on the same variable, and they need to both be atomic; that's what allows us to serialize them relative to one another. Note that a plain memory read or write counts as "atomic" for our purposes here, as do the read-modify-write operations like fetch-and-add or compare-exchange we normally mean when we say "atomic."
+First of all, it's always possible for one thread to start handoff in parallel with another thread checking if it can complete handoff; these two steps have to be serialized. That means there should be exactly one memory operation to acquire ownership, and exactly one to release it. Let's call these the **acquire** and **release** operations, respectively. Since the acquire and release operations must be serialized, they need to operate on the same variable, and they need to both be atomic; that's what allows us to serialize them relative to one another. Note that a plain memory read or write counts as "atomic" for our purposes here, as do the read-modify-write operations like fetch-and-add or compare-exchange we normally think of when we say "atomic."
 
 If this sounds confusing, it might help to see these two operations in more concrete terms.
 
@@ -430,11 +429,11 @@ public:
 };
 ```
 
-Does that kind of make sense? If so, then, thinking abstractly again, what else can we say about the acquire and release operations in *all* possible algorithms that hand off ownership like this?
+Does that kind of make sense? If so, then let's go back to thinking abstractly. What else can we say about the acquire and release operations in *all* possible algorithms that hand off ownership like this?
 
 Here's an interesting observation: there's no bound on how long any one thread will need to own the shared memory, but we want to be able to hand off the memory as soon as a thread is done with it. Since there's no timing guarantee, the only way to make this work is for the releasing thread to *actively* notify other threads that it's done now, which means it has to write something to memory. So a release must involve some kind of memory write. Similarly, other threads must observe that write, so an acquire must involve some sort of read.
 
-In practice, a release is almost always just a plain memory write. However, there are two common patterns for the acquire: it can be a plain memory read, if it's clear which thread owns the memory next, like with the queue. Or, the acquire can be an atomic read-modify-write by which the thread attempts to claim ownership for itself, like with the lock.
+In practice, a release is often just a plain memory write. There are two common patterns for the acquire: it can be a plain memory read, if it's clear which thread owns the memory next, like with the queue. Or, the acquire can be an atomic read-modify-write by which the thread attempts to claim ownership for itself, like with the lock.
 
 Putting in all together, the basic scheme is, abstractly:
 
@@ -469,9 +468,9 @@ void consumer() {
 
 We want to make sure all the producer's (stuff) is done by the time the consumer starts doing its (stuff). We don't want bog down callers handling fences and acquire-release and all that junk; we want to provide ordering guarantees for the *caller's code* that surrounds ours, in addition to making sure our code also works internally.
 
-For our previous `fence()`-based queue, we actually didn't need to do anything special to support this. The `fence()` method's effect is global: the `fence()` in `put()` separates everything the caller did *and* our write to `entries[i]` from the point we bump the queue's tail pointer; and, the `fence()` in `poll()` separates checking the tail pointer from our reading `entries[i]` *and* everything the caller does with the entry thereafter.
+Interestingly, in our current queue implementation, we don't need to do anything special to support this. The `fence()` method has a global effect on order: the one in `put()` separates everything that came before (including the calling code and our write to the entry array)  from the point we update the tail and everything thereafter. Similarly, the one in `poll()` separates everything that came before (including when we check the tail index) from everything that comes afterward, including when we read the entry from the entry array *and* everything the caller does thereafter).
 
-But we don't want a full `fence()` here; can we use something more flexible? Remember, the more freedom a CPU has to reorder the code, the faster it runs!
+But we don't want a full `fence()` here; can we come up with something more flexible? Remember, the more freedom a CPU has to reorder the code, the faster it runs!
 
 Well, here's an idea: `fence()` is bidirectional. It means "finish everything that came before this before starting anything that comes after this." But isn't bidirectionality more than we need? For a release, we only care that stuff *before* the release has completed; it's totally fine if the CPU works ahead on something else! For an acquire, we only need the acquire to block stuff that comes *afterward*; it's fine if stuff *before* gets delayed!
 
@@ -480,9 +479,9 @@ So, instead of two full fences, how about two half fences? Let's try these two r
 * A **write-release** guarantees that all **preceding** code completes **before** the releasing write
 * A **read-acquire** guarantees that all **following** code starts **after** the acquiring read
 
-Together, these two rules are called **acquire and release semantics**. They work a little differently than fences. Acquire and release semantics are not a kind of CPU instruction; rather, they're guarantees that can be *attached* to memory operations. When you're releasing ownership of memory by writing to some variable, you can tag that write as needing *write-release semantics* to ensure all preceding code finishes before the write finally happens in memory. Similarly, if you're trying to acquire ownership of memory by doing something that involves a read, you can tag that read as needing *read-acquire semantics* to ensure the code that follows the read does not start until you have actually read the value from memory.
+Together, these two rules are called **acquire and release semantics**. They work a little differently than fences we've been describing so far. Instead of standalone CPU instructions, we think of acquire and release semantics as requirements you can attach to a memory operation. When you're releasing ownership of memory by writing to some variable, you can tag that write as needing *write-release semantics* to ensure all preceding code finishes before the write finally happens in memory. Similarly, if you're trying to acquire ownership of memory by doing something that involves a read, you can tag that read as needing *read-acquire semantics* to ensure the code that follows the read does not start until you have actually read the value from memory.
 
-That's ... actually about it! Now you know what acquire and release semantics are! Not so bad once you get over your old ideas about memory, eh?
+That's ... really about all there is to it! Now you know what acquire and release semantics are! Not so bad once you get over your old ideas about memory, eh?
 
 Here's a final example implementation of our old friend, the lock-free single-producer single-consumer ring queue, now using acquire and release semantics. I've also switched over to the full C++ [stdatomic](https://en.cppreference.com/w/c/atomic) API to show what 'tagging' memory operations with ordering semantics looks like in practice:
 
@@ -530,11 +529,13 @@ I've made `tail` an `atomic<>` type, and tagged each access with one of three se
 * `release`: This is a write-release: wait for all preceding operations to complete before doing this (but work ahead on stuff following this if it's convenient).
 * `relaxed`: No ordering guarantees, do this any time it's convenient.
 
-Note that we use the `release` semantic when bumping the tail, since that's how the current thread releases its ownership of the item it just enqueued. Past this point, the consumer can pick up the item off the queue at any time, so we need to be certain this thread isn't still running code that might be using the shared memory.
+We use the `release` semantic when bumping the tail, since that's how the current thread releases its ownership of the item it just enqueued. Past this point, the consumer can pick up the item off the queue at any time, so we need to be certain this thread isn't still running code that might be using the shared memory, in this method or in the calling context.
 
-Similarly, we use the `acquire` semantic when reading the tail in poll, since that's how we know ownership of an entry has passed to us. We need to be certain this thread isn't already running code on the shared memory until we've observed the producer's releasing write.
+Similarly, we use the `acquire` semantic when reading the tail in `poll()`, since that's how we know ownership of an entry has passed to us. We need to be certain this thread isn't already running code on the shared memory until we've observed the producer's releasing write.
 
-And there you have it ... memory order, ownership, and acquire and release semantics! Does it make sense now? If so, I'd like to peel back the curtains just a little bit more:
+Finally, I should note the `relaxed` read in `put()` cannot cross the write-release at the end of that method. Acquire-release semantics impose order on relaxed memory operations the same as they do for regular variable reads and writes. In fact, you can think of 'normal' variable reads and writes as 'having relaxed semantics.'
+
+And there you have it ... memory order, ownership, and acquire and release semantics!
 
 ## Parting Notes
 
@@ -542,7 +543,7 @@ Here are a few more things you might want to know. You can consider these areas 
 
 **It isn't just the CPU that messes with your code; you're compiler's in on it too.** When you turn on optimizations, e.g. by passing one of the `-O` flags to gcc, the compiler will do all sorts of *fun* stuff to your code in the name of performance, using magic as black as what CPUs do at runtime. Luckily, you usually don't have to worry about this, because compilers also understand memory ordering semantics like acquire and release: if you tag your code with a memory ordering guarantee, both your compiler and your CPU will honor it. You usually don't do anything special about compile-time reordering.
 
-**There are even stronger ordering guarantees than anything we've talked about so far.** The `fence()` method we were talking about would be what the stdatomic library calls an "acquire-release" fence, meaning it has both the semantics of an acquire (preventing upcoming operations from being started before the fence) and a release (preventing preceding operations from being delayed past the fence). You could implement `fence()` like this:
+**The `fence()` method is kind of an imaginary construction.** Using the stdatomic library, the closest you can get to the fence semantics we described in this post is to use an "acquire-release" fence, meaning it has both the semantics of an acquire (preventing upcoming operations from being started before the fence) and a release (preventing preceding operations from being delayed past the fence). You might implement `fence()` like this:
 
 ```c++
 using namespace std;
@@ -551,15 +552,17 @@ void fence() {
 }
 ```
 
-In this post we only ever talked about restrictions on the relative order of instructions in the current thread, but occasionally you need to restrict memory operations happening on *multiple threads*. To do that, the stdatomic API offers **sequentially consistent** semantics, which you request by tagging an operation as `memory_order::seq_cst`.
+However, this is only an approximation of what we were talking about; it actually does something [more subtle](https://preshing.com/20131125/acquire-and-release-fences-dont-work-the-way-youd-expect/ ) than what I described. In general, use the `atomic_thread_fence` method with caution, as it's unintuitive.
 
-Sequential consistency can be useful if you have multiple threads racing to set different variables, where the threads need to read each other's writes to determine who "won." A famous situation where this arises is the two 'interested' flags in  [Peterson's lock algorithm](https://en.wikipedia.org/wiki/Peterson%27s_algorithm). Since sequential consistency requires CPU cores to synchronize, it's even more expensive than the acquire-release fences we were talking about.
+**There are even stronger ordering guarantees than anything we've talked about so far.** The acquire and release semantics we've discussed in this post *only* affect the relative order instructions take effect in memory. They *don't* require the instructions to take effect right away! So for example, if you tag a write as a write-release, then you guarantee all pending memory writes in your program *will eventually* complete before the releasing write *eventually* completes, but there's no guarantee that any of this happens before the CPU moves on to the next instruction. All of your writes could still be [buffered inside your CPU](https://en.wikipedia.org/wiki/Write_buffer)!
 
-Sequential consistency is about the closest you can ever hope to get to linearizable memory in practice. At the start of this post, remember I mentioned once underappreciating the heavy lifting Java's `volatile` keyword had been doing for me? [Java's `volatile` keyword offers sequential consistency](https://bartoszmilewski.com/2008/11/11/who-ordered-sequential-consistency/) for all reads and writes to the variable you marked volatile. You will have a hard time finding any of this acquire or release stuff in a Java program.
+Occasionally you need a guarantee that your writes really are in memory before the next line of code executes. A famous example of this involves the two 'interested' flags in  [Peterson's lock algorithm](https://en.wikipedia.org/wiki/Peterson%27s_algorithm). To support code that needs these kinds of immediacy guarantees, the stdatomic API offers *sequentially consistent* semantics, which can be tagged using `seq_cst`. As you might have guessed, `seq_cst` is even slower than `acq_rel`.
 
-**Acquire and release semantics don't have any meaning on Intel- and AMD-brand processors.** On x86 CPUs, which is to say, on just about any Intel- or AMD-brand CPU you can buy right now, memory operations on a single CPU core happen in program order. These CPUs *don't* play the reordering tricks we've been worried about all along, and our original "broken" queue actually would have worked on these CPUs without fences or acquire-release semantics (so long as the compiler didn't play any tricks of its own).
+Sequential consistency is about the closest you'll ever get to linearizable memory in practice. Remember how, at the start of this post, I mentioned underappreciating the heavy lifting Java's `volatile` keyword had been doing for me? [Java's `volatile` keyword offers sequential consistency](https://bartoszmilewski.com/2008/11/11/who-ordered-sequential-consistency/) for all reads and writes to all variables you mark volatile. You will have a hard time finding any of this acquire or release stuff in a Java program!
 
-This puts us in a kind of funny situation: according to the stdatomic docs, and the C++ spec, our original queue is technically wrong, but on some CPUs, it'll work just fine anyways. But the first time you try to run your code on a different kind of CPU, well, you should try putting your ear against their computer's case so you can hear all the looney tunes "bang boom pow" sounds coming from their CPU as it executes your code.
+**Acquire and release semantics don't have any meaning on Intel- and AMD-brand processors.** On x86 CPUs, which is to say, on just about any Intel- or AMD-brand CPU you can buy right now, memory operations on a single CPU core happen in program order. These CPUs *don't* play the reordering tricks we've been worried about all along, and our original "broken" queue actually would have worked on these CPUs without fences or acquire-release semantics or anything (so long as the compiler didn't play any tricks of its own). However, these CPUs do buffer stores, so they're not sequentially consistent unless you use fence instructions such as `MFENCE`.
+
+This puts us in a kind of funny situation: according to the stdatomic docs, and the C++ spec, our original queue is technically wrong, but on some pretty popular CPUs, it'll work just fine anyways. But the first time you try to run your code on a different kind of CPU, well, you should try putting your ear against their computer's case so you can hear all the looney tunes "bang boom pow" sounds coming from their CPU as it executes your code. It's a good idea not to assume code that uses acquire/release semantics is correct unless you've tried running it on a CPU architecture that does more aggressive reordering, such as ARM or PowerPC.
 
 With that, in terms of acquire and release semantics ...
 

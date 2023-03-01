@@ -1,0 +1,96 @@
+---
+layout: post
+title: Log Structured Merge on Flash
+author: Dave
+draft: true
+---
+
+From 2017-2021 or so, I spent a lot of time thinking about log-structured merge trees, and I also learned a bit about how flash-based SSDs work internally. I wanted to write down a few thoughts about designing LSM Trees to run well on SSDs.
+
+By conventional wisdom, that's not something you'd normally want to do. LSM Trees were designed primarily to address seek latencies on traditional rotating hard disks, and there is no such thing on flash. However, I think LSM Trees have some interesting properties worth considering if you ever find yourself optimizing a storage system for flash SSDs. In particular, I suspect the tail latency problems LSM Trees struggle with on hard disks, can be done away with easily on flash.
+
+I'll get to that in due time, but first, for context, let's review what LSM Trees are and why they exist in the first place. This will give us better context to talk about whether LSM Trees even make sense for SSDs in the first place, let alone how we can tune an LSM to work well on SSD:
+
+## Before Log-Structured Merge, We Had B-Trees and ARIES
+
+Let's go back in time to the days before we had flash storage. How do you tune a storage system to work well on traditional rotating hard disks? Before LSM Trees, the 'state of the art' were configurations of two basic ideas: b-trees and ARIES-like journals.
+
+TODO b-trees
+
+TODO aries
+
+TODO this is the state of the art in databases, it's also worth mentioning that file systems worked in a very analogous way. Maybe an inode tree instead of b-tree, maybe a slightly different journaling strategy, but fundamentally you have a log and a tree. Modern file systems have crept closer to this setup, btrfs.
+
+## Performance Characteristics of a B-Tree/ARIES Strategy
+
+TODO the log is effective at hiding the write amplification of updating a single b-tree page, and can also hide write latency as long as you can keep the needle over your log. But when you try to push throughput to the limit, you find that the bottleneck is offloading the log into all these b-tree pages scattered all over the disk, so your throughput limit is dictated by how fast the disk can seek, not how fast the disk can write after seeking. 
+
+That discussion should set us up very nicely for the thinking behind log-structured merge
+
+## In Comes Log-Structured Merge
+
+TODO amortization. Now we know the goal, which is to achieve the hard disk's sequential write throughput. We do this by an amortization strategy: collect many updates, and then rewrite the entire b-tree (or a large portion thereof). It might be a lot of work, yes, but as long as you amortize enough updates, the actual overhead per client write can be low, and you can write this whole new tree in one big sustained I/O. Seek once, write hundreds of megabytes to gigabytes of tree! This is the log-structured part.
+
+TODO overlays. Of course, you have to do something with those pending updates until you have enough to justify a big rewrite. You do this by maintaining 'layers' of the tree that overlay on top of one another. First you log, and build an in-memory overlay tree, then you checkpoint it to disk creating a b-tree. Now you overlay new writes in the memory table onto the on-disk b-tree. You keep going, and eventually have two b-trees. Now three overlay layers: memory, the new b-tree, the old b-tree. Eventually the b-trees have to be merged. This is the merge part.
+
+TODO amortization and overlays give you log-structured and merge. Viewed more generally, an LSM Tree isn't really a data structure, so much as a design pattern for working with other data structures. For example, you could have a "log-structured merge" hash table that uses a similar overlay-until-amoritzed-rewrite to rewrite a big hash table on disk or something.
+
+TODO performance characteristics. Obviously, the extra overlays cost additional disk space, and since you have to read through all overlays on every client request, read amplification. But at least writes are fast. Right? 
+
+## Tail Latency in Log-Structured Merge
+
+TODO oops, there's a nonobvious problem with write latency in LSM. Usually write overhead is pretty good, just like b-trees/aries, because you're still write-ahead logging. Unfortunately, your background work of rewriting the tree on disk is extremely disruptive in a way that shows up as higher tails  in your client's write latency distribution.
+
+Consider what happens when you tweak your policy so that the average size of a 'run' written to disk is twice as long. Well, from a throughput perspective, this is an improvement, because now you're ex-filing data with half as many seeks, and seeks were the really slow thing in your SSD. However, when you're writing a run, the disk can't do anything else (lest you reintroduce the very seeks you were trying to avoid).
+
+Assume for simplicity that the client's writes are uniformly distributed in time. Then the number of requests that arrive while the disk is 'hung up' writing out a big run of tree data is proportional to how long the disk is hung up. If you make a run twice as large, twice as many requests get caught up waiting on the disk, *and* each request is waiting twice as long! 
+
+You're left in one of those unfortunate "rock and a hard place" situations. You want to make runs longer to get better throughput, but doing so causes a superlinear increase to your latency tail. Trying to balance these can leave you with a "jack of all trades, master of none" system that has middling throughput and undesirably high latency tails ...
+
+... on hard disks.
+
+## Flash Storage is Built Different
+
+TODO a little history, the introduction of NAND flash
+
+NAND flash isn't very impressive. It's slow (think like the old USB keys you may have used), using it tends to break it (erase cycles, read disturb), not using it also tends to break it (link to articles), and for economic reasons you basically don't get overwrite; you have to wipe the whole thing. Surprisingly, they managed to turn this into a rather interesting storage solution. The story feels like it has to be one of those cases where marketing asked for something insane and the engineers realized it actually *was* possible.
+
+Here's the idea: take several dozen of these cruddy little things and tape em together. Driving all these little memories like a big RAID 0 array gives you some pretty impressive latency and throughput, even if the little memories are individually not very impressive. Then add some software to make them look like hard disks to anyone on the outside world, and address the erasure and wearing problems to boot, and you get a device with some pretty impressive performance characteristics that weren't possible before.
+
+Pages, blocks, channels and flash translation layers. Mention further subdivision exists but is unimportant for our discussion. FTL maps a logical address space to physical pages scattered around the disk, attempting to stripe for write performance. Read-modify-write cycless when you overwrite a page partially.
+
+Performance characteristics. Really good at a lots of little reads all happening in parallel, because then you can just have all these different little flash memories reading different stuff all in parallle. Decent at parallel writes, as long as you're writing full pages at a time and overwriting pages as little as possible. The sequential vs random distinction is less important now because there's now basically an arbitrary mapping between disk addresses and flash pages; in fact, the FTL is trying to spread pages around to achieve better parallelism anyways.
+
+## Do Log-Structured Merge Trees Make Sense on Flash?
+
+TODO in the light of these very different disks, do LSM-Trees make sense? This is a subjective question, but I already told you I think the answer is yes.
+
+Review the tradeoffs. You get the ability to write out data in large runs, and you get a few knobs to trade off the write amplification of updates vs the amount of space overhead you're willing to spend to get your WAF even lower. The downsides are read amplification and space overhead.
+
+The space overhead is a concern, but it's a knob we can tweak, which is at least ok.
+
+Read amplification is actually less of a concern now. SSDs are really good at high queue depth random reads! So if we need to page in more stuff because we have more overlays, we expect the SSD to have very little trouble keeping up. In general, there isn't much of a disadvantage from the disk side of having more tree levels / overlays. If we're missing parts of the tree on read, the SSD can get them all about as fast as it could get just one anyways.
+
+But here's the interesting thing: the last problem was latency tails, and I don't think those are a problem either.
+
+## LSM Policies for Good Latency Tails on Flash
+
+TODO the problem with tail latency stemmed from our need to write one big run to a hard disk without moving the needle. On an SSD, we don't need to do everything in one big step. As long as we write in page-aligned chunks, it doesn't matter if we issue those chunks consecutively or spread them out. And spreading them out 'fixes' our tail latency problem.
+
+An example scheme based on choosing a 'deadline' for a task, like checkpointing the log or merging two trees, by forecasting when the next instance of this task will start. This can be guestimated, but if your system has throttling limits, you may be able to forecast the worst case (soonest deadline) precisely as (the amount of data the client must write to trigger the next instance of this task) divided by (the throttling limit by which clients can write more data). So if this task runs once per every 50,000 client writes, and the client is limited to 10,000 IOPS, then we have 5 seconds to finish this task.
+
+Once a deadline is known, you split the work into small chunks, executed serially, where each chunk of work is the same order of magnitude CPU processing and disk I/O size as a typical client I/O. Then you space these out so they run at the minimum possible rate needed to complete by the deadline. For example, if you need to do 100 chunks of work and finish in 5 seconds, then you need to do a chunk every (5 seconds / 100 chunks) or roughly once every 20 milliseconds. That becomes your throttling rate for the background task.
+
+This scheme minimizes the *rate* at which background work completes, which minimizes at any given point in time the CPU or disk resources being 'taken away' from foreground work by background amortization. The 'deadline' forecast is used to determine a minimal rate without ever falling behind on work.  Furthermore, by doing work in small chunks on the same order of magnitude of a single I/O, we don't steal any more resources per background I/O than a parallel foreground I/O would. From a client's perspective, it just looks like there's a little extra load on the server.
+
+In other words, we get consistent background work overhead, which pretty much eliminates our latency tails. I haven't tried this on a real database or benchmarked anything, but I'm reasonably confident this is worth a shot. In fact, I'd be surprised if nobody else has tried this yet.
+
+## LSMs vs FTLs
+
+So is running an LSM Tree on an SSD worthwhile? *Maybe*. From the analysis above, I think these things are interesting at the very least. On the other hand, it's worth noting that the design we've come up with is coming in spitting distance of what FTLs do in the first place.
+
+Explain FTL designs. Mention e.g. the desire to spread writes spatially and temporally, and the need to overprovision a little extra space to deal with the indexing structure which maps things back. This should all sound very similar to the work that LSM Trees would do on flash. Indeed, using an LSM Tree is tantamount to bypassing the FTL. 
+
+The merge step of an LSM is a big read-modify-write, but we're doing it in small chunks. The in-page update read-modify-writes of an SSD FTL accomplish the same thing. Question is, who can do it better? That's a *very* hard question to answer in general, because FTLs are mystery meat. Flash vendors all try to beat each other on coming up with interesting, top-secret optimizations and they don't share those with anyone, certainly not you or me. Heck, they don't even tell us what the *page size* is, and that's extremely relevant to anyone trying to align their write sizes to FTL-friendly boundaries! If an FTL is a black box, it's hard to say whether moving it's job up to the software layer is worthwhile.
+
+However, one clear downside of an FTL is they're not tunable. They're making tradeoffs between latency, write amplification, wear and space overhead entirely internally, on your behalf, without giving you any insight into what tradeoffs were made or what knobs you can tune. if you're a huge customer, you can certainly reach out to the vendor and *ask* for these things, but for you and me, moving the FTL up into software using an LSM Tree or something close to one gives us the ability to control the tradeoff, which may be a win regardless of whether FTLs have tricks to do this better than us.

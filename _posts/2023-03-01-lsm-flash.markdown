@@ -1,27 +1,75 @@
 ---
 layout: post
-title: Log Structured Merge on Flash
+title: Log-Structured Merge on Flash
 author: Dave
 draft: true
 ---
 
-From 2017-2021 or so, I spent a lot of time thinking about log-structured merge trees, and I also learned a bit about how flash-based SSDs work internally. I wanted to write down a few thoughts about designing LSM Trees to run well on SSDs.
+During my time in Azure, I spent a lot of time thinking about log-structured merge trees. I also learned quite a bit about what goes on inside a flash SSD. Today, I wanted to write down a few thoughts about designing LSM Trees to run on SSDs.
 
-By conventional wisdom, that's not something you'd normally want to do. LSM Trees were designed primarily to address seek latencies on traditional rotating hard disks, and there is no such thing on flash. However, I think LSM Trees have some interesting properties worth considering if you ever find yourself optimizing a storage system for flash SSDs. In particular, I suspect the tail latency problems LSM Trees struggle with on hard disks, can be done away with easily on flash.
+By conventional wisdom, that's not something you'd normally do. LSM Trees were designed primarily to address seek latencies on traditional rotating hard disks, and there is no such thing on flash; a priori, then, there isn't a strong argument for using an LSM Tree to manage an index stored on flash. However, I think LSM Trees have some interesting properties worth considering, should you ever find yourself optimizing an storage system for flash. In particular, LSM Trees are famous for hard-to-tackle tail latency problems, and I think those are generally either non-issues or easy-to-solve's on flash.
 
-I'll get to that in due time, but first, for context, let's review what LSM Trees are and why they exist in the first place. This will give us better context to talk about whether LSM Trees even make sense for SSDs in the first place, let alone how we can tune an LSM to work well on SSD:
+So we're all on the same page, let's start with a quick review what LSM Trees are and why they exist in the first place. This will give us better context to talk about whether LSM Trees even make sense for SSDs in the first place, let alone how we can tune an LSM to work well on an SSD:
 
 ## Before Log-Structured Merge, We Had B-Trees and ARIES
 
-Let's go back in time to the days before we had flash storage. How do you tune a storage system to work well on traditional rotating hard disks? Before LSM Trees, the 'state of the art' were configurations of two basic ideas: b-trees and ARIES-like journals.
+(If you understand entirely what I mean by "b-tree index with ARIES write-ahead logging", feel free to gloss over this section.)
 
-TODO b-trees
+Before we had flash SSDs, we had rotating magnetic hard disks. Log-structured merge trees were invented during this era, with the design goal of achieving better throughput on a rotational hard disk than the previous state of the art indexing structures. For the most part, the 'previous state of the art' involved various configurations combining b-tree indexes and ARIES-like write-ahead logs / journals.
 
-TODO aries
+For any storage device, old or new, you can break down the time cost of an I/O between a fixed amount of "setup" time, which is the overhead of getting the I/O going and later cleaning it up; and the "transfer" time of actually moving data between the disk and memory (disk to memory on read, memory to disk on write). In practice, transfer time dominates on large I/O, but setup time dominates for small I/O:
 
-TODO this is the state of the art in databases, it's also worth mentioning that file systems worked in a very analogous way. Maybe an inode tree instead of b-tree, maybe a slightly different journaling strategy, but fundamentally you have a log and a tree. Modern file systems have crept closer to this setup, btrfs.
+[ Abstract stacked line graph showing fixed setup cost and proportional transfer time cost. Circle the 'small I/O' area ]
+
+One way of reading this graph is to say, up to a 'certain I/O size' (4KB-16KB in this example), the time cost of a read or write is constant (approximately). So, if you need to read a few bytes from this disk, you may as well go read the surrounding 4-16K block too, and cache the whole thing in memory. After all, it costs you nothing extra to read the additional data, and if you cache it in memory, maybe you can serve a future read without a trip to disk at all! This is what b-trees try to exploit.
+
+There are many ways to think about b-trees; usually, people introduce them as a generalization that extends binary search-trees to $n$-ary tre, where each node branches in up to $n$ different child directions. However, I usually prefer to think in terms of b+ trees, which you can picture as chunked arrays. Imagine I gave you a set of key-value pairs; you could store these by just writing them to disk in sorted order.
+
+[ diagram ]
+
+Then, to exploit the observation above about setup time vs transfer time, we'll pick a chunk size of about 4-16K and split the array into chunks of that size. To use standard parlance, we'll call each chunk a "page."
+
+[ diagram, make sure to label "page" ]
+
+To simplify our allocation logic, we'll allow these pages to be scattered across the disk in arbitrary locations. But that means we need another secondary structure to track the disk offset of each page. A simple way to do this is to use another array. This second array will contains *directors*, each of which contains two things: a copy of the *first* key in some page, and the disk offset where that page is stored:
+
+[ diagram ]
+
+However, this secondary array could also be quite large, so we'll want to chunk it into pages too:
+
+[ diagram ]
+
+To track *these* pages, we need *another* array of directors:
+
+[ diagram ]
+
+But, of course, *that* may need to be chunked too. You keep on like this, recursively, until you have a 'root' directory array that fits in a single page. The resulting recursive structure of chunked arrays is a b+ tree, which for almost all intents and purpose is the same as Bayer and McCreight's original b-tree construct.
+
+To search this thing for a particular key, all you need to do is start at the root node, search the directors for the gap where your key 'should' appear, and follow that director page. Eventually you land at a leaf page, which is just an array of key-value pairs you can search directly. Each node (director or leaf) is an array, so you can binary-search the array if the keys have a fixed size, or scan left-to-right otherwise:
+
+[ diagram ]
+
+This structure happens to be extremely cache-friendly. Since the cost of reading each page is essentially free compared to the cost of reading a single director or key-value pair, populating this cache is essentially free as well. Due to the high branching factor of the tree, the size of the internal subtree of directors is orders of magnitude smaller than the final leaf level, so usually the entire internal subtree of directors fits neatly in the cache and tends to stay there even with naive LRU eviction. Only a subset of the leaf pages can be cached at one point in time, but since the structure is sorted, all the keys in a single leaf page are 'near' one another, so you get good spatial and temporal locality just by caching recent leaf pages.
+
+A b-tree itself is enough to build yourself a simple key-value store, but it's not quite enough to implement something more advanced, like a SQL engine with ACID transactions. The problem has to do with crash recovery: if you have a single transaction that's supposed to update two key-value pairs in two different b-tree pages, what do you do if the machine crashes after only one of the two pages have been updated on disk? This is what ARIES addresses with its write-ahead logging strategy.
+
+The ARIES write-ahead log is a separate data structure on disk that stores informations about updates accepted by the system. With a write-ahead log, updates to the main b-tree can be lazy:
+
+1. The system initially writes the update to the write-ahead log (WAL)
+2. At this point, the system replies to the client, acknowledgling the write completed
+3. Later, the update is persisted to a b-tree page, and the WAL record is deleted
+
+If we crash before writing the update to the WAL, it's no-harm no-foul: everyone agrees the transaction never happened. If we crash after the b-tree is updated, we're also good: everyone agrees the transaction did happen. However, if we recover the log and find updates that are in the log but not the b-tree, then we need to update the b-tree too before we move on, as the client may have already been told the transaction 'happened.' The requirement to replay events found in a write-ahead log are called *redo* semantics.
+
+The real ARIES protocol extends this to support multi-step transactions. If all the steps of a transaction make it out to the WAL, then the transaction becomes 'permanent' and must be redone like we described above. However, if only some of the steps have been completed, the entire transaction is 'undone' and none of the partial updates ever make it out to the b-tree. This is suffiicent to make transactions atomic (in the ACID, "it happens all or nothing" sense) even if the transaction touches many parts of the system.
+
+The resulting setup, of an ARIES write-ahead log sitting in front of a b-tree written in-place on disk, was the de facto state of the art in databases throughout most of the 1990s. Although both technologies are database-specific, file systems developed analogous structures: journals instead of WALs, and inode trees instead of b-trees. Modern file systems have started to close this loop; btrfs is based on b-trees and has a WAL-like journal, for example.
 
 ## Performance Characteristics of a B-Tree/ARIES Strategy
+
+Now that we understand the basic structure of an ARIES log sitting in front of a b-tree which tracks SQL rows or key-value pairs, let's ask: what are the performance characteristics of this system? When you push this system to its limits, which part of the system will fall over first?
+
+
 
 TODO the log is effective at hiding the write amplification of updating a single b-tree page, and can also hide write latency as long as you can keep the needle over your log. But when you try to push throughput to the limit, you find that the bottleneck is offloading the log into all these b-tree pages scattered all over the disk, so your throughput limit is dictated by how fast the disk can seek, not how fast the disk can write after seeking. 
 

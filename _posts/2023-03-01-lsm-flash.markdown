@@ -61,19 +61,23 @@ The ARIES write-ahead log is a separate data structure on disk that stores infor
 
 If we crash before writing the update to the WAL, it's no-harm no-foul: everyone agrees the transaction never happened. If we crash after the b-tree is updated, we're also good: everyone agrees the transaction did happen. However, if we recover the log and find updates that are in the log but not the b-tree, then we need to update the b-tree too before we move on, as the client may have already been told the transaction 'happened.' The requirement to replay events found in a write-ahead log are called *redo* semantics.
 
+[ diagram of the whole system together here ]
+
 The real ARIES protocol extends this to support multi-step transactions. If all the steps of a transaction make it out to the WAL, then the transaction becomes 'permanent' and must be redone like we described above. However, if only some of the steps have been completed, the entire transaction is 'undone' and none of the partial updates ever make it out to the b-tree. This is suffiicent to make transactions atomic (in the ACID, "it happens all or nothing" sense) even if the transaction touches many parts of the system.
 
-The resulting setup, of an ARIES write-ahead log sitting in front of a b-tree written in-place on disk, was the de facto state of the art in databases throughout most of the 1990s. Although both technologies are database-specific, file systems developed analogous structures: journals instead of WALs, and inode trees instead of b-trees. Modern file systems have started to close this loop; btrfs is based on b-trees and has a WAL-like journal, for example.
+The resulting setup, of an ARIES write-ahead log sitting in front of a b-tree written in-place on disk, was the de facto state of the art in databases throughout most of the 1990s and partway into the 2000s. Although both are database-specific, file systems developed analogous structures along similar lines: journals instead of WALs, and inode trees instead of b-trees. In fact, modern file systems have started to close this loop; btrfs is based on b-trees and has a WAL-like journal, for example.
 
 ## Performance Characteristics of a B-Tree/ARIES Strategy
 
-Now that we understand the basic structure of an ARIES log sitting in front of a b-tree which tracks SQL rows or key-value pairs, let's ask: what are the performance characteristics of this system? When you push this system to its limits, which part of the system will fall over first?
+Say you had one of these b-tree/ARIES systems. What would the performance characteristics be? When you push this system to its limits, which part falls over first? For now, let's focus on writes:
 
+The system's write *latency* largely comes down to the write-ahead log, since we acknowledge writes as successful back to the client as soon as the write is durable in the log. The client never sees the latency of updating the corresponding b-tree page(s), so clients don't care how fast we can update b-tree pages.
 
+However, the system's write *throughput* is almost certain to be bottlenecked on b-tree page updates. On a rotating hard disk, the time it takes to move the needle to a different disk location is huge compared to the time it takes to transfer data once the needle is positioned. The write ahead log, being a small, sequential structure, minimizes seeking: once the needle is positions over the write-ahead log, adding more data to the log is fast. But the b-tree is huge, and updates may be scattered across many pages. In the worst case, each update in the log affects a different b-tree page, meaning you need to seek once per update.
 
-TODO the log is effective at hiding the write amplification of updating a single b-tree page, and can also hide write latency as long as you can keep the needle over your log. But when you try to push throughput to the limit, you find that the bottleneck is offloading the log into all these b-tree pages scattered all over the disk, so your throughput limit is dictated by how fast the disk can seek, not how fast the disk can write after seeking. 
+In takeaway, then, the write throughput of this system is limited to how fast the disk can *seek*, not how fast it can write data! Ingesting updates into the write-ahead log might be fast and efficient, but that log can't grow forever, and offloading log entries into b-tree pages causes the disk needle to thrash back and forth. At the limit, you can only update pages as fast as the disk can seek from page to page to page, and you can only accept client writes as fast as you can update pages. 
 
-That discussion should set us up very nicely for the thinking behind log-structured merge
+This is where O'Neil et al came in with their log-structured merge design. The question is: can we improve throughput by not seeking so aggressively?
 
 ## In Comes Log-Structured Merge
 

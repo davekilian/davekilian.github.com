@@ -519,7 +519,7 @@ If splitting the lock this way is feasible, and successfully reduces the amount 
 
 ### Backpressure and Brownouts
 
-If you've made it this far down the list, I have to admin I'm running out of good options for you. But there's still more to be found from scraping the bottom of the barrel.
+If you've made it this far down the list, I have to admit I'm running out of good options for you. But there's still more to be found from scraping the bottom of the barrel.
 
 Another approach to reducing the amount of incoming traffic on the lock, thereby helping convoys dissipate sooner on their own, is to implement a backpressure mechanism. In short, this means your server detects something is wrong, and sheds some of its load in an attempt to fix it. This is sort of like automating the process we talked about all the way back at the beginning of this guide, when we stopped and restarted the benchmarking workload and found that allowed the convoys to dissipate and the system to recover on its own.
 

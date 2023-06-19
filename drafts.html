@@ -2,15 +2,6 @@
 layout: default
 ---
 <div class="post-container">
-    <div class="post-content">
-        <br>
-        <blockquote>
-            <p>This section is a staging area for posts in various stages of development. I use <a href="http://github.com/davekilian/davekilian.github.com">this blog's repo</a> to track work-in-progress posts. Since the drafts already exist publicly anyways, I figured I might as well provide some interface to view them on the live site anyways. So, enjoy!</p>
-        </blockquote>
-    </div>
-</div>
-
-<div class="post-container">
     {% for post in site.posts %}
         {% if post.draft %}
             <div class="post-blurb">

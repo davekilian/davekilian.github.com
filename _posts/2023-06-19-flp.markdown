@@ -1,0 +1,48 @@
+---
+layout: post
+title: What FLP Tells Us, and Why It Matters
+author: Dave
+draft: true
+---
+
+If you ask some rando off the street, "Hey, what are some of the foundational problems in the field of distributed systems?" the average person would probably say something like, "What? Who are you? Get away from me!" Others, however, might suggest the problem of *distributed consensus* &mdash; getting a bunch of independent nodes in a network to agree upon some value. That is, the problem you solve with fancy distributed algorithms like Raft and Paxos.
+
+Those algorithms are notoriously big, scary and difficult to understand. Where does one even begin? If you're looking to really understand consensus algorithms, I'd suggest starting with the FLP result.
+
+Named after the three researchers (Fischer, Lynch and Paterson) who first published it in the 1980s, FLP was a key stepping stone on the way to modern consensus algorithms. At that time, there were plenty of consensus algorithms, but none of them worked reliably &mdash; each had at least one 'window of vulnerability,' where if the wrong machine crashed at exactly the wrong time, the whole algorithm could grind to a halt until someone came in to fix the hardware. Reserachers kept trying to find a fault-tolerant consensus algorithm (one that's never vulnerable to a single crash), and kept coming up empty. Sensing a pattern in what was wrong with the attempts made so far, Fischer, Lynch and Paterson came in and showed why these previous attempts were not working &mdash; and in doing so, showed what would need to be done to make a consensus algorithm that works reliably.
+
+In short, FLP tells us what consensus algorithms can and can't look like. If you want to understand why modern consensus algorithms like Raft and Paxos look the way they do, start with FLP.
+
+Luckily for us, FLP isn't actually all that complicated &mdash; even if all the formal mathematics it's wrapped up in does look quite complicated. The crux of the idea rests in the definition of distributed consensus, so to begin, let's review the properties we want out of a distributed consensus algorithm.
+
+## Properties of a Consensus Algorithm
+
+At its most basic level, the problem of consensus is just getting a bunch of nodes in a network to agree upon something. As usual, however, the devil is in the details. 
+
+### Example: 
+
+TODO find a compelling example in which we would need to introduce distributed transactions and solve with 2PC. Try to make a hot spare coordinator and engineer the situation where we end up with conflicting decisions and have to pick one arbitrarily. Now we're in the place a consensus algorithm is designed for
+
+### What Properties Do We Need?
+
+TODO
+
+* Coherence: eventually, everybody agrees on the same value
+* Conflict-resolution: if multiple conflicting values are proposed, one is chosen arbitrairly
+* No-decoherence: the moment one of the conflicting values is chosen, it is never possible to go back
+* Fault-tolerance: the algorithm must have no window of vulnerability
+
+"Obvious" requirements like termination. Termination seems to imply we need deterministic. 
+
+## What FLP Tells Us
+
+
+
+## Historical Impact
+
+
+
+## Why It's Useful Today
+
+
+

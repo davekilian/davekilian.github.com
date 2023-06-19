@@ -5,19 +5,25 @@ author: Dave
 draft: true
 ---
 
-If you ask some rando off the street, "Hey, what are some of the foundational problems in the field of distributed systems?" the average person would probably say something like, "What? Who are you? Get away from me!" Others, however, might suggest the problem of *distributed consensus* &mdash; getting a bunch of independent nodes in a network to agree upon some value. That is, the problem you solve with fancy distributed algorithms like Raft and Paxos.
+If you ask some rando off the street, "Hey, what are some foundational problems in the field of distributed systems?" they'd probably say something like, "What? Who are you? Get away from me!" Others might suggest the problem of *distributed consensus* &mdash; getting a bunch of nodes in a network to agree upon some value. That's the problem you solve with fancy algorithms like Raft and Paxos.
 
-Those algorithms are notoriously big, scary and difficult to understand. Where does one even begin? If you're looking to really understand consensus algorithms, I'd suggest starting with the FLP result.
+If you're going to do deep distributed systems work, sooner or later you're probably going to need an idea of what problem these algorithms solve, how they work at a basic level, and when to use them. Sadly, this is no small feat &mdash; they're notoriously complex and difficult to understand. Where does one even begin?
 
-Named after the three researchers (Fischer, Lynch and Paterson) who first published it in the 1980s, FLP was a key stepping stone on the way to modern consensus algorithms. At that time, there were plenty of consensus algorithms, but none of them worked reliably &mdash; each had at least one 'window of vulnerability,' where if the wrong machine crashed at exactly the wrong time, the whole algorithm could grind to a halt until someone came in to fix the hardware. Reserachers kept trying to find a fault-tolerant consensus algorithm (one that's never vulnerable to a single crash), and kept coming up empty. Sensing a pattern in what was wrong with the attempts made so far, Fischer, Lynch and Paterson came in and showed why these previous attempts were not working &mdash; and in doing so, showed what would need to be done to make a consensus algorithm that works reliably.
+I'd suggest starting with the *FLP result*.
+
+## Fischer, Lynch, Paterson
+
+Named after the three researchers (Fischer, Lynch and Paterson) who first published it in the 1980s, FLP was a key stepping stone on the way to modern consensus algorithms.
+
+At that time, there were plenty of consensus algorithms! But none of them worked reliably &mdash; each had at least one 'vulnerable point,' a single step where if the wrong machine crashed at exactly the wrong time, the whole algorithm could grind to a halt until someone came in to fix the hardware. Reserachers kept trying to find a fault-tolerant consensus algorithm (one that's never vulnerable to a single crash), and kept coming up empty. Sensing a pattern in what was wrong with the attempts made so far, Fischer, Lynch and Paterson came in and showed why these previous attempts were not working &mdash; and in doing so, said something interesting about the way any fault-tolerant consensus algorithm would have to work.
 
 In short, FLP tells us what consensus algorithms can and can't look like. If you want to understand why modern consensus algorithms like Raft and Paxos look the way they do, start with FLP.
 
-Luckily for us, FLP isn't actually all that complicated &mdash; even if all the formal mathematics it's wrapped up in does look quite complicated. The crux of the idea rests in the definition of distributed consensus, so to begin, let's review the properties we want out of a distributed consensus algorithm.
+The formal mathematical proof you'll find in the original FLP paper is somewhat complicated, but luckily for us, the idea wrapped up in that proof is actually pretty straightforward! The crux of the idea falls right out of the set of properties we want from a distributed consensus algorithm; so to get started, let's figure out what those properties are.
 
 ## Properties of a Consensus Algorithm
 
-At its most basic level, the problem of consensus is just getting a bunch of nodes in a network to agree upon something. As usual, however, the devil is in the details. 
+At its most basic level, the problem of consensus is just getting a bunch of nodes in a network to agree upon something. As is often the case, however, the devil is in the details. 
 
 ### Example: 
 

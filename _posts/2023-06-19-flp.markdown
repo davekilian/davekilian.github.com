@@ -7,7 +7,7 @@ draft: true
 
 If you ask some rando off the street, "Hey, what are some foundational problems in the field of distributed systems?" they'd probably say something like, "What? Who are you? Get away from me!" Others might suggest the problem of *distributed consensus* &mdash; getting a bunch of nodes in a network to agree upon some value. That's the problem you solve with fancy algorithms like Raft and Paxos.
 
-If you're going to do deep distributed systems work, sooner or later you're probably going to need an idea of what problem these algorithms solve, how they work at a basic level, and when to use them. Sadly, this is no small feat &mdash; they're notoriously complex and difficult to understand. Where does one even begin?
+If you're going to do deep distributed systems work, sooner or later you're probably going to need an idea of what problem these algorithms solve, how they work at a basic level, and when to use them. Sadly, that is no mean feat &mdash; they're notoriously complex and difficult to understand. Where does one even begin?
 
 I'd suggest starting with the *FLP result*.
 
@@ -19,17 +19,67 @@ At that time, there were plenty of consensus algorithms! But none of them worked
 
 In short, FLP tells us what consensus algorithms can and can't look like. If you want to understand why modern consensus algorithms like Raft and Paxos look the way they do, start with FLP.
 
-The formal mathematical proof you'll find in the original FLP paper is somewhat complicated, but luckily for us, the idea wrapped up in that proof is actually pretty straightforward! The crux of the idea falls right out of the set of properties we want from a distributed consensus algorithm; so to get started, let's figure out what those properties are.
+The formal mathematical proof you'll find in the original FLP paper is somewhat complicated, but luckily for us, the idea wrapped up in that proof is actually pretty straightforward! The crux of the idea falls right out of the set of properties we want from a distributed consensus algorithm; so to get started, we need to figure out exactly what guarantees a consensus algorithm needs to give us.
 
-## Properties of a Consensus Algorithm
+To get us started on the right foot, let's think of an example where consensus might be useful:
 
-At its most basic level, the problem of consensus is just getting a bunch of nodes in a network to agree upon something. As is often the case, however, the devil is in the details. 
+## Example: Splitting the Check
 
-### Example: 
+Let's say you're making an app that lets users split the check at restaurants. The restaurant sends your app a set of users and a bill; you send your users the bill, and let them decide how to split the payment. Then you withdraw money from each user's account to pay the restaurant.
 
-TODO find a compelling example in which we would need to introduce distributed transactions and solve with 2PC. Try to make a hot spare coordinator and engineer the situation where we end up with conflicting decisions and have to pick one arbitrarily. Now we're in the place a consensus algorithm is designed for
+How do you write the core payment logic for this app? Seems simple enough &mdash; here's a first stab:
 
-### What Properties Do We Need?
+```java
+public class Transaction {
+  // ...
+  public void pay(Bill bill, Share[] shares) {
+    Money total = Money.none();
+    for (Share share : shares) {
+      Money amount = share.amount();
+      if (!share.account().has(amount)) {
+        throw new Exception("Insufficient funds!");
+      }
+      total.add(amount);
+    }
+    
+    if (total != bill.total()) {
+      throw new Exception("Check your math!");
+    }
+    
+    for (Share share : shares) {
+      Money amount = share.amount();
+      share.account().debit(amount);
+      bill.account().credit(amount);
+    }
+  }
+}
+```
+
+The basic idea seems sound, doesn't it? Make sure every user has enough money in their account to pay their part of the bill, make sure you've paid the entire bill, and then move funds to the restaurant's bank account. What could go wrong?
+
+### Things go wrong
+
+Actually, a lot can go very wrong! For example, what if a user's account gets debited (by someone else) after the first for loop, but before the second? Then we'll think they have sufficient funds to cover their share &mdash; at the time we checked, they really did! &mdash; but by the time we're actually crediting and debiting accounts, the money's gone. Uh oh!
+
+There are a variety of different ways to solve this problem. One option is to use a very simple, general-purpose strategy called **two-phase commit** (often abbreviated **2PC**).
+
+2PC is useful when you're updating multiple things in tandem, and you need an all-or-nothing guarantee: either all the updates go through, or none of them do. In this example, we're updating multiple bank account balances in tandem, and we need the all-or-nothing guarantee that either the bill gets paid (everyone pays their share) or the transaction gets rejected, with no payments going through.
+
+The idea behind 2PC is, unsurprisingly, to fit the work into two phases:
+
+During the **prepare** phase, you contact each thing you're going to update and tell it about the update you'd like to perform. The resource validates the operation, and if it's valid, locks itself so that the operation cannot become invalid in the future. In our example, this means we contact each user's bank and tell the bank how much money we'd like to debit; the bank either sets aside that much money so nobody else can withdraw it, or it returns an insufficient-funds error.
+
+Once this is done, we start a second **commit** phase. This phase can go one of two ways: if something went wrong during the prepare phase, we reach out to each resource and say "never mind;" the resource then releases its lock without doing anything. Or, if everything looks good, then we contact each resource and say "do it;" the update goes through, and then the lock is released. Either way, this releases all locks that were taken during the prepare phase.
+
+### Things go wrong-er
+
+
+
+
+
+
+
+## Properties of a (Useful) Consensus Algorithm
 
 TODO
 
@@ -40,7 +90,7 @@ TODO
 
 "Obvious" requirements like termination. Termination seems to imply we need deterministic. 
 
-## What FLP Tells Us
+## FLP: You can't have it all!
 
 
 

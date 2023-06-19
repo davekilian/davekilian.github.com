@@ -5,23 +5,25 @@ author: Dave
 draft: true
 ---
 
-If you ask some rando off the street, "Hey, what are some foundational problems in the field of distributed systems?" they'd probably say something like, "What? Who are you? Get away from me!" Others might suggest the problem of *distributed consensus* &mdash; getting a bunch of nodes in a network to agree upon some value. That's the problem you solve with fancy algorithms like Raft and Paxos.
+If you ask some rando off the street, "Hey, what are some foundational problems in the field of distributed systems?" they'd probably say something like, "What? Who are you? Get away from me!" Others might suggest the problem of *distributed consensus* &mdash; namely, getting a bunch of nodes in a network to agree upon some value. That's the problem you solve with fancy algorithms like Raft and Paxos.
 
-If you're going to do deep distributed systems work, sooner or later you're probably going to need an idea of what problem these algorithms solve, how they work at a basic level, and when to use them. Sadly, that is no mean feat &mdash; they're notoriously complex and difficult to understand. Where does one even begin?
+If you're going to do deep distributed systems work, sooner or later you're probably going to need to get a feel for consensus &mdash; what it is, why it's hard, and basically how one goes about solving it. Sadly, this is no mean feat. This problem space is notoriously difficult to understand. Where does one even begin?
 
-I'd suggest starting with the *FLP result*.
+Start with the FLP result.
 
 ## Fischer, Lynch, Paterson
 
-Named after the three researchers (Fischer, Lynch and Paterson) who first published it in the 1980s, FLP was a key stepping stone on the way to modern consensus algorithms.
+Named after the three researchers (Fischer, Lynch and Paterson) who first published it in the 1980s, FLP was a key stepping stone on the path to modern consensus algorithms. Today we already have those algorithms, but FLP remains a useful stepping stone for learning how consensus algorithms work.
 
-At that time, there were plenty of consensus algorithms! But none of them worked reliably &mdash; each had at least one 'vulnerable point,' a single step where if the wrong machine crashed at exactly the wrong time, the whole algorithm could grind to a halt until someone came in to fix the hardware. Reserachers kept trying to find a fault-tolerant consensus algorithm (one that's never vulnerable to a single crash), and kept coming up empty. Sensing a pattern in what was wrong with the attempts made so far, Fischer, Lynch and Paterson came in and showed why these previous attempts were not working &mdash; and in doing so, said something interesting about the way any fault-tolerant consensus algorithm would have to work.
+Back when FLP was published, there were plenty of consensus algorithms, but none of them worked reliably. Every known algorithm had a 'window of vulnerability' &mdash; a critical point in the algorithm where, if the wrong machine crashed at exactly the wrong time, the whole algorithm would get wedged. The only way out at that point would be to send someone in to manually repair the state of the system. Obviously, a manual repair process like this could never scale. We needed *fault-tolerant* algorithms: ones which were entirely free of a window of vulnerability.
 
-In short, FLP tells us what consensus algorithms can and can't look like. If you want to understand why modern consensus algorithms like Raft and Paxos look the way they do, start with FLP.
+Researchers kept trying and trying to find a fault-tolerant consensus algorithm, and kept coming up empty. Eventually, Fischer, Lynch and Paterson found a pattern between them all &mdash; a systemic reason why these windows of vulnerabilities kept reappearing no matter what we did. This insight ended up being key to the invention of Paxos, the first practical fault-tolerant consensus algorithm.
 
-The formal mathematical proof you'll find in the original FLP paper is somewhat complicated, but luckily for us, the idea wrapped up in that proof is actually pretty straightforward! The crux of the idea falls right out of the set of properties we want from a distributed consensus algorithm; so to get started, we need to figure out exactly what guarantees a consensus algorithm needs to give us.
+Just as FLP was the insight we needed to *create* something like Paxos, so too is it useful in *understanding* the consensus algorithms we already have. If you want to understand why modern consensus algorithms like Raft and Paxos look the way they do, start with FLP.
 
-To get us started on the right foot, let's think of an example where consensus might be useful:
+The formal mathematical proof you'll find in the original FLP paper is not very approachable, to say the least; but luckily for us, there's a straightforward line of reasoning wrapped up in all that notation! The crux of their idea falls right out of the design requirements for a consensus algorithm, so that's a good place for us to start.
+
+What guarantees would a consensus algorithm need to provide? Let's think of an example where consensus might be useful:
 
 ## Example: Splitting the Check
 

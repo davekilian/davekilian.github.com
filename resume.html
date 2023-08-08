@@ -19,8 +19,13 @@
 				font-size: 200%;
                 font-family: "Source Sans Pro";
                 font-weight: 700;
-                margin-bottom: .3em;
+                margin-bottom: 0;
+                margin-top: 0.2em;
 			}
+
+            ul {
+                margin-top: 0.3em;
+            }
 
 			.bottom-border {
 				border-bottom: 1px solid #aaa;
@@ -48,62 +53,82 @@
                          width="70px" height="70px" alt="" style="vertical-align: middle">
 				</td>
 				<td>
-					<span style="font-size: 220%">Dave Kilian</span><br>
+					<span style="font-size: 250%; font-family: 'Source Sans Pro'">Dave Kilian</span><br>
 
-					<div class="left" style="font-size: 95%">
+					<div class="left" style="font-size: 95%; padding-bottom: .5em">
                         https://www.davekilian.com<br>
 						dave@davekilian.com
 					</div>
 				</td>
 			</tr></table>
-            <p>
-            Senior engineer experienced in architecting for low latency at scale in C and C++.
-            Interested in foundational software like databases, distributed storage, file systems, multithreading, operating systems and game engines.
+            <p style="margin-top: 0">
+            Software engineer with experience designing and building cloud-scale storage engines in C and C++.
+            Interested in systems topics like databases, distributed storage, file systems, multithreading, and operating systems.
             Skilled technical writer and in-person presenter with a knack for explaining difficult technical concepts.
             Proud dad of three little wild men.
             Graduated from Brown University in 2013.
             Lifetime learner.
-            Licensed high school teacher in Washington state.
             </p>
 
 			<!-- Work Experience -->
-            <h2>Work Experience</h2>
+            <!-- <h2>Work Experience</h2> -->
 
-			<span style="font-size: 125%">Senior Member of Technical Staff, Qumulo, 2023-Present</span><br>
+            <h2>Senior Member of Technical Staff, Qumulo, 2023-Present</h2>
 
             <ul>
                 <li>Working on next-generation cloud file storage</li>
             </ul>
 
-			<span style="font-size: 125%">Principal Software Engineer, Azure Storage, Microsoft, 2017-2021</span><br>
+            <h2>Student Teacher, 2021-2022</h2>
 
             <ul>
-                <li>Spearheaded, co-architected and co-developed proof-of-concept next-generation Azure virtual machine disk storage, capable of serving over 1 million IOPS per server blade with half-millisecond latency.</li>
-                <li>Developed and presented architecture deep-dive talk for new hires. Grew organically from notes to headliner of new all-day "boot camp" event, given at our Redmond, Shanghai, Hyderabad and Bengaluru offices, and recorded for posterity.</li>
-                <li>Made significant contributions to a project optimizing network flow using InfiniBand RDMA</li>
+                <li>Completed a 1-year degree program and earned a high school teaching certificate.</li>
+                <li>Licensed to teach high-school mathematics and computer science in Washington state.</li>
             </ul>
-			<span style="font-size: 125%">Software Engineer II, Windows Deployment, Microsoft, 2013-2017</span><br>
+
+			<h2>Principal Software Engineer, Azure Storage, Microsoft, 2017-2021</h2>
 
             <ul>
-                <li>Lead a ground-up rebuild of key components for Window's 'Reset this PC' recovery feature,
-                    which dramatically reduced failure rate</li>
+                <li style="margin-bottom: 0.1em">
+                    Identified a path for scaling Azure's distributed disk storage system, got funded, designed it and built it.
+                    We scaled the existing architecture 10x, pushing over 1M IOPS per server blade with latency near hardware limits.</li>
+                <li style="margin-bottom: 0.1em">
+                    Built key pieces of the org's onboarding process. If you join Azure Storage today, you'll be asked early on to follow
+                    the getting started instructions I wrote and watch a recording of a tech talk I wrote and presented.</li>
+                <li>Worked on a handful of projects moving systems from legacy TCP protocols to InfiniBand RDMA.</li>
+            </ul>
+
+			<h2>Software Engineer II, Windows Deployment, Microsoft, 2013-2017</h2>
+
+            <ul>
+                <li>Dramatically improved stability and reliability of the Windows 'Reset this PC' recovery feature.</li>
                 <li>Traveled overseas to work with PC manufactuers on customizing recovery for their devices</li>
             </ul>
 
-			<span style="font-size: 125%">Teaching Assistant for Brown University Computer Science, 2010-2013</span><br>
+			<h2>Teaching Assistant, 2010-2013</h2>
             <ul>
                 <li>Assisted graduate- and undergraduate-level courses in graphics, operating systems, and cybersecurity</li>
                 <li>As regular TA, developed course materials, graded assignments, ran coding labs and held office hours</li>
                 <li>As head TA, hired and managed teams of undergrad TAs, organized courses, developed course content</li>
 			</ul>
 
-            <span style="font-size: 125%">Patents</span>
+			<h2>Undergraduate Student, Brown University, 2009-2013</h2>
+            <ul>
+                <li>Graduated with an Sc.B. in Computer Science in 2013</li>
+                <li>Key courses: Operating Systems (with Implementationn Lab), Computer Networks, Multiprocessor Synchronization,
+                    Computer Systems Security, Interactive Computer Graphics (a graduate-level course), 
+                    3D Game Engines, Design and Analysis of Algorithms
+                </li>
+			</ul>
+
+            <h2>Patents</h2>
             <ul>
                 <li><a href="http://patft.uspto.gov/netacgi/nph-Parser?Sect2=PTO1&Sect2=HITOFF&p=1&u=/netahtml/PTO/search-bool.html&r=1&f=G&l=50&d=PALL&RefSrch=yes&Query=PN/9519631">US 9,519,631</a>: Semantic Diff and Automerge,
                     based on work I did during a 2011 internship at Microsoft</li>
             </ul>
 
 			<!-- Technologies -->
+            <!--
 			<h2>Technology Experience</h2>
 
             <p><b>Most recently:</b> C/C++, Windows Driver Model, InfiniBand RDMA, B-Trees and Log-Structured Merge.
@@ -111,8 +136,10 @@
 
             <p><b>In the past:</b> OpenGL, Qt, Python, Java, Linux shells, C#, HTML, CSS, JavaScript, PHP, SQL.
             I have used these for nontrivial projects in the past, but it's been a while.</p>
+            -->
 
 			<!-- Education -->
+            <!--
 			<h2 style="page-break-before: always">Education</h2>
             <p>I graduated from Brown University in 2013 with a B.S. in Computer Science, with a 3.8 GPA.
             Relevant coursework:</p>
@@ -135,12 +162,15 @@
 				<li>Introduction to Software Engineering</li>
 				<li>Discrete Structures and Probability</li>
 			</ul>
+            -->
 
 			<!-- Footer -->
+            <!--
 			<hr style="color: gray; width: 100%">
 
 			<p>The most recent version of this document is available at 
             <a href="http://www.davekilian.com/resume.html">http://www.davekilian.com/resume.html</a>.</p>
+            -->
 		</div>
 	</body>
 </html>

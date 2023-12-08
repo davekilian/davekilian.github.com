@@ -45,11 +45,11 @@ Unfortunately for me, the author, there isn't a well-accepted set of properties 
 
 First, let's cover the basic correctness condition. The point of a consensus algorithm is to keep computers in sync; so at the end of the algorithm, all computers that participted should have the same state. Just to have a name, let's call this the **coherence** property.
 
-What else? I think we're also going to need a **conflict resolution** mechanism. For example, what if two people try to update the same key of our key-value store? What if two nodes try to obtain the same lock using our distributed lock service? We need to choose one, and only one correct answer. Thus we need a way to resolve ambiguity.
+What else? I think we're also going to need a **conflict resolution** property too. What if two people try to update the same key of our key-value store? What if two nodes try to obtain the same lock using our distributed lock service? We need to choose one and only one correct answer. Thus we need a way to resolve concurrent updates that conflict with one another.
 
-However, we don't need to say *how* conflicts are resolved. It's perfectly fine if the consensus algorithm picks an arbitrary candidate &mdash; as long as it picks one, and only one, candidate.
+Luckily, we don't need to say *how* conflicts are resolved. It's perfectly fine if the consensus algorithm picks an arbitrary candidate &mdash; an arbitrary key-value store update which is accepted, or an arbitrary node to obtain the lock first. Users of the consensus algorithm will *propose* an update to be made, and the consensus algorithm will then tell the user whether the update was accepted, or rejected in favor of a different update.
 
-There's a subtle but important problem buried within the realm of conflict resolution. It's not just enough to *eventually* resolve the conflict; we need a strict no-takebacks rule. As soon as it is possible for any node in the network to 'see' that a candidate value has been chosen, that has to be the candidate value we end up with. As such, the conflict resolution mechanism needs to be a point of no return; the system as a whole has to transition from "undecided" to "decided" in a single step and never go backward after that.
+One subtle aspect of conflict resolution is so important, I want to make it its own property: it's not just enough to *eventually* resolve the conflict, we need a strict no-takebacks rule. As soon as it is possible for any node in the network to 'see' that a candidate value has been chosen, the algorithm *must* stay with that candidate value forever. In other words, conflict resolution must involve a point of no return; the system as a whole must transition from "undecided" to "decided" in a single step and never go back after that. I'll call this the **no-decoherence** property.
 
 Think of the chaos that would ensue if we didn't have this! TODO
 

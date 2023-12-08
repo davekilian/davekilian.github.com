@@ -81,7 +81,7 @@ As we continue our discussion, keep these properties in the back of your mind:
 >
 > **Conflict Resolution**: When multiple candidate states are possible, the algorithm picks one; it is not an error to have multiple candidates.
 >
-> **No-Decoherence**: The no-takebacks rule: once a candidate can be seen as chosen, no other candidate can ever be chosen by anyone, ever.
+> **No Decoherence**: The no-takebacks rule: once a candidate can be seen as chosen, no other candidate can ever be chosen by anyone, ever.
 >
 > **Fault Tolerance**: The algorithm continues to work even if a some nodes go offline.
 
@@ -96,6 +96,10 @@ Replication algorithms are often simpler and faster than consensus algorithms, b
 ## A First Stab at Consensus
 
 You probably already have a consensus algorithm or two in your day-to-day life. What do you do when you and your friends want to pick a restaurant but you can't come to an agreement? Maybe you'd start voting!
+
+Can we solve consensus by creating a voting algorithm? Let's try it!
+
+
 
 
 

@@ -9,9 +9,9 @@ If you ask some rando off the street, "Hey, what are some foundational problems 
 
 If you work on, in or near a distributed system, you'll run into the problem of consensus sooner or later, whether or not you have to solve consensus yourself. Every distributed system has a consensus algorithm running somewhere inside. Having a grip on consensus algorithms is thus incredibly useful, even if you never write one yourself!
 
-This is a small, self-contained guide to the Paxos consensus algorithm, with minimal jargon and no handwaving. The only background you'll need is undergrad data structures and algorithms. We don't have space to describe a full, production-ready system, but we can at least tackle the big ideas.
+This is a small, self-contained guide to consensus algorithms, with minimal jargon and no handwaving. The only background you'll need is undergrad data structures and algorithms. We don't have space to describe a full, production-ready system, but we can at least tackle the big ideas.
 
-This guide will not cover Raft; I don't think Raft is a good place to start. Raft is often billed as easier to understand than Paxos, but that's comparing Raft to a full production-ready Paxos with all the bells and whistles. Paxos is nicer for learning about consensus, because it can be pared down to a tiny core algorithm with almost no moving parts.
+We will discuss Paxos in this guide, despite the existence of Raft, a more modern alternative. Even though Raft is often billed as more understandable than Paxos, I still think Paxos is a better algorithm to learn first. A full production-ready Raft is easier to understand than a full production-ready Paxos, but Paxos can be pared down to a much smaller core than Raft.
 
 ## What is Consensus?
 

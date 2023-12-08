@@ -43,7 +43,7 @@ Now let's gather some requirements; given the kinds of things we want to use a c
 
 Unfortunately for me, the author, there isn't a well-accepted set of properties a consensus algorithm needs to provide that I can just rattle off here. Database people can just say they want transaction to be *atomic, consistent, isolated, durable* and assume the reader has already been filled in on what those mean; there is no analog to ACID for consensus, we generally just kind of assume the reader already gets what the algorithm is supposed to do. So let's draw up a set of requirements on our own.
 
-First, let's cover the basic correctness condition. The point of a consensus algorithm is to keep computers in sync; so at the end of the algorithm, all computers that participted should have the same state. Just to have a name, let's call this **coherence**.
+First, let's cover the basic correctness condition. The point of a consensus algorithm is to keep computers in sync; so at the end of the algorithm, all computers that participted should have the same state. Just to have a name, let's call this the **coherence** property.
 
 What else? I think we're also going to need a **conflict resolution** mechanism. For example, what if two people try to update the same key of our key-value store? What if two nodes try to obtain the same lock using our distributed lock service? We need to choose one, and only one correct answer. Thus we need a way to resolve ambiguity.
 
@@ -59,7 +59,7 @@ Finally, if we want our system to be highly-available, we're going to need **fau
 
 TODO when we talk about fault tolerance, we ask how many nodes can crash and consider the worst case. For example, a system with a single special node that must not crash but many non-special nodes that can crash is not considered fault-tolerant, because it cannot withstand even 1 worst-case crash; if that special node goes down we're toast.
 
-TODO byzantine, saddest moment
+TODO don't worry about byzantine, saddest moment
 
 To recap:
 

@@ -63,5 +63,7 @@ To recap:
 >
 > **Fault Tolerance**: The algorithm works even if a reasonable number of nodes crash.
 
-With these requirements, we now know enough to say what's different between replication and consensus! Replication algorithms have no notion of conflict resolution; they don't need a conflict-resolution or no-decoherence property, it's fine to simply fail in the case any ambiguity is discovered. Replication algorithms make sense when you can structure a system so that one node is a "leader" and all other nodes are "followers;" then the leader can *replicate* its state unambiguously to followers. Consensus algorithms make sense when you can't have just one node be in charge, because state changes on one computer can conflict with other changes on a different computer. 
+With these requirements, we now know enough to say what's different between replication and consensus! Replication algorithms have no notion of conflict resolution; they don't need a conflict-resolution or no-decoherence property, it's fine to simply fail in the case any ambiguity is discovered.
+
+In practice, replication makes sense when you can structure a system so that one node is a "leader" and all other ndoes are "followers;" as long as every state change goes through the leader node, the leader node can *replicate* its state to followers unambiguously. Consensus is useful when you want to have multiple nodes changing the same state; that's when it's possible for state changes to conflict.
 

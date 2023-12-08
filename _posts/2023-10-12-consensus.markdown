@@ -41,9 +41,11 @@ Let's take a pause here and think about a few examples of problems that can be s
 
 Now let's gather some requirements; given the kinds of things we want to use a consensus algorithm for, what does the algorithm need to be able to do?
 
-Unfortunately for me, the author, there isn't a well-accepted set of properties a consensus algorithm needs to provide that I can just rattle off here; for example, whereas database people can just say they want transaction to be *atomic, consistent, isolated, durable*, in the distributed systems field there's no well-accepted set of properties for a consensus algorithm. We generally just kind of assume the reader 'gets' what the algorithm is supposed to do. So that means I, your author, will have to wing it. And wing it we shall!
+Unfortunately for me, the author, there isn't a well-accepted set of properties a consensus algorithm needs to provide that I can just rattle off here. Database people can just say they want transaction to be *atomic, consistent, isolated, durable* and assume the reader has already been filled in on what those mean; there is no analog to ACID for consensus, we generally just kind of assume the reader already gets what the algorithm is supposed to do. So let's draw up a set of requirements on our own.
 
+First, let's cover the basic correctness condition. The point of a consensus algorithm is to keep computers in sync; so at the end of the algorithm, all computers that participted should have the same state. Just to have a name, let's call this **coherence**.
 
+What else?
 
 
 
@@ -55,13 +57,11 @@ To recap:
 
 > **Coherence**: Every computer ends up with the same state
 >
-> **Conflict Resolution**: 
+> **Conflict Resolution**: The algorithm makes a decision when multiple candidate values are possible. It is not an error to have multiple proposed states.
 >
-> **No-Decoherence** (the no-takebacks rule): 
+> **No-Decoherence**: The no-takebacks rule: once a candidate can be seen as chosen, it is never possible for any other value to be seen as chosen.
 >
-> **Fault Tolerance**: 
+> **Fault Tolerance**: The algorithm works even if a reasonable number of nodes crash.
 
-
-
-## Consensus vs Replication
+With these requirements, we now know enough to say what's different between replication and consensus! Replication algorithms have no notion of conflict resolution; they don't need a conflict-resolution or no-decoherence property, it's fine to simply fail in the case any ambiguity is discovered. Replication algorithms make sense when you can structure a system so that one node is a "leader" and all other nodes are "followers;" then the leader can *replicate* its state unambiguously to followers. Consensus algorithms make sense when you can't have just one node be in charge, because state changes on one computer can conflict with other changes on a different computer. 
 

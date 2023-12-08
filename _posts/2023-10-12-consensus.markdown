@@ -57,11 +57,11 @@ To recap:
 
 > **Coherence**: Every computer ends up with the same state
 >
-> **Conflict Resolution**: The algorithm makes a decision when multiple candidate values are possible. It is not an error to have multiple proposed states.
+> **Conflict Resolution**: When multiple candidate states are possible, the algorithm picks one; it is not an error to have multiple candidates.
 >
-> **No-Decoherence**: The no-takebacks rule: once a candidate can be seen as chosen, it is never possible for any other value to be seen as chosen.
+> **No-Decoherence**: The no-takebacks rule: once a candidate can be seen as chosen, it is chosen, everywhere, forever.
 >
-> **Fault Tolerance**: The algorithm works even if a reasonable number of nodes crash.
+> **Fault Tolerance**: The algorithm works even if a some nodes crash.
 
 ## Replication vs Consensus
 

@@ -61,9 +61,9 @@ One subtle aspect of conflict resolution is so important, I want to make it its 
 
 It's not just enough to *eventually* resolve a conflict, we need a strict no-takebacks rule! As soon as it is possible for any node to 'see' that a candidate value has been chosen, the algorithm *must* stay with that value forever. In other words, conflict resolution must involve a point of no return; the system as a whole must transition from "undecided" to "decided" in a single step and never go back. I'll call this the **no-decoherence** property.
 
-Think of the chaos that would ensue if we didn't have this! If the consensus system can change its mind at any time, how would you know when it's done? Would it ever be safe to make a decision based on what the consensus algorithm told you? If the lock server said you have the lock, what good is that to you if the lock server can change its mind and say "actually no, you *don't* have the lock" at any time in the future?
+Think of the chaos that would ensue if we didn't have this! If the consensus system can change its mind at any time, how would you know when it's done? Would it ever be safe to make a decision based on what the consensus algorithm told you? If the lock server said you have the lock, what good is that to you if the lock server can change its mind and say "actually no, you *don't* have the lock" at any time in the future? At some point you have to call it and be done!
 
-TODO of course, it's fine for other nodes to asynchronously discover that a decision has been made. The omniscient observer.
+The no-decoherence property implies some node needs to make a local decision that globally resolves all conflicts at some point during the algorithm, but that doesn't mean every node has to find out about the decision right away. It's fine for some nodes to know about the decision right now and for others to only find out about it later, so long as the nodes that know about the decision right now can be certain nothing can alter the decision.
 
 ### Fault Tolerance
 

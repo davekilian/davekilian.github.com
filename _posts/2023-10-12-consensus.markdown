@@ -49,15 +49,19 @@ First, let's cover the basic correctness condition. The point of a consensus alg
 
 ### Conflict Resolution
 
-What else? I think we're also going to need a **conflict resolution** property too. What if two people try to update the same key of our key-value store? What if two nodes try to obtain the same lock using our distributed lock service? We need to choose one and only one correct answer. Thus we need a way to resolve concurrent updates that conflict with one another.
+What else? I think we're also going to need a **conflict resolution** property too. What if two people try to update the same key of our key-value store? What if two nodes try to obtain the same lock using our distributed lock service? We need to choose one and only one correct answer. We need a way to resolve concurrent updates that conflict with one another.
 
-Luckily, we don't need to say *how* conflicts are resolved. It's perfectly fine if the consensus algorithm picks an arbitrary candidate &mdash; an arbitrary key-value store update which is accepted, or an arbitrary node to obtain the lock first. Users of the consensus algorithm will *propose* an update to be made, and the consensus algorithm will then tell the user later whether the update was accepted, or rejected in favor of a different update.
+Luckily, we don't need to say *how* conflicts are resolved. It's perfectly fine if the consensus algorithm picks an arbitrary candidate &mdash; an arbitrary key-value update which is accepted by the store, or an arbitrary node to obtain the lock first. Users of the consensus algorithm will *propose* an update to be made, and the consensus algorithm will then tell the user later whether the update was accepted, or rejected in favor of a different update.
+
+This might be obvious but it's worth saying: conflict-resolution does not give the consensus algorithm complete freedom to choose the final agreed-upon value. If one node proposes final state $A$ and another proposed final state $B$, the algorithm has to pick $A$ or $B$; it doesn't get just pick $C$!
 
 ### No Decoherence
 
-One subtle aspect of conflict resolution is so important, I want to make it its own property: it's not just enough to *eventually* resolve the conflict, we need a strict no-takebacks rule! As soon as it is possible for any node to 'see' that a candidate value has been chosen, the algorithm *must* stay with that value forever. In other words, conflict resolution must involve a point of no return; the system as a whole must transition from "undecided" to "decided" in a single step and never go back after that. I'll call this the **no-decoherence** property.
+One subtle aspect of conflict resolution is so important, I want to make it its own property:
 
-Think of the chaos that would ensue if we didn't have this! TODO
+It's not just enough to *eventually* resolve a conflict, we need a strict no-takebacks rule! As soon as it is possible for any node to 'see' that a candidate value has been chosen, the algorithm *must* stay with that value forever. In other words, conflict resolution must involve a point of no return; the system as a whole must transition from "undecided" to "decided" in a single step and never go back. I'll call this the **no-decoherence** property.
+
+Think of the chaos that would ensue if we didn't have this! If the consensus system can change its mind at any time, how would you know when it's done? Would it ever be safe to make a decision based on what the consensus algorithm told you? If the lock server said you have the lock, what good is that to you if the lock server can change its mind and say "actually no, you *don't* have the lock" at any time in the future?
 
 TODO of course, it's fine for other nodes to asynchronously discover that a decision has been made. The omniscient observer.
 

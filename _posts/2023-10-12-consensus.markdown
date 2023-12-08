@@ -49,7 +49,7 @@ What else? I think we're also going to need a **conflict resolution** property t
 
 Luckily, we don't need to say *how* conflicts are resolved. It's perfectly fine if the consensus algorithm picks an arbitrary candidate &mdash; an arbitrary key-value store update which is accepted, or an arbitrary node to obtain the lock first. Users of the consensus algorithm will *propose* an update to be made, and the consensus algorithm will then tell the user later whether the update was accepted, or rejected in favor of a different update.
 
-One subtle aspect of conflict resolution is so important, I want to make it its own property: it's not just enough to *eventually* resolve the conflict, we need a strict no-takebacks rule. As soon as it is possible for any node in the network to 'see' that a candidate value has been chosen, the algorithm *must* stay with that candidate value forever. In other words, conflict resolution must involve a point of no return; the system as a whole must transition from "undecided" to "decided" in a single step and never go back after that. I'll call this the **no-decoherence** property.
+One subtle aspect of conflict resolution is so important, I want to make it its own property: it's not just enough to *eventually* resolve the conflict, we need a strict no-takebacks rule! As soon as it is possible for any node to 'see' that a candidate value has been chosen, the algorithm *must* stay with that candidate value forever. In other words, conflict resolution must involve a point of no return; the system as a whole must transition from "undecided" to "decided" in a single step and never go back after that. I'll call this the **no-decoherence** property.
 
 Think of the chaos that would ensue if we didn't have this! TODO
 

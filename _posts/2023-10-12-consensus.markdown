@@ -95,5 +95,7 @@ Replication algorithms are often simpler and faster than consensus algorithms, b
 
 ## A First Stab at Consensus
 
+You probably already have a consensus algorithm or two in your day-to-day life. What do you do when you and your friends want to pick a restaurant but you can't come to an agreement? Maybe you'd start voting!
+
 
 

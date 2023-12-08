@@ -95,11 +95,7 @@ Replication algorithms are often simpler and faster than consensus algorithms, b
 
 ## A First Stab at Consensus
 
-You probably already have a consensus algorithm or two in your day-to-day life. What do you do when you and your friends want to pick a restaurant but you can't come to an agreement? Maybe you'd start voting!
+You probably already have a consensus algorithm or two in your day-to-day life. What do you do when you and your friends want to pick a restaurant but you can't come to an agreement? Maybe you'd start putting out your votes?
 
-Can we solve consensus by creating a voting algorithm? Let's try it!
-
-
-
-
+Could we create a consensus algorithm that works by having nodes vote on a final state? At a high level, it seems to fit the bill. Let's try it!
 

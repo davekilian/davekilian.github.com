@@ -81,7 +81,7 @@ As we continue our discussion, keep these properties in the back of your mind:
 >
 > **Conflict Resolution**: When multiple candidate states are possible, the algorithm picks one; it is not an error to have multiple candidates.
 >
-> **No Decoherence**: The no-takebacks rule: once it's possible for any node to see a candidate was chosen, no other candidate can ever be chosen by anyone, ever.
+> **No Decoherence**: The no-takebacks rule: as soon as even one node can see a candidate was chosen, no other candidate can ever be chosen by anyone, ever.
 >
 > **Fault Tolerance**: The algorithm continues to work even if a some nodes go offline.
 

@@ -43,11 +43,17 @@ Now let's gather some requirements; given the kinds of things we want to use a c
 
 Unfortunately for me, the author, there isn't a well-accepted set of properties a consensus algorithm needs to provide that I can just rattle off here. Database people can just say they want transaction to be *atomic, consistent, isolated, durable* and assume the reader has already been filled in on what those mean; there is no analog to ACID for consensus, we generally just kind of assume the reader already gets what the algorithm is supposed to do. So let's draw up a set of requirements on our own.
 
+### Coherence
+
 First, let's cover the basic correctness condition. The point of a consensus algorithm is to keep computers in sync; so at the end of the algorithm, all computers that participted should have the same state. Just to have a name, let's call this the **coherence** property.
+
+### Conflict Resolution
 
 What else? I think we're also going to need a **conflict resolution** property too. What if two people try to update the same key of our key-value store? What if two nodes try to obtain the same lock using our distributed lock service? We need to choose one and only one correct answer. Thus we need a way to resolve concurrent updates that conflict with one another.
 
 Luckily, we don't need to say *how* conflicts are resolved. It's perfectly fine if the consensus algorithm picks an arbitrary candidate &mdash; an arbitrary key-value store update which is accepted, or an arbitrary node to obtain the lock first. Users of the consensus algorithm will *propose* an update to be made, and the consensus algorithm will then tell the user later whether the update was accepted, or rejected in favor of a different update.
+
+### No Decoherence
 
 One subtle aspect of conflict resolution is so important, I want to make it its own property: it's not just enough to *eventually* resolve the conflict, we need a strict no-takebacks rule! As soon as it is possible for any node to 'see' that a candidate value has been chosen, the algorithm *must* stay with that value forever. In other words, conflict resolution must involve a point of no return; the system as a whole must transition from "undecided" to "decided" in a single step and never go back after that. I'll call this the **no-decoherence** property.
 
@@ -55,21 +61,25 @@ Think of the chaos that would ensue if we didn't have this! TODO
 
 TODO of course, it's fine for other nodes to asynchronously discover that a decision has been made. The omniscient observer.
 
+### Fault Tolerance
+
 Finally, if we want our system to be highly-available, we're going to need **fault tolerance**. Sometimes computers will crash due to faulty hardware or software; sometimes they'll be unreachable due to network problems; sometimes we'll take them offline on purpose so we can upgrade software! For the system to remain working even when individual computers aren't, we need a consensus algorithm that works even when some computers are offline.
 
 TODO when we talk about fault tolerance, we ask how many nodes can crash and consider the worst case. For example, a system with a single special node that must not crash but many non-special nodes that can crash is not considered fault-tolerant, because it cannot withstand even 1 worst-case crash; if that special node goes down we're toast.
 
 TODO don't worry about byzantine, saddest moment
 
-To recap:
+### Recap
+
+As we continue our discussion, keep these properties in the back of your mind:
 
 > **Coherence**: Every computer ends up with the same state
 >
 > **Conflict Resolution**: When multiple candidate states are possible, the algorithm picks one; it is not an error to have multiple candidates.
 >
-> **No-Decoherence**: The no-takebacks rule: once a candidate can be seen as chosen, it is chosen, everywhere, forever.
+> **No-Decoherence**: The no-takebacks rule: once a candidate can be seen as chosen, no other candidate can ever be chosen by anyone, ever.
 >
-> **Fault Tolerance**: The algorithm works even if a some nodes crash.
+> **Fault Tolerance**: The algorithm continues to work even if a some nodes go offline.
 
 ## Replication vs Consensus
 

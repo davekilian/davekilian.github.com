@@ -69,9 +69,9 @@ The no-decoherence property implies some node needs to make a local decision tha
 
 Finally, if we want our system to be highly-available, we're going to need **fault tolerance**. Sometimes computers will crash due to faulty hardware or software; sometimes they'll be unreachable due to network problems; sometimes we'll take them offline on purpose so we can upgrade software! For the system to remain working even when individual computers aren't, we need a consensus algorithm that works even when some computers are offline.
 
-TODO when we talk about fault tolerance, we ask how many nodes can crash and consider the worst case. For example, a system with a single special node that must not crash but many non-special nodes that can crash is not considered fault-tolerant, because it cannot withstand even 1 worst-case crash; if that special node goes down we're toast.
+Talking about fault tolerance can be a little tricky. Usually we talk about fault tolerance by counting how many crashes a system can tolerate *in the worst case*.
 
-TODO don't worry about byzantine, saddest moment
+For example, say we had a system can tolerate the crash of any node except for one 'special' node which, if it went offline, would cause the whole system to stop making progress. We would say this system is not fault tolerant, because it cannot tolerate even one crash in the worst case: namely, if that one crash affected the 'special' node. It doesn't matter how many non-special nodes are allowed to crash, because we consider the worst case!
 
 ### Recap
 

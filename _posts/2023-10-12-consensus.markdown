@@ -45,13 +45,21 @@ Unfortunately for me, the author, there isn't a well-accepted set of properties 
 
 First, let's cover the basic correctness condition. The point of a consensus algorithm is to keep computers in sync; so at the end of the algorithm, all computers that participted should have the same state. Just to have a name, let's call this **coherence**.
 
-What else?
+What else? I think we're also going to need a **conflict resolution** mechanism. For example, what if two people try to update the same key of our key-value store? What if two nodes try to obtain the same lock using our distributed lock service? We need to choose one, and only one correct answer. Thus we need a way to resolve ambiguity.
 
+However, we don't need to say *how* conflicts are resolved. It's perfectly fine if the consensus algorithm picks an arbitrary candidate &mdash; as long as it picks one, and only one, candidate.
 
+There's a subtle but important problem buried within the realm of conflict resolution. It's not just enough to *eventually* resolve the conflict; we need a strict no-takebacks rule. As soon as it is possible for any node in the network to 'see' that a candidate value has been chosen, that has to be the candidate value we end up with. As such, the conflict resolution mechanism needs to be a point of no return; the system as a whole has to transition from "undecided" to "decided" in a single step and never go backward after that.
 
+Think of the chaos that would ensue if we didn't have this! TODO
 
+TODO of course, it's fine for other nodes to asynchronously discover that a decision has been made. The omniscient observer.
 
+Finally, if we want our system to be highly-available, we're going to need **fault tolerance**. Sometimes computers will crash due to faulty hardware or software; sometimes they'll be unreachable due to network problems; sometimes we'll take them offline on purpose so we can upgrade software! For the system to remain working even when individual computers aren't, we need a consensus algorithm that works even when some computers are offline.
 
+TODO when we talk about fault tolerance, we ask how many nodes can crash and consider the worst case. For example, a system with a single special node that must not crash but many non-special nodes that can crash is not considered fault-tolerant, because it cannot withstand even 1 worst-case crash; if that special node goes down we're toast.
+
+TODO byzantine, saddest moment
 
 To recap:
 

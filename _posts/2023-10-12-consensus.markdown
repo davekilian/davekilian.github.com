@@ -63,7 +63,15 @@ To recap:
 >
 > **Fault Tolerance**: The algorithm works even if a reasonable number of nodes crash.
 
-With these requirements, we now know enough to say what's different between replication and consensus! Replication algorithms have no notion of conflict resolution; they don't need a conflict-resolution or no-decoherence property, it's fine to simply fail in the case any ambiguity is discovered.
+## Replication vs Consensus
 
-In practice, replication makes sense when you can structure a system so that one node is a "leader" and all other ndoes are "followers;" as long as every state change goes through the leader node, the leader node can *replicate* its state to followers unambiguously. Consensus is useful when you want to have multiple nodes changing the same state; that's when it's possible for state changes to conflict.
+With these requirements, we now know enough to say what's different between replication and consensus! The key difference is replication algorithms don't support ambiguity and cannot resolve conflicts. Replication algorithms only have support situations where it's possible to unambiguously copy state from one computer to another, and if ambiguity *is* discovered along the way, that's unexpected, so the algorithm is allowed to fail and a human will then need to intervene.
+
+Replication makes sense when you can structure a system so that one node is a "leader" and all other node are "followers;" as long as every state change goes through the leader node, the leader node can *replicate* its state to followers unambiguously. Consensus is useful when you want to have multiple nodes changing the same state; that's when it's possible for state changes to conflict.
+
+Replication algorithms are often simpler and faster than consensus algorithms, but there's an important catch: replication alone cannot be fault tolerant. If the leader crashes, the followers can't make progress without it. Thus, in practice, replication is often paired with consensus: an efficient replication algorithm is used while the leader is online and working; if the leader crashes, followers use a consensus algorithm to pick some other node to promote to leader. Once the new leader is chosen, replication can resume.
+
+## A First Stab at Consensus
+
+
 

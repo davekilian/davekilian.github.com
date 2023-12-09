@@ -84,7 +84,7 @@ This might seem obvious right now, but it'll be important to keep this in mind w
 
 ### Fault Tolerance
 
-Finally, if we want our system to be highly-available, we're going to need **fault tolerance**. Sometimes computers will crash due to faulty hardware or software; sometimes they'll be unreachable due to network problems; sometimes we'll take them offline on purpose so we can upgrade software! For the system to remain working even when individual computers aren't, we need a consensus algorithm that works even when some computers are offline.
+Finally, as we talked about earlier, we're going to need **fault tolerance**. Sometimes computers will crash due to faulty hardware or software; sometimes they'll be unreachable due to network problems; sometimes we'll take them offline on purpose so we can upgrade software! For the system to remain working even when individual computers aren't, we need a consensus algorithm that works even when we have hardware and software that isn't working.
 
 Talking about fault tolerance can be a little tricky. Usually we talk about fault tolerance by counting how many crashes a system can tolerate *in the worst case*.
 
@@ -96,9 +96,9 @@ As we continue our discussion, keep these properties in the back of your mind:
 
 > **Coherence**: Every computer ends up with the same state
 >
-> **Conflict Resolution**: When multiple candidate states are possible, the algorithm picks one; it is not an error to have multiple candidates.
+> **Conflict Resolution**: When there are multiple proposals, the algorithm picks one arbitrarily; it is not an error to have multiple proposals.
 >
-> **No Decoherence**: The no-takebacks rule: as soon as even one node can see a candidate was chosen, no other candidate can ever be chosen by anyone, ever.
+> **No Decoherence**: The no-takebacks rule: as soon as even one node can see a proposal was chosen, no other proposal can ever be seen as chosen by anyone, ever.
 >
 > **Fault Tolerance**: The algorithm continues to work even if a some nodes go offline.
 

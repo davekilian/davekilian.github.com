@@ -43,31 +43,44 @@ Let's take a pause here and think about a few examples of problems that can be s
 
 ## Properties of a Consensus Algorithm
 
-Now let's gather some requirements; given the kinds of things we want to use a consensus algorithm for, what does the algorithm need to be able to do?
+Now that we have an idea of when we'd want to use a consensus algorithm, let's draw up some requirements: what do we need the algorithm to be able to do for us?
 
-Unfortunately for me, the author, there isn't a well-accepted set of properties a consensus algorithm needs to provide that I can just rattle off here. Database people can just say they want transaction to be *atomic, consistent, isolated, durable* and assume the reader has already been filled in on what those mean; there is no analog to ACID for consensus, we generally just kind of assume the reader already gets what the algorithm is supposed to do. So let's draw up a set of requirements on our own.
+Unfortunately for me, the author, there isn't a well-accepted set of consensus properties I can just rattle off here. Database people have ACID (*atomic, consistent, isolated, durable*); there's no catchy acronym for consensus algorithms, so I'm just going to have to wing it here. Of course, we shouldn't let that stop us from coming up with big fancy words to name our properties! Big words are useful for sounding smart and intimidating people.
 
 ### Coherence
 
-First, let's cover the basic correctness condition. The point of a consensus algorithm is to keep computers in sync; so at the end of the algorithm, all computers that participted should have the same state. Just to have a name, let's call this the **coherence** property.
+First, let's cover the basic correctness condition. The point of a consensus algorithm is to keep computers in sync; so at the end of the algorithm, all computers that participted should have the same state. Let's call this most basic requirement the **coherence** property.
 
 ### Conflict Resolution
 
-What else? I think we're also going to need a **conflict resolution** property too. What if two people try to update the same key of our key-value store? What if two nodes try to obtain the same lock using our distributed lock service? We need to choose one and only one correct answer. We need a way to resolve concurrent updates that conflict with one another.
+What else? I think we're also going to need a **conflict resolution** property. What if two people try to update the same key of our key-value store? What if two nodes try to obtain the same lock using our distributed lock service? We need to choose one and only one correct answer. We need a way to resolve concurrent updates that conflict with one another.
 
-Luckily, we don't need to say *how* conflicts are resolved. It's perfectly fine if the consensus algorithm picks an arbitrary candidate &mdash; an arbitrary key-value update which is accepted by the store, or an arbitrary node to obtain the lock first. Users of the consensus algorithm will *propose* an update to be made, and the consensus algorithm will then tell the user later whether the update was accepted, or rejected in favor of a different update.
+However, it should be fine to resolve conflicts arbitrarily. For example, if two nodes try to grab the same lock, the consensus algorithm can grant the lock to either node; as long as either node gets the lock, we're good. We don't need to support custom conflict-resolution logic.
 
-This might be obvious but it's worth saying: conflict-resolution does not give the consensus algorithm complete freedom to choose the final agreed-upon value. If one node proposes final state $A$ and another proposed final state $B$, the algorithm has to pick $A$ or $B$; it doesn't get just pick $C$!
+The need for the algorithm to resolve conflicts implies our consensus implementation needs to provide two core functions:
+
+* **propose()**: call to offer the consensus system a value you'd like to change the state to
+* **query()**: figure out what the final chosen value was
+
+For example, to implement the lock server, you could let the shared state be the ID of the node which owns the lock &mdash; call this `owner`. Then, to try and acquire the lock, you'd **propose** `owner` be set to your own ID, and then you'd **query** `owner` to see which node actually obtained the lock. If it's you, then you have the lock; if it's some other node's ID, you don't have it!
+
+```
+// returns true if this node acquired the lock, false otherwise
+try acquire distributed lock() {
+  consensus.propose(owner=me)
+  return consensus.query(owner) == me
+}
+```
 
 ### No Decoherence
 
 One subtle aspect of conflict resolution is so important, I want to make it its own property:
 
-It's not just enough to *eventually* resolve a conflict, we need a strict no-takebacks rule! As soon as it is possible for any node to 'see' that a candidate value has been chosen, the algorithm *must* stay with that value forever. In other words, conflict resolution must involve a point of no return; the system as a whole must transition from "undecided" to "decided" in a single step and never go back. I'll call this the **no-decoherence** property.
+When resolving a conflict, we need a strict no-takebacks rule! As soon as it is possible for any  **query** call to return a value, the algorithm *must* stay with that value forever. In other words, conflict resolution must involve a point of no return; the system as a whole must transition from "undecided" to "decided" in a single step and never go back. I'll call this the **no-decoherence** property.
 
-Think of the chaos that would ensue if we didn't have this! If the consensus system can change its mind at any time, how would you know when it's done? Would it ever be safe to make a decision based on what the consensus algorithm told you? If the lock server said you have the lock, what good is that to you if the lock server can change its mind and say "actually no, you *don't* have the lock" at any time in the future? At some point you have to call it and be done!
+Think of the chaos that would ensue if we didn't have this! Take a look at the try-acquire-distributed-lock snippet above; what if the consensus algorithm temporarily returns `me` for the value of `owner` but then changes its mind later? This node will think it has the lock, even though it actually doesn't! A consensus algorithm that changes its mind would not be very useful. We need to be sure that our consensus algorithm never goes back on its word.
 
-The no-decoherence property implies some node needs to make a local decision that globally resolves all conflicts at some point during the algorithm, but that doesn't mean every node has to find out about the decision right away. It's fine for some nodes to know about the decision right now and for others to only find out about it later, so long as the nodes that know about the decision right now can be certain nothing can alter the decision.
+This might seem obvious right now, but it'll be important to keep this in mind when we start thinking about how to make consensus algorithms work. The no-decoherence property implies some node needs to make a local decision that *globally* resolves the conflict for the entire network; this is the point of no return mentioned above. However, it's fine if it takes some time afterward for everyone to figure out a decision has been reached; at a given point in time, maybe some nodes know a decision has been made while others think the network is still deciding. That's fine, as long as nobody ever thinks a different decision was reached.
 
 ### Fault Tolerance
 

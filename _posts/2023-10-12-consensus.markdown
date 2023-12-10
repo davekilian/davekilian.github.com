@@ -104,6 +104,46 @@ If many nodes call this simultaneously, only one node's proposal will be selecte
 
 ## First Stab at a Design
 
+To, recap, we want to build a consensus algorithm that runs on a network of computers, keeping some kind of shared state in sync. It provides two methods that can be called on any of those computers, any number of times concurrently:
+
+* **propose**: accepts a value the caller would like to write to the shared state
+* **query**: returns the current value of the shared state to the caller
+
+We want these methods to provide the following guarantees:
+
+* **coherence**: all computers see the same return value from query()
+* **conflict-resolution**: if there are multiple propose() calls, one of them is chosen arbitrarily to be the value the system coheres on
+* **no-decoherence**: if query() returns a particular value, you can safely assume all past and future calls to query() have/will return that value on every node
+* **fault-tolerance**: the algorithm works even if computers, networks and software fail
+
+To keep the problem scoped for now, we'll add a couple of simplifying assumptions:
+
+First, we'll initially assume we're trying to reach consensus on a single scalar variable, such as an int, bool, string, enum, etc. We won't tackle lists, maps, or other complex data structures for now. But we can probably figure out how to do that if the need ever arises.
+
+Second, we'll build a one-shot consensus primitive: once a proposed value has been chosen, it'll be impossible to ever change it again. This is probably too simple for real-world use cases; it would mean that a lock, once acquired, cannot be released, or a key-value pair, once written, cannot be overwritten. But once we have a one-shot consensus primitive, there are probably clever ways to upgrade it into a consensus primitive that supports overwrites
+
+These might be somewhat unrealistic design limitations, but as it turns out, it'll be plenty hard to build one-shot consensus over a single variable as it is!
+
+## Leader-Based Consensus
+
+
+
+
+
+
+
+
+
+
+
+## The Majority-Rules Voting Algorithm
+
+
+
+---
+
+Old content from before I decided to set up leader-based first. This should be reworked to incorporate the learning that a design must be symmetric peer-to-peer:
+
 Now we know what to build, so let's get right down to it. How will we make this work?
 
 Start by considering: in real life, when you and a group of other people  need to reach an agreement but you don't already agree to begin with, what do you do? Say you're with a group of friends, and you all know you want to eat at a restaurant for lunch, but you don't know where you want to go. How do you make a group decision?
@@ -112,7 +152,5 @@ Well, it probably goes something like this: someone throws out a proposal for a 
 
 Do you think we could make a majority-rules voting algorithm to implement consensus? Let's try it out!
 
-## The Majority-Rules Voting Algorithm
-
-
+---
 

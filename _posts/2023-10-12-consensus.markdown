@@ -61,83 +61,9 @@ For our purposes, it should be fine to resolve conflicts by picking one of the u
 
 One aspect of conflict resolution is so important, I want to call it out as its own property: we need a no-takebacks rule!
 
-Before a consensus algorithm runs, we might have multiple proposed values that could end up being the one we pick; the state of the system is as-yet undecided. By the end of the algorithm, the conflict should have been resolved; at that point the state of the system is now decided. At some point, the system as a whole must transition from 'undeecided' to 'decided''. The instant this happens, the final value *must* be locked-in &mdash; we must ensure it's impossible to go back to the undecided state, or decide something else!
+Before a consensus algorithm runs, we might have multiple proposed values that could end up being the one we pick; the state of the system is as-yet undecided. By the end of the algorithm, the conflict should have been resolved; at that point the state of the system is now decided. At some point, the system as a whole must transition from 'undecided' to 'decided''. The instant it becomes possible for a nycaller to tell that the system has decided on a particular value, that value must be locked in permanently &mdash; the algorithm must never go back and change its mind! I'll call this property **no-decoherence**.
 
-Think of the chaos that would ensue if we didn't give callers this guarantee! TODO
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-One subtle aspect of conflict resolution is so important, I want to call it out as a separate property: we need a no-takebacks rule!
-
-
-
-
-
-
-
-
-
-
-
-Once we tell a caller that all conflicts have been resolved and a given value has been chosen, it's important that the consensus algorithm not be able to change its mind afterward. Think of the pandemonium that would ensue if we didn't guarantee this: the consensus system could tell a node that it acquired the lock, but then end up giving the lock to some other node &mdash; now two nodes both think they have the lock! That would be no good.
-
-The no-takebacks rule might seem obvious now that we're thinking about the external behavior of a consensus algorithm, but it'll be very important when we start thinking about how the algorithm works internally. 
-
-
-
-
-
-
-
-
-
-
-
----
-
-TODO I moved discussion of interfaces down, so this cannot refer to interfaces anymore
-
----
-
-
-
-
-
-
-
-When resolving a conflict, we need a strict no-takebacks rule! As soon as it is possible for any  **query** call to return a value, the algorithm *must* stay with that value forever. In other words, conflict resolution must involve a point of no return; the system as a whole must transition from "undecided" to "decided" in a single step and never go back. I'll call this the **no-decoherence** property.
-
-Think of the chaos that would ensue if we didn't have this! Take a look at the try-acquire-distributed-lock snippet above; what if the consensus algorithm temporarily returns `me` for the value of `owner` but then changes its mind later? This node will think it has the lock, even though it actually doesn't! A consensus algorithm that changes its mind would not be very useful. We need to be sure that our consensus algorithm never goes back on its word.
-
-This might seem obvious right now, but it'll be important to keep this in mind when we start thinking about how to make consensus algorithms work. The no-decoherence property implies some node needs to make a local decision that *globally* resolves the conflict for the entire network; this is the point of no return mentioned above. However, it's fine if it takes some time afterward for everyone to figure out a decision has been reached; at a given point in time, maybe some nodes know a decision has been made while others think the network is still deciding. That's fine, as long as nobody ever thinks a different decision was reached.
+Think of the chaos that would ensue if we didn't provide this guarantee! Key-value updates would appear to be accepted, but then disappear; nodes would think they had grabbed locks, but then lose them unknowingly. 
 
 ### Fault Tolerance
 

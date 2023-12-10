@@ -122,15 +122,86 @@ First, we'll initially assume we're trying to reach consensus on a single scalar
 
 Second, we'll build a one-shot consensus primitive: once a proposed value has been chosen, it'll be impossible to ever change it again. This is probably too simple for real-world use cases; it would mean that a lock, once acquired, cannot be released, or a key-value pair, once written, cannot be overwritten. But once we have a one-shot consensus primitive, there are probably clever ways to upgrade it into a consensus primitive that supports overwrites
 
-These might be somewhat unrealistic design limitations, but as it turns out, it'll be plenty hard to build one-shot consensus over a single variable as it is!
+These might be somewhat unrealistic design limitations, but as it turns out, it'll be plenty hard to build one-shot consensus over a single variable anyways! That makes is a good place to start.
 
-## Leader-Based Consensus
+## A Leader-Based Algorithm
+
+To get us started, let me propose a basic design:
+
+Given a network of computers, we pick one of the nodes in the network and designate it the **leader**. Maybe a human sets a config option on all nodes in the network so they know which node is the leader. We then make the leader the center of all activity: it receives all proposals, decides which one to accept, and fields requests to get the currently accepted proposal. 
+
+The network looks kind of like this:
+
+[diagram]
+
+The client in this system is extremely simple; it just forwards all requests to the leader:
+
+```
+consensus {
+  leader: Node; // configured by human
+  
+  propose(proposal) {
+    leader.send_proposal(proposal)
+  }
+  
+  query() {
+    return leader.request_current_value()
+  }
+}
+```
+
+The leader is a bit more complex, but not much. It just remembers the first proposal received by any client, and returns that proposal upon client request:
+
+```
+leader {
+  value: Proposal; // the accepted proposal
+  
+  init {
+    value := null // no accepted proposal yet
+  }
+  
+  on client proposal {
+    // accept the first proposal, ignore others
+    if (value == null) {
+      value := proposal
+    }
+  }
+  
+  on client query {
+    // return the current value
+    client.respond(value)
+  }
+}
+```
+
+In other words, the whole network is reading and writing a single variable on the leader node.
+
+Is this a valid consensus algorithm? Let's check:
+
+* **coherence**: ✅ &mdash; query either returns null (meaning consensus has not yet been reached) or the value of the first client proposal the leader accepted; nothing else
+* **conflict resolution**: ✅ &mdash; if multiple clients make proposals, the leader only picks one of them (namely, the first one received)
+* **no-decoherence**: ✅ &mdash; the leader refuses to change the accepted proposal once it has been initialized the first time
+* **fault-tolerance**: hmm ... is this fault-tolerant?
 
 
 
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+## Leader Election is a Consensus Problem
+
+TODO
 
 
 

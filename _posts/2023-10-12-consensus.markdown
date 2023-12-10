@@ -7,7 +7,7 @@ draft: true
 
 If you ask some rando off the street, "Hey, what are some foundational problems in the field of distributed systems?" they'd probably say something like, "What? Who are you? Get away from me!" Others might suggest the problem of *distributed consensus* &mdash; the problem you solve with fancy algorithms like Raft and Paxos.
 
-This is a discussion of how those algorithms work. It's no-holds-barred: we won't handwave or rely on tenuous metaphors. And we'll avoid jargon; what little we need, we'll define along the way. All you need is enough experience to pass an undergrad data structures and algorithms class, and have a basic understanding of computer networks. By the end, you'll have a pretty good feel for how the core Paxos algorithm works.
+This is a discussion of how those algorithms work. It's no-holds-barred: we won't handwave or rely on tenuous metaphors. And we'll avoid jargon; what little we need, we'll define along the way. All you need is enough experience to pass an undergrad data structures and algorithms class, and have a basic understanding of computer networks. We'll end up 'discovering' the core Paxos algorithm by the end.
 
 ## What is Consensus?
 
@@ -17,7 +17,7 @@ Sound simple? It's actually pretty tricky! Networks aren't reliable: transmissio
 
 That's what makes consensus algorithms so difficult to design, yet so valuable to anyone running a distributed system: they can keep state in sync across a network of computers even in the face of these kinds of problems. In polite company, we call these kinds of problems **faults**, and we say consensus algorithms that deal with them as being **fault-tolerant**.
 
-I don't think it's overreaching to say fault-tolerant consensus is foundational to distributed system. Without consensus, all you have is a big pile of computers that users can connect to; if you want users to see your service as a cohesive whole, you need some way to keep state in sync across the computers as users interact with your service. We call the algorithms that do that *consensus algorithms*.
+I don't think it's overreaching to say fault-tolerant consensus is foundational to distributed system. Without consensus, all you have is a big pile of computers that users can connect to; if you want users to see your service as a cohesive whole, you need some way to keep state in sync across the computers as users interact with your service. You need consensus!
 
 There is a related class of *replication* algorithms, which also keep state in sync across a network of computers. The difference between a replication algorithm and a consensus algorithm is subtle, but important, and it's the first major topic we're going to nail down today.
 
@@ -39,31 +39,41 @@ Let's take a pause here and think about a few examples of problems that can be s
 
 ## Properties of a Consensus Algorithm
 
-Now that we have an idea of when we'd want to use a consensus algorithm, let's draw up some requirements: what do we need the algorithm to be able to do for us?
+Next let's think about what consensus algorithms need to do.
 
-Unfortunately for me, the author, there isn't a well-accepted set of consensus properties I can just rattle off here. Database people have ACID (*atomic, consistent, isolated, durable*); there's no catchy acronym for consensus algorithms, so I'm just going to have to wing it here. Of course, we shouldn't let that stop us from coming up with big fancy words to name our properties! Big words are useful for sounding super smart and intimidating people.
+Unfortunately for me, the author, there isn't a well-accepted set of consensus properties I can just rattle off here. Whereas database people have ACID (*atomic, consistent, isolated, durable*), we don't have a catchy acronym or a widely accepted set of required properties. We're going to have to wing it! Of course, we should still come up with big fancy words to name our ideas; big words are useful tools for sounding super smart and intimidating people.
 
 ### Coherence
 
-First, let's cover the basic correctness condition. The point of a consensus algorithm is to keep computers in sync; so at the end of the algorithm, all computers that participted should have the same state. Let's call this most basic requirement the **coherence** property.
+First, let's cover the basic correctness condition. The point of a consensus algorithm is to keep computers in sync; so at the end of the algorithm, all computers that participted had better end up with same state! Let's call this most basic requirement the **coherence** property.
 
 ### Conflict Resolution
 
-What else? I think we're also going to need a **conflict resolution** property. What if two people try to update the same key of our key-value store? What if two nodes try to obtain the same lock using our distributed lock service? We need to choose one and only one correct answer. We need a way to resolve concurrent updates that conflict with one another.
+What else? Another core feature we'll need is **conflict resolution**. What if two people try to update the same key of our key-value store? What if two nodes try to obtain the same lock using our distributed lock service? We need to choose one and only one correct answer. We need a way to resolve concurrent updates that conflict with one another.
 
-For our purposes, it should be fine to resolve conflicts by picking one of the updates arbitrarily. For example, if two nodes using our key-value store try to update the same key at the same time, we'll arbitrarily pick one to keep and reject the other. As long as we pick somebody's proposal (and not something else), we should be good here.
+At least for our purposes, it should be fine to resolve conflicts arbitrarily; as long as the algorithm decides on one of the proposed updates, it doesn't matter which one it chooses.
 
 ### No Decoherence
 
-One aspect of conflict resolution is so important, I want to call it out as its own property: we need a no-takebacks rule!
+So far, we know the algorithm needs to resolve potential conflicts and enter a state of 'coherence' in which every machine knows what final value the system decided on. On top of this, we need to add another constraint: once the system has entered this coherence state, it must never leave it &mdash; not in 3 years from now, nor 3 nanoseconds from now. We'll call this the **no-decoherence** property.
 
-Before a consensus algorithm runs, we might have multiple proposed values that could end up being the one we pick; the state of the system is as-yet undecided. By the end of the algorithm, the conflict should have been resolved; at that point the state of the system is now decided. At some point, the system as a whole must transition from 'undecided' to 'decided''. The instant it becomes possible for a nycaller to tell that the system has decided on a particular value, that value must be locked in permanently &mdash; the algorithm must never go back and change its mind! I'll call this property **no-decoherence**.
+Think of the chaos that would ensue if we didn't have this! Someone using our consensus-based lock service could see they have the lock and move on, unaware that the system then changed its mind later on and gave the lock to someone else. Then two nodes could think they both have the lock at the same time!
 
-Think of the chaos that would ensue if we didn't provide this guarantee! Key-value updates would appear to be accepted, but then disappear; nodes would think they had grabbed locks, but then lose them unknowingly. 
+The no-decoherence requirement might seem obvious right now, but once we move on to designing consensus algorithms, it'll turn out to be quite tricky to guarantee this property is always held!
 
 ### Fault Tolerance
 
 Finally, as we talked about earlier, we're going to need **fault tolerance** &mdash; the algorithm should work even if individual computers or parts of the network are having problems.
+
+
+
+
+
+
+
+
+
+
 
 This raises an important question: what, exactly, is a fault?
 

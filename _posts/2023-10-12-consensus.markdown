@@ -45,7 +45,7 @@ Let's take a pause here and think about a few examples of problems that can be s
 
 Now that we have an idea of when we'd want to use a consensus algorithm, let's draw up some requirements: what do we need the algorithm to be able to do for us?
 
-Unfortunately for me, the author, there isn't a well-accepted set of consensus properties I can just rattle off here. Database people have ACID (*atomic, consistent, isolated, durable*); there's no catchy acronym for consensus algorithms, so I'm just going to have to wing it here. Of course, we shouldn't let that stop us from coming up with big fancy words to name our properties! Big words are useful for sounding smart and intimidating people.
+Unfortunately for me, the author, there isn't a well-accepted set of consensus properties I can just rattle off here. Database people have ACID (*atomic, consistent, isolated, durable*); there's no catchy acronym for consensus algorithms, so I'm just going to have to wing it here. Of course, we shouldn't let that stop us from coming up with big fancy words to name our properties! Big words are useful for sounding super smart and intimidating people.
 
 ### Coherence
 
@@ -55,26 +55,83 @@ First, let's cover the basic correctness condition. The point of a consensus alg
 
 What else? I think we're also going to need a **conflict resolution** property. What if two people try to update the same key of our key-value store? What if two nodes try to obtain the same lock using our distributed lock service? We need to choose one and only one correct answer. We need a way to resolve concurrent updates that conflict with one another.
 
-However, it should be fine to resolve conflicts arbitrarily. For example, if two nodes try to grab the same lock, the consensus algorithm can grant the lock to either node; as long as either node gets the lock, we're good. We don't need to support custom conflict-resolution logic.
-
-The need for the algorithm to resolve conflicts implies our consensus implementation needs to provide two core functions:
-
-* **propose()**: call to offer the consensus system a value you'd like to change the state to
-* **query()**: figure out what the final chosen value was
-
-For example, to implement the lock server, you could let the shared state be the ID of the node which owns the lock &mdash; call this `owner`. Then, to try and acquire the lock, you'd **propose** `owner` be set to your own ID, and then you'd **query** `owner` to see which node actually obtained the lock. If it's you, then you have the lock; if it's some other node's ID, you don't have it!
-
-```
-// returns true if this node acquired the lock, false otherwise
-try acquire distributed lock() {
-  consensus.propose(owner=me)
-  return consensus.query(owner) == me
-}
-```
+For our purposes, it should be fine to resolve conflicts by picking one of the updates arbitrarily. For example, if two nodes using our key-value store try to update the same key at the same time, we'll arbitrarily pick one to keep and reject the other. As long as we pick somebody's proposal (and not something else), we should be good here.
 
 ### No Decoherence
 
-One subtle aspect of conflict resolution is so important, I want to make it its own property:
+One aspect of conflict resolution is so important, I want to call it out as its own property: we need a no-takebacks rule!
+
+Before a consensus algorithm runs, we might have multiple proposed values that could end up being the one we pick; the state of the system is as-yet undecided. By the end of the algorithm, the conflict should have been resolved; at that point the state of the system is now decided. At some point, the system as a whole must transition from 'undeecided' to 'decided''. The instant this happens, the final value *must* be locked-in &mdash; we must ensure it's impossible to go back to the undecided state, or decide something else!
+
+Think of the chaos that would ensue if we didn't give callers this guarantee! TODO
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+One subtle aspect of conflict resolution is so important, I want to call it out as a separate property: we need a no-takebacks rule!
+
+
+
+
+
+
+
+
+
+
+
+Once we tell a caller that all conflicts have been resolved and a given value has been chosen, it's important that the consensus algorithm not be able to change its mind afterward. Think of the pandemonium that would ensue if we didn't guarantee this: the consensus system could tell a node that it acquired the lock, but then end up giving the lock to some other node &mdash; now two nodes both think they have the lock! That would be no good.
+
+The no-takebacks rule might seem obvious now that we're thinking about the external behavior of a consensus algorithm, but it'll be very important when we start thinking about how the algorithm works internally. 
+
+
+
+
+
+
+
+
+
+
+
+---
+
+TODO I moved discussion of interfaces down, so this cannot refer to interfaces anymore
+
+---
+
+
+
+
+
+
 
 When resolving a conflict, we need a strict no-takebacks rule! As soon as it is possible for any  **query** call to return a value, the algorithm *must* stay with that value forever. In other words, conflict resolution must involve a point of no return; the system as a whole must transition from "undecided" to "decided" in a single step and never go back. I'll call this the **no-decoherence** property.
 
@@ -84,7 +141,17 @@ This might seem obvious right now, but it'll be important to keep this in mind w
 
 ### Fault Tolerance
 
-Finally, as we talked about earlier, we're going to need **fault tolerance**. Sometimes computers will crash due to faulty hardware or software; sometimes they'll be unreachable due to network problems; sometimes we'll take them offline on purpose so we can upgrade software! For the system to remain working even when individual computers aren't, we need a consensus algorithm that works even when we have hardware and software that isn't working.
+Finally, as we talked about earlier, we're going to need **fault tolerance** &mdash; the algorithm should work even if individual computers or parts of the network are having problems.
+
+This raises an important question: what, exactly, is a fault?
+
+---
+
+TODO rework the below into the above. Name all sorts of faults and draw equivalence to a machine crash, where a crash just means 'the machine is not running right now.'
+
+---
+
+Sometimes computers will crash due to faulty hardware or software; sometimes they'll be unreachable due to network problems; sometimes we'll take them offline on purpose so we can upgrade software! For the system to remain working even when individual computers aren't, we need a consensus algorithm that works even when we have hardware and software that isn't working.
 
 Talking about fault tolerance can be a little tricky. Usually we talk about fault tolerance by counting how many crashes a system can tolerate *in the worst case*.
 
@@ -109,6 +176,25 @@ With these requirements, we now know enough to say what's different between repl
 Replication makes sense when you can structure a system so that one node is a "leader" and all other node are "followers;" as long as every state change goes through the leader node, the leader node can *replicate* its state to followers unambiguously. Consensus is useful when you want to have multiple nodes changing the same state; that's when it's possible for state changes to conflict.
 
 Replication algorithms are often simpler and faster than consensus algorithms, but there's an important catch: replication alone cannot be fault tolerant. If the leader crashes, the followers can't make progress without it. Thus, in practice, replication is often paired with consensus: an efficient replication algorithm is used while the leader is online and working; if the leader crashes, followers use a consensus algorithm to pick some other node to promote to leader. Once the new leader is chosen, replication can resume.
+
+## A Programming Interface
+
+That a consensus algorithm needs to support resolving suggests a way to structure the interface callers use to call our consensus algorithm. We can give callers two functions:
+
+* **propose()**: offers the consensus system a value you'd like to change the state to
+* **query()**: ask the consensus system what value the state actually was changed to
+
+Then anyone who wants to update the shared state first calls **propose** with the desired final value, followed by **query** to see what actually happens. The consensus system guarantees every **query** call returns the same value.
+
+For example, we could use this interface to implement the lock server by letting the shared state be the unique ID of the node which currently owns the lock; call this variable the `owner`. Then to try acquiring the lock, a node calls **propose** on `owner` with its own ID, then **query** to see who actually got the lock:
+
+```
+// returns true if this node got the lock, false otherwise
+try acquire lock() {
+  consensus.propose(owner=me)
+  return consensus.query(owner) == me
+}
+```
 
 ## A First Stab at Consensus
 

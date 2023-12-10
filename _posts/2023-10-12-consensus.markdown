@@ -5,25 +5,21 @@ author: Dave
 draft: true
 ---
 
-If you ask some rando off the street, "Hey, what are some foundational problems in the field of distributed systems?" they'd probably say something like, "What? Who are you? Get away from me!" Others might suggest the problem of *distributed consensus* &mdash; the problem you solve with fancy algorithms like Raft and Paxos.
-
-This is a discussion of how those algorithms work. It's no-holds-barred: we won't handwave or rely on tenuous metaphors. And we'll avoid jargon; what little we need, we'll define along the way. All you need is enough experience to pass an undergrad data structures and algorithms class, and have a basic understanding of computer networks. We'll end up 'discovering' the core Paxos algorithm by the end.
+If you ask some rando off the street, "Hey, what are some foundational problems in the field of distributed systems?" they'd probably say something like, "What? Who are you? Get away from me!" Others might suggest the problem of *distributed consensus* &mdash; the problem you solve with fancy algorithms like Raft and Paxos. Let's talk about how they work!
 
 ## What is Consensus?
 
 A consensus algorithm is a protocol for keeping a network of computers in sync.
 
-Sound simple? It's actually pretty tricky! Networks aren't reliable: transmissions can be lost before reaching their destinations. Computer hardware fails; software crashes. With the computer you use day to day, these problem happens rarely enough that it's not a big problem in your life. But what if you had not just one computer, but 1,000, or 10,000, or a million? What are the odds *none* of your computers are having a problem right now? At some point,  it makes sense to stop asking *whether* you're having one of these problems, and start asking *how many* you have right now. These things become a fact of life, for you and your code.
+Sound simple? It's actually pretty tricky! Networks aren't reliable: messages can be lost before they get to where they're going. Computer hardware fails; software crashes. With the computer you use day to day, these problems probably don't happen enough to be a big deal in your life. But what if you were managing a 1,000 computers just like yours? Or 10,000, or a million? On any given day, what are the odds *none* of them is having a problem? At some point, you have to stop asking *whether* you're having problems, and start asking how many! Problems with the underlying platform become a fact of life, for you and your code.
 
-That's what makes consensus algorithms so difficult to design, yet so valuable to anyone running a distributed system: they can keep state in sync across a network of computers even in the face of these kinds of problems. In polite company, we call these kinds of problems **faults**, and we say consensus algorithms that deal with them as being **fault-tolerant**.
+Consensus algorithms keep computers in sync reliably, despite the unreliability of the infrastructure they run out. That's what makes them useful, yet so hard to design!
 
 I don't think it's overreaching to say fault-tolerant consensus is foundational to distributed system. Without consensus, all you have is a big pile of computers that users can connect to; if you want users to see your service as a cohesive whole, you need some way to keep state in sync across the computers as users interact with your service. You need consensus!
 
-There is a related class of *replication* algorithms, which also keep state in sync across a network of computers. The difference between a replication algorithm and a consensus algorithm is subtle, but important, and it's the first major topic we're going to nail down today.
-
 ## Use Cases
 
-Let's take a pause here and think about a few examples of problems that can be solved using a consensus algorithm. This will be useful for deciding on requirements as well as for checking our solutions make sense in the bigger picture of real-world systems.
+Our goal in this guide is to create a working consensus algorithm. Before we jump into design, we need to decide on requirements: what does a consensus algorithm need to do? To answer *that* question, it'd be useful to come up with some real-world examples where one might use one of these consensus thingamajigs.
 
 ### Example 1: Key-Value Store
 
@@ -39,9 +35,9 @@ Let's take a pause here and think about a few examples of problems that can be s
 
 ## Properties of a Consensus Algorithm
 
-Next let's think about what consensus algorithms need to do.
+Now let's think about our examples: what do they rely on the consensus algorithm to do?
 
-Unfortunately for me, the author, there isn't a well-accepted set of consensus properties I can just rattle off here. Whereas database people have ACID (*atomic, consistent, isolated, durable*), we don't have a catchy acronym or a widely accepted set of required properties. We're going to have to wing it! Of course, we should still come up with big fancy words to name our ideas; big words are useful tools for sounding super smart and intimidating people.
+Unfortunately for us, there isn't a well-accepted set of consensus properties we can rattle off here. Whereas database people have ACID (*atomic, consistent, isolated, durable*), there's no catchy acronym for consensus algorithms. We're going to have to wing it! Of course, we should still come up with big fancy words to name our ideas; big words are useful tools for sounding super smart and intimidating people into thinking we must be right.
 
 ### Coherence
 
@@ -55,45 +51,31 @@ At least for our purposes, it should be fine to resolve conflicts arbitrarily; a
 
 ### No Decoherence
 
-So far, we've decided a consensus algorithm must consider multiple proposals, pick one, and then reach a state of 'coherence' in which everyone knows what proposal was picked. We need to add another constraint on how this happens: once the consensus system enters a coherence state, it must never leave it &mdash; not in 3 years from now, nor 3 nanoseconds from now. We'll call this the **no-decoherence** property.
+Another observation: resolving conflicts alone isn't enough. We need to add a constraint: the algorithm needs to make a decision once and for all, and never go back on it.
 
-Think of the chaos that would ensue if we allowed for decoherence! Someone using our consensus-based lock service could see they have the lock and move on, not knowing the system was only in a temporary state of coherence. Then, if the re-enters coherence with a different node owning the lock, boom &mdash; you have two nodes that both think they hold the lock at the same time! Not a very useful lock, eh?
+People are going to use consensus to make decisions, e.g. to decide whether or not a key-value overwrite was successful, a node is in a cluster, a thread obtained a lock, etc. A consensus algorithm that can report one decision, but then change it's mind later, would be useless! You wouldn't be able to make any hard decisions. For example, if consensus says you got a lock, but it can change its mind and take away your lock at any time, what good is your lock?
 
-The no-decoherence requirement might seem obvious now, but it'll be very top-of-mind once we're designing consensus algorithms. It's an easy property to violate accidentally!
+We need to ensure once a decision is (or can be) communicated to a client, the decision is final; it cannot be changed 3 years from now or 3 nanoseconds from now. Let's call this no-takebacks rule **no-decoherence**.
 
 ### Fault Tolerance
 
-Finally, as we talked about earlier, we're going to need **fault tolerance** &mdash; the algorithm should work even if individual computers or parts of the network are having problems. But let's be a bit more crisp: what kinds of problems (faults) should we tolerate?
+And finally, we know from earlier that problems like spotty networks, hardware failures and software crashes are a fact of life. These kinds of problems are called **faults**, and we our consensus algorithm should work despite them; it should be **fault-tolerant**.
 
-We'll use what's known as the **crash-recovery** model. When using this model, you assume each computer in the system is either fully online and working, or fully offline and doing nothing (crashed). Computers can crash at any time, but can also recover and come back online any time. Even though this model does not account for absolutely everything bad that can happen to computers in the real world, it's pretty comprehensive for being so simple: a wide variety of real-world faults really do like crashes, including power loss, network disconnects, downtime for upgrades and, of course, bona-fide software crashes.
-
-To be fault tolerant, then, is to guarantee the algorithm keeps working even when a certain number of computers in the network have crashed and have not yet recovered. One subtle point here is we consider the very worst case when counting how many crashes an algorithm can tolerate: for example, an algorithm that has one 'special' that's not allowed to crash, but does allow any other node to crash, we'd still say that algorithm is not fault tolerant. In the worst case, even one crashed node could halt the algorithm, because the one crashed node could be the special node.
-
-As we mentioned earlier, fault-tolerance is a hard requirement for a consensus algorithm to be practical. The fact is, a network can never be made 100% reliable, and so our software will have to deal with that.
+A good consensus algorithm should work despite hardware failures, software crashes, power loss, machines being taken down for upgrade, network disconnets, slow networks, and lost network messages. This should apply to every computer, every network connection, and every network message equally: e.g. it should be ok for *any* node to crash, or *any* network message to go missing, at any time.
 
 ### Recap
 
 As we continue our discussion, keep these properties in the back of your mind:
 
-> **Coherence**: Every computer ends up with the same state
+> **Coherence**: Every computer ends up with the same state.
 >
-> **Conflict Resolution**: When there are multiple proposals, the algorithm picks one arbitrarily; it is not an error to have multiple proposals.
+> **Conflict Resolution**: When there are multiple proposed states, the algorithm picks one arbitrarily; it is not an error to have multiple proposals.
 >
 > **No Decoherence**: The no-takebacks rule: as soon as even one node can see a proposal was chosen, no other proposal can ever be seen as chosen by anyone, ever.
 >
 > **Fault Tolerance**: The algorithm continues to work even if a some nodes crash.
 
-## Replication vs Consensus
-
-With these properties, we can now say what's different between replication and consensus!
-
-The key difference is that replication algorithms don't support conflicts. This makes them useful when state needs to be copied from one computer to another, without any ambiguity. If a replication algorithm discovers any ambiguity along the way, it's fine for it to error out and request manual intervention by a human. Consensus algorithms, on the other hand, anticipate conflits and resolve them.
-
-Replication is common in situations where a special node, often called the 'leader,' handles all updates, and copies those updates to one or more 'follower' nodes. The leader resolves all conflits internally; followers simply see a stream of upgrades. Consensus is useful when you instead want multiple leaders changing the same state; that's how you end up with conflicts.
-
-Although replication algorithms are less pwoerful than consensus in not being able to deal with conflicts, they're usually simpler and much faster. It's common to pair a single-leader multi-follower repliation algorithm with a consensus-based leader election algorithm to handle failovers in the event the leader crashes.
-
-For the rest of this post, we'll worry only about consensus algorithms.
+If designing an algorithm that checks all these boxes sounds easy, believe me, it's not! But if it sounds daunting, rest assured &mdash; it took a lot of smart people a very long time to find a solution, but they did fine one. This problem *can* be solved.
 
 ## A Programming Interface
 
@@ -126,7 +108,7 @@ Well, it probably goes something like this: someone throws out a proposal for a 
 
 Do you think we could make a majority-rules voting algorithm to implement consensus? Let's try it out!
 
-
+## The Majority-Rules Voting Algorithm
 
 
 

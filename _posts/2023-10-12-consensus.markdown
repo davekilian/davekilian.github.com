@@ -189,7 +189,9 @@ But maybe we can fix that by designing a failover algorithm: what if the leader 
 
 ## Leader Election is a Consensus Problem
 
-TODO
+That's right &mdash; your consensus algorithm cannot rely on leader election, because leader election is a problem that is solved by consensus.
+
+TODO kids are home
 
 
 

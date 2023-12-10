@@ -55,15 +55,27 @@ At least for our purposes, it should be fine to resolve conflicts arbitrarily; a
 
 ### No Decoherence
 
-So far, we know the algorithm needs to resolve potential conflicts and enter a state of 'coherence' in which every machine knows what final value the system decided on. On top of this, we need to add another constraint: once the system has entered this coherence state, it must never leave it &mdash; not in 3 years from now, nor 3 nanoseconds from now. We'll call this the **no-decoherence** property.
+So far, we've decided a consensus algorithm must consider multiple proposals, pick one, and then reach a state of 'coherence' in which everyone knows what proposal was picked. We need to add another constraint on how this happens: once the consensus system enters a coherence state, it must never leave it &mdash; not in 3 years from now, nor 3 nanoseconds from now. We'll call this the **no-decoherence** property.
 
-Think of the chaos that would ensue if we didn't have this! Someone using our consensus-based lock service could see they have the lock and move on, unaware that the system then changed its mind later on and gave the lock to someone else. Then two nodes could think they both have the lock at the same time!
+Think of the chaos that would ensue if we allowed for decoherence! Someone using our consensus-based lock service could see they have the lock and move on, not knowing the system was only in a temporary state of coherence. Then, if the re-enters coherence with a different node owning the lock, boom &mdash; you have two nodes that both think they hold the lock at the same time! Not a very useful lock, eh?
 
-The no-decoherence requirement might seem obvious right now, but once we move on to designing consensus algorithms, it'll turn out to be quite tricky to guarantee this property is always held!
+The no-decoherence requirement might seem obvious now, but it'll be very top-of-mind once we're designing consensus algorithms. It's an easy property to violate accidentally!
 
 ### Fault Tolerance
 
 Finally, as we talked about earlier, we're going to need **fault tolerance** &mdash; the algorithm should work even if individual computers or parts of the network are having problems.
+
+The tricky part of fault tolerance is deciding what counts as a fault, and what it means to be fault-tolerant.
+
+
+
+
+
+
+
+
+
+
 
 
 

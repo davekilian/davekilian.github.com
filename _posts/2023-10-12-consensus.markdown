@@ -75,20 +75,22 @@ As we continue our discussion, keep these properties in the back of your mind:
 >
 > **Fault Tolerance**: The algorithm continues to work even if a some nodes crash.
 
-If designing an algorithm that checks all these boxes sounds easy, believe me, it's not! But if it sounds daunting, rest assured &mdash; it took a lot of smart people a very long time to find a solution, but they did fine one. This problem *can* be solved.
+If designing an algorithm that checks all these boxes sounds easy, believe me, it's not! But if it sounds daunting, rest assured it is indeed possible. It took a lot of smart people a very long time to find a solution, but they did find one in the end. This problem is hard, but solvable.
 
 ## A Programming Interface
 
-Before we move on to the design phase, one last requirements-y thing we should do is decide what kind of programming interface a consensus system might provide to its users.
+Given what we now know aobut requirements, let's think about what kind of API we give applications who want to use the consensus algorithm we're about to invent. Maybe it'll tell us something important about how to structure our implementation.
 
-Given a consensus algorithm needs to collect proposals and resolve conflits between proposals, we probably want to split the interface into two methods:
+We said before that consensus algorithms collect proposals, choose one, and replicate it to everyone in the network. So we probably want to split our interface into two methods:
 
 * **propose()**: offers the consensus system a value you'd like to change the state to
 * **query()**: ask the consensus system what value the state actually was changed to
 
-Anyone who wants to update the shared state first calls **propose** with their desired final value, followed by **query** to see what actually happened. Anyone who just wants to know what the shared state is (without changing it) skips the **propose** step and just calls **query**. The consensus system guarantees every **query** call returns the same value.
+Code that wants to update the shared state first calls **propose** with the desired final state, followed by **query** to see what value was chosen. Code that just wants to read the shared state can skip **propose** and just call **query**. The consensus system guarantees every **query** call returns the same value, as required by the coherence and no-decoherence rules.
 
-We could use this API to build our lock service example by letting the shared state be the unique ID of the node which currently owns the lock; call this the `owner`. When a node wants the lock, it calls **propose** to try and set `owner` to its own ID, then **query** to see who actually got the lock. It would look roughly like this:
+Let's see how this would work in practice. Consider the lock server example from before:
+
+We can make this work by defining a shared variable called `owner`, which is defined as the ID of the node which currently holds the lock, or `null` if no node currently holds it. Initially, `owner` is null. When a node wants to acquire the lock, it proposes its own ID as the value of `owner`, and then calls query to see whether it got the lock, like this:
 
 ```
 // returns true if this node got the lock, false otherwise
@@ -97,6 +99,8 @@ try acquire lock() {
   return consensus.query(owner) == me
 }
 ```
+
+If many nodes call this simultaneously, only one node's proposal will be selected, and every node's **query** call will return that node's ID. The node with that ID will then return true, and do whatever it needs to do under the lock; all other nodes will see they don't have the lock, and do someting else.
 
 ## First Stab at a Design
 

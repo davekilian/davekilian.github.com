@@ -21,7 +21,7 @@ I don't think it's overreaching to say fault-tolerant consensus is foundational 
 
 There is a related class of *replication* algorithms, which also keep state in sync across a network of computers. The difference between a replication algorithm and a consensus algorithm is subtle, but important, and it's the first major topic we're going to nail down today.
 
-## Consensus Use Cases
+## Use Cases
 
 Let's take a pause here and think about a few examples of problems that can be solved using a consensus algorithm. This will be useful for deciding on requirements as well as for checking our solutions make sense in the bigger picture of real-world systems.
 
@@ -63,43 +63,13 @@ The no-decoherence requirement might seem obvious now, but it'll be very top-of-
 
 ### Fault Tolerance
 
-Finally, as we talked about earlier, we're going to need **fault tolerance** &mdash; the algorithm should work even if individual computers or parts of the network are having problems.
+Finally, as we talked about earlier, we're going to need **fault tolerance** &mdash; the algorithm should work even if individual computers or parts of the network are having problems. But let's be a bit more crisp: what kinds of problems (faults) should we tolerate?
 
-The tricky part of fault tolerance is deciding what counts as a fault, and what it means to be fault-tolerant.
+We'll use what's known as the **crash-recovery** model. When using this model, you assume each computer in the system is either fully online and working, or fully offline and doing nothing (crashed). Computers can crash at any time, but can also recover and come back online any time. Even though this model does not account for absolutely everything bad that can happen to computers in the real world, it's pretty comprehensive for being so simple: a wide variety of real-world faults really do like crashes, including power loss, network disconnects, downtime for upgrades and, of course, bona-fide software crashes.
 
+To be fault tolerant, then, is to guarantee the algorithm keeps working even when a certain number of computers in the network have crashed and have not yet recovered. One subtle point here is we consider the very worst case when counting how many crashes an algorithm can tolerate: for example, an algorithm that has one 'special' that's not allowed to crash, but does allow any other node to crash, we'd still say that algorithm is not fault tolerant. In the worst case, even one crashed node could halt the algorithm, because the one crashed node could be the special node.
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-This raises an important question: what, exactly, is a fault?
-
----
-
-TODO rework the below into the above. Name all sorts of faults and draw equivalence to a machine crash, where a crash just means 'the machine is not running right now.'
-
----
-
-Sometimes computers will crash due to faulty hardware or software; sometimes they'll be unreachable due to network problems; sometimes we'll take them offline on purpose so we can upgrade software! For the system to remain working even when individual computers aren't, we need a consensus algorithm that works even when we have hardware and software that isn't working.
-
-Talking about fault tolerance can be a little tricky. Usually we talk about fault tolerance by counting how many crashes a system can tolerate *in the worst case*.
-
-For example, say we had a system can tolerate the crash of any node except for one 'special' node which, if it went offline, would cause the whole system to stop making progress. We would say this system is not fault tolerant, because it cannot tolerate even one crash in the worst case: namely, if that one crash affected the 'special' node. It doesn't matter how many non-special nodes are allowed to crash, because we consider the worst case!
+As we mentioned earlier, fault-tolerance is a hard requirement for a consensus algorithm to be practical. The fact is, a network can never be made 100% reliable, and so our software will have to deal with that.
 
 ### Recap
 
@@ -111,26 +81,32 @@ As we continue our discussion, keep these properties in the back of your mind:
 >
 > **No Decoherence**: The no-takebacks rule: as soon as even one node can see a proposal was chosen, no other proposal can ever be seen as chosen by anyone, ever.
 >
-> **Fault Tolerance**: The algorithm continues to work even if a some nodes go offline.
+> **Fault Tolerance**: The algorithm continues to work even if a some nodes crash.
 
 ## Replication vs Consensus
 
-With these requirements, we now know enough to say what's different between replication and consensus! The key difference is replication algorithms don't support ambiguity and cannot resolve conflicts. Replication algorithms only have support situations where it's possible to unambiguously copy state from one computer to another, and if ambiguity *is* discovered along the way, that's unexpected, so the algorithm is allowed to fail and a human will then need to intervene.
+With these properties, we can now say what's different between replication and consensus!
 
-Replication makes sense when you can structure a system so that one node is a "leader" and all other node are "followers;" as long as every state change goes through the leader node, the leader node can *replicate* its state to followers unambiguously. Consensus is useful when you want to have multiple nodes changing the same state; that's when it's possible for state changes to conflict.
+The key difference is that replication algorithms don't support conflicts. This makes them useful when state needs to be copied from one computer to another, without any ambiguity. If a replication algorithm discovers any ambiguity along the way, it's fine for it to error out and request manual intervention by a human. Consensus algorithms, on the other hand, anticipate conflits and resolve them.
 
-Replication algorithms are often simpler and faster than consensus algorithms, but there's an important catch: replication alone cannot be fault tolerant. If the leader crashes, the followers can't make progress without it. Thus, in practice, replication is often paired with consensus: an efficient replication algorithm is used while the leader is online and working; if the leader crashes, followers use a consensus algorithm to pick some other node to promote to leader. Once the new leader is chosen, replication can resume.
+Replication is common in situations where a special node, often called the 'leader,' handles all updates, and copies those updates to one or more 'follower' nodes. The leader resolves all conflits internally; followers simply see a stream of upgrades. Consensus is useful when you instead want multiple leaders changing the same state; that's how you end up with conflicts.
+
+Although replication algorithms are less pwoerful than consensus in not being able to deal with conflicts, they're usually simpler and much faster. It's common to pair a single-leader multi-follower repliation algorithm with a consensus-based leader election algorithm to handle failovers in the event the leader crashes.
+
+For the rest of this post, we'll worry only about consensus algorithms.
 
 ## A Programming Interface
 
-That a consensus algorithm needs to support resolving suggests a way to structure the interface callers use to call our consensus algorithm. We can give callers two functions:
+Before we move on to the design phase, one last requirements-y thing we should do is decide what kind of programming interface a consensus system might provide to its users.
+
+Given a consensus algorithm needs to collect proposals and resolve conflits between proposals, we probably want to split the interface into two methods:
 
 * **propose()**: offers the consensus system a value you'd like to change the state to
 * **query()**: ask the consensus system what value the state actually was changed to
 
-Then anyone who wants to update the shared state first calls **propose** with the desired final value, followed by **query** to see what actually happens. The consensus system guarantees every **query** call returns the same value.
+Anyone who wants to update the shared state first calls **propose** with their desired final value, followed by **query** to see what actually happened. Anyone who just wants to know what the shared state is (without changing it) skips the **propose** step and just calls **query**. The consensus system guarantees every **query** call returns the same value.
 
-For example, we could use this interface to implement the lock server by letting the shared state be the unique ID of the node which currently owns the lock; call this variable the `owner`. Then to try acquiring the lock, a node calls **propose** on `owner` with its own ID, then **query** to see who actually got the lock:
+We could use this API to build our lock service example by letting the shared state be the unique ID of the node which currently owns the lock; call this the `owner`. When a node wants the lock, it calls **propose** to try and set `owner` to its own ID, then **query** to see who actually got the lock. It would look roughly like this:
 
 ```
 // returns true if this node got the lock, false otherwise
@@ -140,9 +116,17 @@ try acquire lock() {
 }
 ```
 
-## A First Stab at Consensus
+## First Stab at a Design
 
-You probably already have a consensus algorithm or two in your day-to-day life. What do you do when you and your friends want to pick a restaurant but you can't come to an agreement? Maybe you'd start putting out your votes?
+Now we know what to build, so let's get right down to it. How will we make this work?
 
-Could we create a consensus algorithm that works by having nodes vote on a final state? At a high level, it seems to fit the bill. Let's try it!
+Start by considering: in real life, when you and a group of other people  need to reach an agreement but you don't already agree to begin with, what do you do? Say you're with a group of friends, and you all know you want to eat at a restaurant for lunch, but you don't know where you want to go. How do you make a group decision?
+
+Well, it probably goes something like this: someone throws out a proposal for a restaurant; then someone else proposes a different restaurant; people start throwing out their opinions of where they'd want to go; eventually, it becomes clear that most people favor a restaurant, so that's where you all end up going. It's a lot like majority-rules voting, don't you think?
+
+Do you think we could make a majority-rules voting algorithm to implement consensus? Let's try it out!
+
+
+
+
 

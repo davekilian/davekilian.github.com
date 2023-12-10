@@ -7,21 +7,17 @@ draft: true
 
 If you ask some rando off the street, "Hey, what are some foundational problems in the field of distributed systems?" they'd probably say something like, "What? Who are you? Get away from me!" Others might suggest the problem of *distributed consensus* &mdash; the problem you solve with fancy algorithms like Raft and Paxos.
 
-Consensis a problem you'll run into sooner or later if you work on any kind of distributed service; every distributed system has a consensus algorithm running somewhere inside. Having a grip on consensus algorithms is incredibly useful, even if you never write one yourself!
-
-This is a self-contained guide to how consensus algorithms tick, without the usual jargon and handwaving. The only background you'll need is enough experience to pass an undergrad data structures and algorithms course, and a basic working understanding of computer networks. We don't have the space to describe a full, production-ready system, but we will arrive at a working implementation of the core Paxos algorithm &mdash; which is the basis for everything else.
+This is a discussion of how those algorithms work. It's no-holds-barred: we won't handwave or rely on tenuous metaphors. And we'll avoid jargon; what little we need, we'll define along the way. All you need is enough experience to pass an undergrad data structures and algorithms class, and have a basic understanding of computer networks. By the end, you'll have a pretty good feel for how the core Paxos algorithm works.
 
 ## What is Consensus?
 
 A consensus algorithm is a protocol for keeping a network of computers in sync.
 
-Keeping computers in sync on a network is tricky. Networks aren't reliable: transmissions can be lost before reaching their destination. Computer hardware fails; software crashes. Although your computer and the networks you rely on day-to-day are probably reliable enough that you don't have to worry about this very often, I'm sure you've run into problems like these from time to time.
+Sound simple? It's actually pretty tricky! Networks aren't reliable: transmissions can be lost before reaching their destinations. Computer hardware fails; software crashes. With the computer you use day to day, these problem happens rarely enough that it's not a big problem in your life. But what if you had not just one computer, but 1,000, or 10,000, or a million? What are the odds *none* of your computers are having a problem right now? At some point,  it makes sense to stop asking *whether* you're having one of these problems, and start asking *how many* you have right now. These things become a fact of life, for you and your code.
 
-Think what would happen if you were managing not one computer, but 1,000, or 10,000, or a million of them, all connected in one big network. What are the odds *none* of those computers are having a problem right now? Very low! In fact, at some point you stop asking *whether* you have any failing cmponents, to *how many* are failing right now. If you want your system to work, then, the software has to work even when some parts of the network aren't.
+That's what makes consensus algorithms so difficult to design, yet so valuable to anyone running a distributed system: they can keep state in sync across a network of computers even in the face of these kinds of problems. In polite company, we call these kinds of problems **faults**, and we say consensus algorithms that deal with them as being **fault-tolerant**.
 
-That's what consensus algorithms do! They are **fault-tolerant** algorithms for keeping a network of computers in sync, even  when some parts of the network have crashed, network transmissions are going missing, and so on.
-
-I don't think it's overreaching to say consensus is the foundation of a distributed system. Without consensus, all you have is a big pile of computers that users can connect to; if you want users to see your service as a cohesive whole rather than a fragmented network of individual computers, you need some way to keep state in sync across the computers as users interact with your service. We call the algorithms that do that *consensus algorithms*.
+I don't think it's overreaching to say fault-tolerant consensus is foundational to distributed system. Without consensus, all you have is a big pile of computers that users can connect to; if you want users to see your service as a cohesive whole, you need some way to keep state in sync across the computers as users interact with your service. We call the algorithms that do that *consensus algorithms*.
 
 There is a related class of *replication* algorithms, which also keep state in sync across a network of computers. The difference between a replication algorithm and a consensus algorithm is subtle, but important, and it's the first major topic we're going to nail down today.
 

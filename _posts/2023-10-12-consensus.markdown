@@ -134,7 +134,7 @@ The network looks kind of like this:
 
 [diagram]
 
-The client in this system is extremely simple; it just forwards all requests to the leader:
+The client in this system is simple; it just forwards all requests to the leader:
 
 ```
 consensus {
@@ -174,7 +174,7 @@ leader {
 }
 ```
 
-In other words, the whole network is reading and writing a single variable on the leader node.
+In short, the whole network is reading and writing a single variable on the leader node.
 
 Is this a valid consensus algorithm? Let's check:
 
@@ -183,21 +183,9 @@ Is this a valid consensus algorithm? Let's check:
 * **no-decoherence**: ✅ &mdash; the leader refuses to change the accepted proposal once it has been initialized the first time
 * **fault-tolerance**: hmm ... is this fault-tolerant?
 
+Well, no, not the way we've described it so far. We've designated a single node to be the leader, now and forever; and if the leader goes offline, nobody can read or write the accepted proposal it was storing in its local memory.
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+But maybe we can fix that by designing a failover algorithm: what if the leader backs up its state to other nodes, and then if the leader crashes, one of the other nodes takes over? It's a good idea, but it turns out not to work for a simple reason:
 
 ## Leader Election is a Consensus Problem
 

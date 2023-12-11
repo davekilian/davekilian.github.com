@@ -293,9 +293,23 @@ So, assuming no more than two proposals so that we can guarantee a majority gets
 * **no-decoherence**: ✅ &mdash; nodes cannot change their votes, so once a proposal reaches majority, it cannot lose its majority
 * **fault-tolerance**: . . . 😀 I told you this would be tricky, didn't I? 
 
-No, this algorithm isn't fault-tolerant either, but at least the reason is more subtle this time! Most of the time, in most failure cases, this design is pretty resilient, but there's **window of vulnerability** where, sometimes, a computer crashing at exactly the wrong instant can bring the entire algorithm to a halt.
+No, this algorithm isn't fault-tolerant either, but at least the reason is more subtle this time! This design is pretty resilient, but depending on how things play out, it sometimes has a **window of vulnerability** where one extremely poorly timed crash could bring the entire algorithm to a halt, preventing a majority from being reached until that computer is brought back online. This case might be rare, but it still happens as a result of just one crash, so technically we say this algorithm cannot withstand just one crash &mdash; it's not fault-tolerant.
 
-Let's watch this in action:
+Why not? Let's watch this in action:
+
+Say we have a cluster of 7 nodes. One proposes <span style="color:blue">blue</span>, the other <span style="color:red">red</span>:
+
+[diagram]
+
+Off to the races! Those two nodes each send their proposals, <span style="color:blue">blue</span> and <span style="color:red">red</span>, to all their peers. Each of those peers votes for the first proposal it receives, remember, so which proposal wins comes down to timings &mdash; which proposal arrives, and is processed first? Anyways, let's say the race is neck-and-neck, eventually coming down to three votes each for <span style="color:blue">blue</span> and <span style="color:red">red</span>, and just one remaining undecided node:
+
+[diagram]
+
+What happens if that undecided node crashes?
+
+[diagram]
+
+
 
 
 

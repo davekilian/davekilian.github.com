@@ -301,15 +301,19 @@ Say we have a cluster of 7 nodes. One proposes <span style="color:blue">blue</sp
 
 [diagram]
 
-Off to the races! Those two nodes each send their proposals, <span style="color:blue">blue</span> and <span style="color:red">red</span>, to all their peers. Each of those peers votes for the first proposal it receives, remember, so which proposal wins comes down to timings &mdash; which proposal arrives, and is processed first? Anyways, let's say the race is neck-and-neck, eventually coming down to three votes each for <span style="color:blue">blue</span> and <span style="color:red">red</span>, and just one remaining undecided node:
+Off to the races! Those two nodes each send their proposals, <span style="color:blue">blue</span> and <span style="color:red">red</span>, to all their peers. Each of those peers votes for the first proposal it receives, remember, so which proposal a peer picks comes down to timings &mdash; whichever proposal arrives first! Anyways, let's say the race is neck-and-neck, eventually coming down to three votes each for <span style="color:blue">blue</span> and <span style="color:red">red</span>, and just one remaining undecided node:
 
 [diagram]
 
-What happens if that undecided node crashes?
+What happens if that undecided node crashes right now?
 
 [diagram]
 
+Uh oh. A proposal needs 4 votes to be accepted. No proposal has 4 votes. And there are no computers left to vote! 
 
+TODO we could mention here, with the no-decoherence rule, it's actually worse. Because it's possible that node decided red and then crashed, or blue and then crashed; the no-decoherence rule is pretty strict here, we cannot proceed without knowing what it (may have) decided here.
+
+TODO conclude usually, the loss of a single node can be withstood, but as we see above, not always!
 
 
 

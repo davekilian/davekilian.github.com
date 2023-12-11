@@ -309,9 +309,13 @@ What happens if that undecided node crashes right now?
 
 [diagram]
 
-Uh oh. A proposal needs 4 votes to be accepted. No proposal has 4 votes. And there are no computers left to vote! 
+Uh oh. A proposal needs 4 votes to be accepted. No proposal has 4 votes. And there are no computers left to vote! There's no way to make progress. The algorithm is stuck.
 
-TODO we could mention here, with the no-decoherence rule, it's actually worse. Because it's possible that node decided red and then crashed, or blue and then crashed; the no-decoherence rule is pretty strict here, we cannot proceed without knowing what it (may have) decided here.
+---
+
+TODO we could have a little discussion here about how this situation is also very hard to repair correctly, because if you come into a situation where you have 3v3 and one crash, you don't know whether or not the crashed node ever decided on a proposal. If it didn't, you're free to repair however you want, but if it did, you really need to uphold the no-decoherence rule, which means making sure whichever proposal the dead node decided on becomes the winner. Which for you might look like hours of trawling through logs to find any evidence of a past decision being made.
+
+---
 
 TODO conclude usually, the loss of a single node can be withstood, but as we see above, not always!
 

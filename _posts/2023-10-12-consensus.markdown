@@ -222,7 +222,7 @@ Yup, that's right: appointing a leader *is* a consensus problem. So if we don't 
 
 So where does that leave us? The starting example I chose didn't work out, but we did learn something important in the process: we need to design a **peer-to-peer** algorithm. Instead of putting one node in charge, we need ot set things up so nodes cooperate as equals, haggling out which proposal should be accepted.
 
-## Second Stab
+## Second Stab at a Design
 
 Do you already know any peer-to-peer consensus algorithms? I'll bet you use on in real life:
 
@@ -231,4 +231,83 @@ Say you're with a group of friends, and you all decide you want to eat at a rest
 Kinda sounds like voting ... do you think we could make an algorithm out of that?
 
 ## The Majority-Rules Voting Algorithm
+
+We can do something pretty similar to the example above in code, with one big caveat: in the real-life friends example, everyone had their own opinion about what restaurant they wanted to go to; in our algorithm, we're resolving conflicts completely arbitrarily. So we can do a similar kind of voting thing, except that every node will 'vote' for literally the first proposal it hears about.
+
+Oh, and one more problem we'll ignore for now and fix later: TODO only two values, otherwise you can end up with no majority that would be bad.
+
+With that, here's a basic plan:
+
+Every node in the network will have its own local accepted proposal variable, which will keep calling `value`. Initially, `value` is null. When someone calls **propose()**, we set the local `value` to that proposal, "voting" for it. We then send the proposal to all other nodes; when the other nodes receive our proposal, they also "vote" for it by setting their local `value` variables if they haven't already voted for something else yet.
+
+A node can only vote for one value, and can never change its vote once set &mdash; so if a node votes for someone else's value, and then the caller calls **propose()** locally, nothing should happen, because this node already voted for something else and cannot change its vote.
+
+Finally, we implement **query()** by tallying votes: see which proposal we voted for, as well as what proposal all our peers voted for. If one proposal has been accepted by more than half of the nodes, we declare it the winner, and return that value. Boom, consensus!
+
+Here's the same, this time as pseudocode:
+
+```
+consensus {
+  value: Proposal; // the accepted proposal
+  
+  init {
+    value := null // no accepted proposal yet
+  }
+  
+  // this is the propose() API
+  propose(proposal) {
+    if (value == null) {
+      value := proposal
+      peers.all.send(proposal)
+    }
+  }
+  
+  // received a proposal from a peer
+  on peer proposal(proposal) {
+    if (value == null) {
+      value := proposal
+    }
+  }
+  
+  // the query() API
+  query() {
+    counts: map<proposal, int>
+    counts.add(this.value)
+    foreach peer {
+      counts.add(peer.request_value())
+    }
+    
+    return get_majority_proposal(counts) 
+  }
+  
+  on value requested(peer) {
+    peer.reply(value)
+  }
+}
+```
+
+So, does *this* work?
+
+* **coherence**: ✅ &mdash; if every node votes for only one proposal, only one proposal can reach a majority, and that's the proposal **query()** always returns
+* **conflict resolution**: ✅ &mdash; the voting system allows for multiple proposals and decides in a basically arbitrary way which will be accepted
+* **no-decoherence**: ✅ &mdash; nodes cannot change their votes, so once a proposal reaches majority, it cannot lose its majority
+* **fault-tolerance**: . . . I told you this would be tricky, didn't I? 
+
+No, this algorithm isn't fault-tolerant either! But at least this time around, the failure mode that breaks the algorithm isn't quite as obvious!
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 

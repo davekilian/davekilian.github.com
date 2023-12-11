@@ -134,7 +134,7 @@ The network looks kind of like this:
 
 [diagram]
 
-The client in this system is simple; it just forwards all requests to the leader:
+The client API in this system is simple; it just forwards all method calls to the leader using network requests:
 
 ```
 consensus {
@@ -150,7 +150,7 @@ consensus {
 }
 ```
 
-The leader is a bit more complex, but not much. It just remembers the first proposal received by any client, and returns that proposal upon client request:
+The leader isn't very complex either. It just remembers the first proposal received by any client, and returns that proposal upon client request:
 
 ```
 leader {
@@ -174,24 +174,71 @@ leader {
 }
 ```
 
-In short, the whole network is reading and writing a single variable on the leader node.
+In short, the whole network is reading and writing a single variable stored in the leader node's local memory. The leader can access that variable directly; all other nodes read and write the variable indirectly by sending the leader network requests.
 
 Is this a valid consensus algorithm? Let's check:
 
-* **coherence**: ✅ &mdash; query either returns null (meaning consensus has not yet been reached) or the value of the first client proposal the leader accepted; nothing else
-* **conflict resolution**: ✅ &mdash; if multiple clients make proposals, the leader only picks one of them (namely, the first one received)
-* **no-decoherence**: ✅ &mdash; the leader refuses to change the accepted proposal once it has been initialized the first time
-* **fault-tolerance**: hmm ... is this fault-tolerant?
+* **coherence**: ✅ &mdash; once the leader's `value` has been set, every query method call returns that value.
+* **conflict resolution**: ✅ &mdash; if multiple clients make proposals, the leader only picks one of them (namely, the first one it received)
+* **no-decoherence**: ✅ &mdash; the leader never changes the accepted proposal once it has been initialized the first time
+* **fault-tolerance**: hmm ... we might have a problem here.
 
-Well, no, not the way we've described it so far. We've designated a single node to be the leader, now and forever; and if the leader goes offline, nobody can read or write the accepted proposal it was storing in its local memory.
+At least the way we've designed the algorithm so far, it would seem the leader is a single point of failure &mdash; if it crashes, or loses power, or gets disconnected from the network, or any number of other bad things happen to the leader, nobody else is going to be able propose or query the consensus variable. That's no good.
 
-But maybe we can fix that by designing a failover algorithm: what if the leader backs up its state to other nodes, and then if the leader crashes, one of the other nodes takes over? It's a good idea, but it turns out not to work for a simple reason:
+But maybe we can rescue this design? What if we had the leader make backups on other nodes, and promoted one of those backup nodes to become the new leader if the original leader goes offline? It's a cool idea, but it turns out not to work for one simple reason:
 
-## Leader Election is a Consensus Problem
+## Appointing Leaders is a Consensus Problem
 
-That's right &mdash; your consensus algorithm cannot rely on leader election, because leader election is a problem that is solved by consensus.
+You see, a leader-based consensus algorithm relies on every node agreeing which node is currently the leader. If different nodes obey different leaders, Very Bad Things (TM) can happen.
 
-TODO kids are home
+Consider the following network. Node 1 is currently the leader; nodes 2-5 are following. Nobody has made a proposal yet, so the current consensus `value` on the leader is `null`:
+
+[diagram]
+
+Now let's say the network faults, splitting the network: now nodes 1-2 can talk to each other, but not to ndoes 3-5; similarly, nodes 3-5 can talk to each other, but not nodes 1-2. We started with two sub-networks:
+
+[diagram]
+
+This situation, where groups of nodes can talk to other nodes within a group but not the rest of the network, is called a **network partition**. It can happen in practice, for example, if a network switch which connects the two groups of nodes loses power or something.
+
+Well, here's the problem: node 1 was the leader, and nodes 3-5 cannot talk to it; so they're going to want to fail over to a new leader. Let's say they pick node 3 as the leader. Uh oh, now there are two leaders!
+
+[daigram]
+
+A situation where an algorithm can end up with more than one leader when it expects only one is called **split-brain**. Here, split-brain can result in different leaders deciding on different proposals; for example, if node 2 proposes <span style="color:blue">blue</span> and node 4 proposes <span style="color:red">red</span>, then the different sub-networks end up with different accepted proposals:
+
+[diagram]
+
+Now a client that queries the system can either receive <span style="color:blue">blue</span> or <span style="color:red">red</span>; clearly the coherence property is not upheld.
+
+What we *really* need is for every node in the system to agree which node is the leader during a failover. A usable algorithm for appointing a leader during a failover situation would need to provide:
+
+* Coherence: every node agrees which node is the leader
+* Conflict resolution: it's not an error for different nodes to disagree who should be leader
+* No-decoherence: nobody even temporarily believes the wrong node is the leader
+* Fault-tolerance: leaders can be appointed even if there are hardware or software faults
+
+Yup, that's right: appointing a leader *is* a consensus problem. So if we don't know how to make a consensus algorithm, we don't know how to make a working leader appointment algorithm either. We'd best avoid depending on leader nodes for now.
+
+So where does that leave us? The starting example I chose didn't work out, but we did learn something important in the process: we need to design a **peer-to-peer** algorithm. Instead of putting one node in charge, we need ot set things up so nodes cooperate as equals, haggling out which proposal should be accepted.
+
+## Second Stab
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 

@@ -218,47 +218,17 @@ What we *really* need is for every node in the system to agree which node is the
 * No-decoherence: nobody even temporarily believes the wrong node is the leader
 * Fault-tolerance: leaders can be appointed even if there are hardware or software faults
 
-Yup, that's right: appointing a leader *is* a consensus problem. So if we don't know how to make a consensus algorithm, we don't know how to make a working leader appointment algorithm either. We'd best avoid depending on leader nodes for now.
+Yup, that's right: appointing a leader *is* a consensus problem. So if we don't know how to make a consensus algorithm yet, we don't know how to make a working leader appointment algorithm yet either. We'd best avoid depending on leader nodes for now.
 
 So where does that leave us? The starting example I chose didn't work out, but we did learn something important in the process: we need to design a **peer-to-peer** algorithm. Instead of putting one node in charge, we need ot set things up so nodes cooperate as equals, haggling out which proposal should be accepted.
 
 ## Second Stab
 
+Do you already know any peer-to-peer consensus algorithms? I'll bet you use on in real life:
 
+Say you're with a group of friends, and you all decide you want to eat at a restaurant for lunch, but you don't already know what restaurant you all want to go to. What do you do? Well, maybe someone throws out a restaurant, someone else throws out a different one, someone agrees, someone disagrees. Before you know it, a group opinion has formed, and once it's clear most of you want to go to that curry pizza place down the road, everyone else falls in line. Boom, consensus!
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+Kinda sounds like voting ... do you think we could make an algorithm out of that?
 
 ## The Majority-Rules Voting Algorithm
-
-
-
----
-
-Old content from before I decided to set up leader-based first. This should be reworked to incorporate the learning that a design must be symmetric peer-to-peer:
-
-Now we know what to build, so let's get right down to it. How will we make this work?
-
-Start by considering: in real life, when you and a group of other people  need to reach an agreement but you don't already agree to begin with, what do you do? Say you're with a group of friends, and you all know you want to eat at a restaurant for lunch, but you don't know where you want to go. How do you make a group decision?
-
-Well, it probably goes something like this: someone throws out a proposal for a restaurant; then someone else proposes a different restaurant; people start throwing out their opinions of where they'd want to go; eventually, it becomes clear that most people favor a restaurant, so that's where you all end up going. It's a lot like majority-rules voting, don't you think?
-
-Do you think we could make a majority-rules voting algorithm to implement consensus? Let's try it out!
-
----
 

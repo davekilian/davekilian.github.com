@@ -234,8 +234,6 @@ Kinda sounds like voting ... do you think we could make an algorithm out of that
 
 We can do something pretty similar to the example above in code, with one big caveat: in the real-life friends example, everyone had their own opinion about what restaurant they wanted to go to; in our algorithm, we're resolving conflicts completely arbitrarily. So we can do a similar kind of voting thing, except that every node will 'vote' for literally the first proposal it hears about.
 
-Oh, and one more problem we'll ignore for now and fix later: TODO only two values, otherwise you can end up with no majority that would be bad.
-
 With that, here's a basic plan:
 
 Every node in the network will have its own local accepted proposal variable, which will keep calling `value`. Initially, `value` is null. When someone calls **propose()**, we set the local `value` to that proposal, "voting" for it. We then send the proposal to all other nodes; when the other nodes receive our proposal, they also "vote" for it by setting their local `value` variables if they haven't already voted for something else yet.
@@ -244,7 +242,9 @@ A node can only vote for one value, and can never change its vote once set &mdas
 
 Finally, we implement **query()** by tallying votes: see which proposal we voted for, as well as what proposal all our peers voted for. If one proposal has been accepted by more than half of the nodes, we declare it the winner, and return that value. Boom, consensus!
 
-Here's the same, this time as pseudocode:
+One problem with this design already, as given, is that it doesn't support more than two proposals: with three proposals, it's possible that each proposal gets enough votes that no vote can reach majority. For now, let's just pretend this doesn't happen; this is something we'll have to fix later though.
+
+Here's the algorithm again, as pseudocode:
 
 ```
 consensus {
@@ -286,28 +286,16 @@ consensus {
 }
 ```
 
-So, does *this* work?
+So, assuming no more than two proposals so that we can guarantee a majority gets reached ... does *this* design work?
 
 * **coherence**: ✅ &mdash; if every node votes for only one proposal, only one proposal can reach a majority, and that's the proposal **query()** always returns
 * **conflict resolution**: ✅ &mdash; the voting system allows for multiple proposals and decides in a basically arbitrary way which will be accepted
 * **no-decoherence**: ✅ &mdash; nodes cannot change their votes, so once a proposal reaches majority, it cannot lose its majority
-* **fault-tolerance**: . . . I told you this would be tricky, didn't I? 
+* **fault-tolerance**: . . . 😀 I told you this would be tricky, didn't I? 
 
-No, this algorithm isn't fault-tolerant either! But at least this time around, the failure mode that breaks the algorithm isn't quite as obvious!
+No, this algorithm isn't fault-tolerant either, but at least the reason is more subtle this time! Most of the time, in most failure cases, this design is pretty resilient, but there's **window of vulnerability** where, sometimes, a computer crashing at exactly the wrong instant can bring the entire algorithm to a halt.
 
-
-
-
-
-
-
-
-
-
-
-
-
-
+Let's watch this in action:
 
 
 

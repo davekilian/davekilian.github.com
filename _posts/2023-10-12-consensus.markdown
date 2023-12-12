@@ -235,17 +235,17 @@ Kinda sounds like voting ... do you think we could make an algorithm out of that
 
 ## The Majority-Rules Voting Algorithm
 
-We can do something pretty similar to the example above in code, with one big caveat: in the real-life friends example, everyone had their own opinion about what restaurant they wanted to go to; in our algorithm, we're resolving conflicts completely arbitrarily. So we can do a similar kind of voting thing, except that every node will 'vote' for literally the first proposal it hears about.
+We can do something pretty similar to the example above in code, with one big caveat: in the real-life friends example, everyone had their own opinion about what restaurant they wanted to go to; in our algorithm, we're resolving conflicts completely arbitrarily. So we can do a similar kind of voting thing, except that every node will 'vote' for literally the first proposal it hears about, instead of providing any opinion of its own.
 
 With that, here's a basic plan:
 
 Every node in the network will have its own local accepted proposal variable, which will keep calling `value`. Initially, `value` is null. When someone calls **propose()**, we set the local `value` to that proposal, "voting" for it. We then send the proposal to all other nodes; when the other nodes receive our proposal, they also "vote" for it by setting their local `value` variables if they haven't already voted for something else yet.
 
-A node can only vote for one value, and can never change its vote once set &mdash; so if a node votes for someone else's value, and then the caller calls **propose()** locally, nothing should happen, because this node already voted for something else and cannot change its vote.
+A node can only vote for one value, and can never change its vote once set &mdash; so if a node votes for someone else's value, and gets a local **propose()** method call, nothing should happen, because this node already voted for something else and cannot change its vote.
 
 Finally, we implement **query()** by tallying votes: see which proposal we voted for, as well as what proposal all our peers voted for. If one proposal has been accepted by more than half of the nodes, we declare it the winner, and return that value. Boom, consensus!
 
-One problem with this design already, as given, is that it doesn't support more than two proposals: with three proposals, it's possible that each proposal gets enough votes that no vote can reach majority. For now, let's just pretend this doesn't happen; this is something we'll have to fix later though.
+One problem with this design already, as given, is that it doesn't support more than two proposals: with three proposals, it's possible that each proposal gets enough votes that no vote can reach majority. For now, let's just pretend this doesn't happen. But this is something we'll have to circle back to and fix later though.
 
 Here's the algorithm again, as pseudocode:
 
@@ -296,7 +296,9 @@ So, assuming no more than two proposals so that we can guarantee a majority gets
 * **no-decoherence**: ✅ &mdash; nodes cannot change their votes, so once a proposal reaches majority, it cannot lose its majority
 * **fault-tolerance**: . . . 😀 I told you this would be tricky, didn't I? 
 
-No, this algorithm isn't fault-tolerant either, but at least the reason is more subtle this time! This design is pretty resilient, but depending on how things play out, it sometimes has a **window of vulnerability** where one extremely poorly timed crash could bring the entire algorithm to a halt, preventing a majority from being reached until that computer is brought back online. This case might be rare, but it still happens as a result of just one crash, so technically we say this algorithm cannot withstand just one crash &mdash; it's not fault-tolerant.
+No, this algorithm isn't fault-tolerant either, but we're getting better at this &mdash; this time, the problem is much more subtle!
+
+This design is pretty resilient, but depending on how things play out, it sometimes has a **window of vulnerability** where one extremely poorly timed crash could bring the entire system to a halt, preventing a majority from being reached until that computer is brought back online. This case might be rare, but it still happens as a result of just one crash, so technically we have to admit this algorithm cannot withstand just one crash &mdash; hence, it's not fault-tolerant.
 
 Why not? Let's watch this in action:
 

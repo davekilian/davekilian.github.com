@@ -129,7 +129,7 @@ The shared variable that we're proposing values for and querying values of, can 
 
 To get us started, let me propose a basic design:
 
-Given a network of computers, we pick one of the nodes in the network and designate it the **leader**. Maybe a human sets a config option on all nodes in the network so they know which node is the leader. We then make the leader the center of all activity: it receives all proposals, decides which one to accept, and fields requests to get the currently accepted proposal. 
+Given a network of computers, we pick one of the nodes in the network and designate it the **leader**. Maybe a human sets a config option on all nodes in the network so they all know which node is the leader. We then make the leader the center of all activity: it receives all proposals, decides which one to accept, and returns the accepted proposal on queries.
 
 The network looks kind of like this:
 
@@ -184,23 +184,23 @@ Is this a valid consensus algorithm? Let's check:
 * **no-decoherence**: ✅ &mdash; the leader never changes the accepted proposal once it has been initialized the first time
 * **fault-tolerance**: hmm ... we might have a problem here.
 
-At least the way we've designed the algorithm so far, it would seem the leader is a single point of failure &mdash; if it crashes, or loses power, or gets disconnected from the network, or any number of other bad things happen to the leader, nobody else is going to be able propose or query the consensus variable. That's no good.
+At least the way we've designed the algorithm so far, it would seem the leader is a **single point of failure** &mdash; if it crashes, or loses power, or gets disconnected from the network, or any number of other bad things happen to the leader, nobody else is going to be able propose or query the consensus variable. That's no good.
 
 But maybe we can rescue this design? What if we had the leader make backups on other nodes, and promoted one of those backup nodes to become the new leader if the original leader goes offline? It's a cool idea, but it turns out not to work for one simple reason:
 
 ## Appointing Leaders is a Consensus Problem
 
-You see, a leader-based consensus algorithm relies on every node agreeing which node is currently the leader. If different nodes obey different leaders, Very Bad Things (TM) can happen.
+A leader-based consensus algorithm relies on every node agreeing which node is currently the leader. If different nodes obey different leaders, Very Bad Things (TM) can happen.
 
 Consider the following network. Node 1 is currently the leader; nodes 2-5 are following. Nobody has made a proposal yet, so the current consensus `value` on the leader is `null`:
 
 [diagram]
 
-Now let's say the network faults, splitting the network: now nodes 1-2 can talk to each other, but not to ndoes 3-5; similarly, nodes 3-5 can talk to each other, but not nodes 1-2. We started with two sub-networks:
+Now let's say the network faults, splitting the network: now nodes 1-2 can talk to each other, but not to nodes 3-5; likewise, nodes 3-5 can talk to each other, but not nodes 1-2. Our system has now split into two sub-networks:
 
 [diagram]
 
-This situation, where groups of nodes can talk to other nodes within a group but not the rest of the network, is called a **network partition**. It can happen in practice, for example, if a network switch which connects the two groups of nodes loses power or something.
+This situation, where groups of nodes can talk to other nodes within a group but not the rest of the network, is called a **network partition**. It can happen in practice, for example, if a network box which connects the two groups of nodes gets unplugged or something.
 
 Well, here's the problem: node 1 was the leader, and nodes 3-5 cannot talk to it; so they're going to want to fail over to a new leader. Let's say they pick node 3 as the leader. Uh oh, now there are two leaders!
 

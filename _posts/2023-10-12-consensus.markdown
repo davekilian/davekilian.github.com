@@ -202,24 +202,24 @@ Now let's say the network faults, splitting the network: now nodes 1-2 can talk 
 
 This situation, where groups of nodes can talk to other nodes within a group but not the rest of the network, is called a **network partition**. It can happen in practice, for example, if a network box which connects the two groups of nodes gets unplugged or something.
 
-Well, here's the problem: node 1 was the leader, and nodes 3-5 cannot talk to it; so they're going to want to fail over to a new leader. Let's say they pick node 3 as the leader. Uh oh, now there are two leaders!
+Well, here's the problem: node 1 was the leader, and nodes 3-5 cannot talk to it; for all they know node 1 might have crashed. So they fail over to a new leader. Let's say they pick node 3:
 
 [daigram]
 
-A situation where an algorithm can end up with more than one leader when it expects only one is called **split-brain**. Here, split-brain can result in different leaders deciding on different proposals; for example, if node 2 proposes <span style="color:blue">blue</span> and node 4 proposes <span style="color:red">red</span>, then the different sub-networks end up with different accepted proposals:
+Uh oh, now there are two leaders! A situation like this, where a system can end up with more than one leader when it expects only one, is called **split-brain**. Here, split-brain can result in different leaders deciding on different proposals: say node 2 proposes <span style="color:blue">blue</span> and node 4 proposes <span style="color:red">red</span>. Then the different sub-networks end up with different accepted proposals:
 
 [diagram]
 
 Now a client that queries the system can either receive <span style="color:blue">blue</span> or <span style="color:red">red</span>; clearly the coherence property is not upheld.
 
-What we *really* need is for every node in the system to agree which node is the leader during a failover. A usable algorithm for appointing a leader during a failover situation would need to provide:
+How do we fix this? We need every node in the system to agree which node is the leader during a failover. That way, the failover from node 1 to node 3 either happens completely or it doesn't happen at all. A usable algorithm for appointing a leader during a failover situation would need to provide:
 
 * Coherence: every node agrees which node is the leader
 * Conflict resolution: it's not an error for different nodes to disagree who should be leader
 * No-decoherence: nobody even temporarily believes the wrong node is the leader
 * Fault-tolerance: leaders can be appointed even if there are hardware or software faults
 
-Yup, that's right: appointing a leader *is* a consensus problem. So if we don't know how to make a consensus algorithm yet, we don't know how to make a working leader appointment algorithm yet either. We'd best avoid depending on leader nodes for now.
+Yup, that's right: appointing a leader *is* a consensus problem. So if we don't know how to make a consensus algorithm yet, we don't know how to make a working leader failover algorithm yet either. We'd best avoid depending on leader nodes for now.
 
 So where does that leave us? The starting example I chose didn't work out, but we did learn something important in the process: we need to design a **peer-to-peer** algorithm. Instead of putting one node in charge, we need ot set things up so nodes cooperate as equals, haggling out which proposal should be accepted.
 

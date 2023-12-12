@@ -11,11 +11,11 @@ If you ask some rando off the street, "Hey, what are some foundational problems 
 
 A consensus algorithm is a protocol for keeping a network of computers in sync.
 
-Sound simple? It's actually pretty tricky! Networks aren't reliable: messages can be lost before they get to where they're going. Computer hardware fails; software crashes. With the computer you use day to day, these problems probably don't happen enough to be a big deal in your life. But what if you were managing a 1,000 computers just like yours? Or 10,000, or a million? On any given day, what are the odds *none* of them is having a problem? At some point, you have to stop asking *whether* you're having problems, and start asking how many! Problems with the underlying platform become a fact of life, for you and your code.
+If that sounds simple, it's actually pretty tricky! Networks aren't reliable: messages can be lost before they get to where they're going. Computer hardware fails; software crashes. With the computer you use day to day, these problems probably don't happen enough to be a big deal in your life. But what if you were managing a 100 computers just like yours? Or 10,000, or a million? On a given day, what are the odds *none* of them is having a problem? At some point, you have to stop asking *whether* you're having problems, and start asking how many! Flaky networks, hardware and software become a fact of life, for you and your code.
 
-Consensus algorithms keep computers in sync reliably, despite the unreliability of the infrastructure they run out. That's what makes them useful, yet so hard to design!
+Consensus algorithms keep computers in sync reliably, despite the unreliability of the infrastructure they run out. That's what makes them so useful, yet so hard to design!
 
-I don't think it's overreaching to say fault-tolerant consensus is foundational to distributed system. Without consensus, all you have is a big pile of computers that users can connect to; if you want users to see your service as a cohesive whole, you need some way to keep state in sync across the computers as users interact with your service. You need consensus!
+I don't think it's overreaching to say fault-tolerant consensus is foundational to distributed system. Even if your service is made up of lots of computers internally, you want to show your users one cohesive whole. That means keeping the state of your service in sync across the underlying computers as users interact with your service. That's what you use consensus algorithms to do!
 
 ## Use Cases
 
@@ -37,7 +37,7 @@ Our goal in this guide is to create a working consensus algorithm. Before we jum
 
 Now let's think about our examples: what do they rely on the consensus algorithm to do?
 
-Unfortunately for us, there isn't a well-accepted set of consensus properties we can rattle off here. Whereas database people have ACID (*atomic, consistent, isolated, durable*), there's no catchy acronym for consensus algorithms. We're going to have to wing it! Of course, we should still come up with big fancy words to name our ideas; big words are useful tools for sounding super smart and intimidating people into thinking we must be right.
+Unfortunately for us, there isn't a well-accepted set of consensus properties we can rattle off here. Whereas database people have ACID (*atomic, consistent, isolated, durable*), there's no similarly catchy acronym for consensus algorithms. We're going to have to wing it. Of course, we should still come up with big fancy words to name our ideas; big words are useful tools for sounding super smart and intimidating people. (They also can be useful for referring back to these ideas later &mdash; which is something we'll be doing, a lot.)
 
 ### Coherence
 
@@ -55,7 +55,7 @@ Another observation: resolving conflicts alone isn't enough. We need to add a co
 
 People are going to use consensus to make decisions, e.g. to decide whether or not a key-value overwrite was successful, a node is in a cluster, a thread obtained a lock, etc. A consensus algorithm that can report one decision, but then change it's mind later, would be useless! You wouldn't be able to make any hard decisions. For example, if consensus says you got a lock, but it can change its mind and take away your lock at any time, what good is your lock?
 
-We need to ensure once a decision is (or can be) communicated to a client, the decision is final; it cannot be changed 3 years from now or 3 nanoseconds from now. Let's call this no-takebacks rule **no-decoherence**.
+We need to ensure any decision that has been (or can be) communicated to a client is final: it cannot be changed 3 years from now or 3 nanoseconds from now. Let's call this no-takebacks rule **no-decoherence**.
 
 ### Fault Tolerance
 
@@ -75,22 +75,25 @@ As we continue our discussion, keep these properties in the back of your mind:
 >
 > **Fault Tolerance**: The algorithm continues to work even if a some nodes crash.
 
-If designing an algorithm that checks all these boxes sounds easy, believe me, it's not! But if it sounds daunting, rest assured it is indeed possible. It took a lot of smart people a very long time to find a solution, but they did find one in the end. This problem is hard, but solvable.
+If designing an algorithm that checks all these boxes sounds easy, believe me, it's not! But if it sounds daunting, rest assured it is indeed possible. It took a lot of intelligent people a long time to find a solution, but they did find one in the end. This problem is hard, but solvable!
 
 ## A Programming Interface
 
-Given what we now know aobut requirements, let's think about what kind of API we give applications who want to use the consensus algorithm we're about to invent. Maybe it'll tell us something important about how to structure our implementation.
+Given what we now know about requirements, let's think about what kind of API we want give to clients of our consensus algorithm. Maybe it'll tell us something important about how to structure our implementation.
 
-We said before that consensus algorithms collect proposals, choose one, and replicate it to everyone in the network. So we probably want to split our interface into two methods:
+If we want the conflict-resolution property to really make sense, we need to collect proposals separately from deciding on which proposal to accept. So we probably want to split our interface into two methods:
 
 * **propose()**: offers the consensus system a value you'd like to change the state to
 * **query()**: ask the consensus system what value the state actually was changed to
 
-Code that wants to update the shared state first calls **propose** with the desired final state, followed by **query** to see what value was chosen. Code that just wants to read the shared state can skip **propose** and just call **query**. The consensus system guarantees every **query** call returns the same value, as required by the coherence and no-decoherence rules.
+Code that wants to update the shared state first calls **propose** with the value it'd prefer, followed by **query** to see what value was chosen. Code that just wants to read the shared state can skip **propose** and just call **query**. The consensus system guarantees every **query** call returns the same value, as required by the coherence and no-decoherence rules.
 
-Let's see how this would work in practice. Consider the lock server example from before:
+For example, think about the lock server example from before: we could make that work by defining a shared consensus variable called `owner`, which is defined as:
 
-We can make this work by defining a shared variable called `owner`, which is defined as the ID of the node which currently holds the lock, or `null` if no node currently holds it. Initially, `owner` is null. When a node wants to acquire the lock, it proposes its own ID as the value of `owner`, and then calls query to see whether it got the lock, like this:
+* the ID of the node which currently holds the lock
+* `null` if nobody has the lock yet
+
+Initially, `owner` is null. When a node wants to acquire the lock, it proposes its own ID as the value of `owner`, and then calls query to see whether it got the lock, like this:
 
 ```
 // returns true if this node got the lock, false otherwise
@@ -104,25 +107,23 @@ If many nodes call this simultaneously, only one node's proposal will be selecte
 
 ## First Stab at a Design
 
-To, recap, we want to build a consensus algorithm that runs on a network of computers, keeping some kind of shared state in sync. It provides two methods that can be called on any of those computers, any number of times concurrently:
+Let's get cracking! To recap, we want to build a consensus algorithm that runs on a network of computers, keeping some kind of shared state in sync. It provides two methods that can be called on any of those computers, any number of times concurrently:
 
 * **propose**: accepts a value the caller would like to write to the shared state
 * **query**: returns the current value of the shared state to the caller
 
 We want these methods to provide the following guarantees:
 
-* **coherence**: all computers see the same return value from query()
-* **conflict-resolution**: if there are multiple propose() calls, one of them is chosen arbitrarily to be the value the system coheres on
+* **coherence**: all computers always see the same return value from query()
+* **conflict-resolution**: if there are multiple propose() calls, one of them is chosen arbitrarily to be the value query() always returns
 * **no-decoherence**: if query() returns a particular value, you can safely assume all past and future calls to query() have/will return that value on every node
-* **fault-tolerance**: the algorithm works even if computers, networks and software fail
+* **fault-tolerance**: the algorithm works even if computers, networks and software flake out on us
 
-To keep the problem scoped for now, we'll add a couple of simplifying assumptions:
+This is what we want to end up with, at least. For now, let's also put an additional constraint on our design: we're going to start by building a one-shot consensus algorithm. Once a proposed value has been chosen, we won't allow it to be changed ever again.
 
-First, we'll initially assume we're trying to reach consensus on a single scalar variable, such as an int, bool, string, enum, etc. We won't tackle lists, maps, or other complex data structures for now. But we can probably figure out how to do that if the need ever arises.
+This is probably too simple for real-world use cases; it would mean that a lock, once acquired, cannot be released, or a key-value pair, once written, cannot be overwritten. But once we have a one-shot consensus primitive, there are probably clever ways to upgrade it into a consensus primitive that supports overwrites We'll focus on that later. For now, we'll worry about getting a one-shot consensus algorithm to work.
 
-Second, we'll build a one-shot consensus primitive: once a proposed value has been chosen, it'll be impossible to ever change it again. This is probably too simple for real-world use cases; it would mean that a lock, once acquired, cannot be released, or a key-value pair, once written, cannot be overwritten. But once we have a one-shot consensus primitive, there are probably clever ways to upgrade it into a consensus primitive that supports overwrites
-
-These might be somewhat unrealistic design limitations, but as it turns out, it'll be plenty hard to build one-shot consensus over a single variable anyways! That makes is a good place to start.
+The shared variable that we're proposing values for and querying values of, can have any type: it can be an int, bool, char, string, list, map, or a tuple of any of those &mdash; as long as you're good with setting it once and never changing it, at least for now!
 
 ## A Leader-Based Algorithm
 

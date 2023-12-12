@@ -223,9 +223,11 @@ Yup, that's right: appointing a leader *is* a consensus problem. So if we don't 
 
 So where does that leave us? The starting example I chose didn't work out, but we did learn something important in the process: we need to design a **peer-to-peer** algorithm. Instead of putting one node in charge, we need ot set things up so nodes cooperate as equals, haggling out which proposal should be accepted.
 
+Do you know of any way to do that?
+
 ## Second Stab at a Design
 
-Do you already know any peer-to-peer consensus algorithms? I'll bet you use on in real life:
+I'll bet you use peer-to-peer consensus algorithms all the time in real life:
 
 Say you're with a group of friends, and you all decide you want to eat at a restaurant for lunch, but you don't already know what restaurant you all want to go to. What do you do? Well, maybe someone throws out a restaurant, someone else throws out a different one, someone agrees, someone disagrees. Before you know it, a group opinion has formed, and once it's clear most of you want to go to that curry pizza place down the road, everyone else falls in line. Boom, consensus!
 

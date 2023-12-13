@@ -314,25 +314,27 @@ What happens if that undecided node crashes right now?
 
 [diagram]
 
-Now we're in trouble. A proposal needs 4 votes to be accepted; no proposal has 4 votes, and there are no more computers left to vote! The algorithm is stick. There's no way to make progress.
+Now we're in trouble. A proposal needs 4 votes to be accepted; but the voting is over, and no proposal has 4 votes! Seems like we're stuck.
 
+Can we get the algorithm un-stuck from this point? Maybe, but the no-decoherence property makes this very tricky. For now, all we know is the state of the network is this:
 
+[diagram with 3 red, 3 blue, one dead]
 
+Did the node actually decide red, and tell anybody about this before it went offline?
 
+[diagram with 3 red, 3 blue, one red in a thought bubble]
 
+Or blue?
 
+[diagram with 3 red, 3 blue, one blue instead of red]
 
+Or maybe it actually hadn't made a decision yet, and it's safe to tiebreak?
 
+[diagram with 3 red, 3 blue, one blank in a thought bubble]
 
-Uh oh. A proposal needs 4 votes to be accepted. No proposal has 4 votes. And there are no computers left to vote! There's no way to make progress. The algorithm is stuck.
+If we want to move on without the node that crashed and still uphold the no-decoherence property in all cases, we really need to know whether the crashed node made a decision, and if so what it is. But the node is offline; it can't tell us what it already did. We're good and stuck now, up until we manage to get the node back up and running from where it left off.
 
----
+To conclude, the loss of a single node with this algorithm is usually just fine, but in cases like the above it can be catastrophic, bringing the entire system to a halt. So, this algorithm is not fault-tolerant.
 
-TODO we could have a little discussion here about how this situation is also very hard to repair correctly, because if you come into a situation where you have 3v3 and one crash, you don't know whether or not the crashed node ever decided on a proposal. If it didn't, you're free to repair however you want, but if it did, you really need to uphold the no-decoherence rule, which means making sure whichever proposal the dead node decided on becomes the winner. Which for you might look like hours of trawling through logs to find any evidence of a past decision being made.
-
----
-
-TODO conclude usually, the loss of a single node can be withstood, but as we see above, not always!
-
-
+## Intermission
 

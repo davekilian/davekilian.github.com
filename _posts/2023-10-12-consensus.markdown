@@ -348,3 +348,33 @@ Adieu, for now! Or, for the impatient, read on . . .
 
 ---
 
+## When the Going Gets Hard, Prove the Going is Hard and Give Up
+
+Before a working consensus algorithm was discovered, people chewed through this problem just as you might have during your intermission. And they kept running into the same dead end, over and over: they could make an algorithm that provided the coherence, conflict resolution, and no-decoherence properties, and even make it usually fault tolerant; but there'd always be that one little case, one way things could go just a little bit wrong and then boom, one crash brings down the whole system.
+
+Well, when you're trying to design an algorithm and you repeatedly run into a dead end, the next thing you should do is try to prove impossibility: that one can never design the algorithm you're trying to design, because that dead end will always come up no matter what you do.
+
+Which is exactly what three researchers did in the mid-1980s:
+
+## The FLP Result
+
+
+
+TODO the details are
+
+* *Impossibility of Distributed Consensus with One Faulty Process*
+* Fischer, Lynch, Paterson
+* 1985
+
+
+
+
+
+
+
+
+
+
+
+
+

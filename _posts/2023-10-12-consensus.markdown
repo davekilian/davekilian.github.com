@@ -75,6 +75,14 @@ At least for our purposes, it should be fine for the algorithm to resolve the co
 
 ### No Decoherence
 
+Another observation: resolving conflicts alone isn't enough. We need to add a constraint: the algorithm needs to make a decision once and for all, and never go back on it. As soon as the algorithm tells any computers, "this is the answer that everyone has agreed upon," it must be impossible for any other computer to ever think that we agreed on some other value.
+
+
+
+
+
+
+
 
 
 
@@ -83,8 +91,8 @@ At least for our purposes, it should be fine for the algorithm to resolve the co
 
 An alternate way to explain the same idea:
 
-* Once the conflict is resolved, we need to be able to keep querying the result forever
-* Once the algorithm is done, it must not be allowed to change its mind
+* During the algorithm, there must not be a time where anyone can see a wrong answer
+* Equivalently: once the conflict is resolved, we must never change our minds
 * Think of the chaos that would ensure without that guarantee!
 * But note this rule is actually quite strict. We want it to apply for miniscule timescales
 * The *instant* someone can tell the conflict is resolved, we can never change our minds

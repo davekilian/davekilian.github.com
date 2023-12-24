@@ -43,7 +43,7 @@ I don't think it's overreaching to say fault-tolerant consensus is foundational 
 
 ## Use Cases
 
-Our goal in this guide is to create a working consensus algorithm. Before we jump into design, we need to decide on requirements: what does a consensus algorithm need to do? To answer *that* question, it'd be useful to come up with some real-world examples where one might use one of these consensus thingamajigs.
+I think the best way to understand what a consensus algorithm does is to know of a handful of situations where people commonly use them. So let's come up with some real world use cases:
 
 ### Example 1: Key-Value Store
 
@@ -59,21 +59,41 @@ Our goal in this guide is to create a working consensus algorithm. Before we jum
 
 ## Properties of a Consensus Algorithm
 
-Now let's think about our examples: what do they rely on the consensus algorithm to do?
+Think about our examples above. What do they all rely on the consensus algorithm to do?
 
-Unfortunately for us, there isn't a well-accepted set of consensus properties we can rattle off here. Whereas database people have ACID (*atomic, consistent, isolated, durable*), there's no similarly catchy acronym for consensus algorithms. We're going to have to wing it. Of course, we should still come up with big fancy words to name our ideas; big words are useful tools for sounding super smart and intimidating people. (They also can be useful for referring back to these ideas later &mdash; which is something we'll be doing, a lot.)
+Unfortunately, there isn't a well-accepted set of consensus properties we can rattle off here. Database people have ACID (*atomic, consistent, isolated, durable*); there's no similarly catchy acronym for consensus algorithms. We're going to have to wing it. Of course, we still ought to come up with big fancy words to name our ideas; gotta sound smart if we want to be taken seriously! (Also, having 1-2 word names for these will be useful, since we're going to refer back to these quite a bit.)
 
 ### Coherence
 
-First, let's cover the basic correctness condition. The point of a consensus algorithm is to keep computers in sync; so at the end of the algorithm, all computers that participted had better end up with same state! Let's call this most basic requirement the **coherence** property.
+First, let's cover the basic correctness condition. The point of a consensus algorithm is to take some state, and keep it in sync across a network of computers; so when a consensus algorithm finishes, all the computers had better end up with the same state! Let's call this most basic requirement the **coherence** property.
 
 ### Conflict Resolution
 
-What else? Another core feature we'll need is **conflict resolution**. What if two people try to update the same key of our key-value store? What if two nodes try to obtain the same lock using our distributed lock service? We need to choose one and only one correct answer. We need a way to resolve concurrent updates that conflict with one another.
+What else? Another core feature we'll need is **conflict resolution**. What if two people try to update the same key of our key-value store at the same time? What if two nodes try to obtain the same lock using our distributed lock service in parallel? When multiple answers are possible, we need to choose one and only one correct answer. We need a way to resolve concurrent updates that conflict with one another.
 
-At least for our purposes, it should be fine to resolve conflicts arbitrarily; as long as the algorithm decides on one of the proposed updates, it doesn't matter which one it chooses.
+At least for our purposes, it should be fine for the algorithm to resolve the conflicts however it chooses, even at random if it wants to. The algorithm does not ever need to prefer one kind of answer over another; it can resolve conflicts arbitrarily.
 
 ### No Decoherence
+
+
+
+
+
+---
+
+An alternate way to explain the same idea:
+
+* Once the conflict is resolved, we need to be able to keep querying the result forever
+* Once the algorithm is done, it must not be allowed to change its mind
+* Think of the chaos that would ensure without that guarantee!
+* But note this rule is actually quite strict. We want it to apply for miniscule timescales
+* The *instant* someone can tell the conflict is resolved, we can never change our minds
+
+---
+
+
+
+
 
 Another observation: resolving conflicts alone isn't enough. We need to add a constraint: the algorithm needs to make a decision once and for all, and never go back on it.
 

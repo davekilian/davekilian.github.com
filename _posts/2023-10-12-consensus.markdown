@@ -1,19 +1,45 @@
 ---
 layout: post
-title: (Unified Consensus Article)
+title: Consensus
 author: Dave
 draft: true
 ---
 
-If you ask some rando off the street, "Hey, what are some foundational problems in the field of distributed systems?" they'd probably say something like, "What? Who are you? Get away from me!" Others might suggest the problem of *distributed consensus* &mdash; the problem you solve with fancy algorithms like Raft and Paxos. Let's talk about how they work!
 
-## What is Consensus?
+
+<div markdown="1" style="width: fit-content; border: 1px solid #eee; padding-left:1em; padding-right: 1em">
+
+
+**Table of Contents**
+
+1. [Consensus](#part1)
+2. [FLP](#part2)
+3. [Paxos](#part3)
+
+</div>
+
+If you ask some rando off the street, "Hey, what are some foundational problems in the field of distributed systems?" they'd probably say something like, "What? Who are you? Get away from me!" Others might suggest the problem of *distributed consensus* &mdash; the problem you solve with fancy algorithms like Raft and Paxos.
+
+If you've heard of these algorithms, you're probably also aware of their reputation. When you still have people naming landmark papers things like *In Search of an Understandable Consensus Algorithm* 25 years after the first working consensus algorithm was published, you know something's up! Many people have tried and failed to write understandable explanations of Paxos. In this guide, we repeat their folly.
+
+We're going to retrace the line of thinking that led to the original Paxos algorithm. This guide will be long, because it's complete: if you can pass an undergrad programming class and write an app that sends requests and responses on a network, you have enough background to read this thing. I won't use big words or mathematical notation when I don't have to, but I'm not going to go easy on you either &mdash; no handwaving, silly metaphors or dumbing things down.
+
+In part 1, we'll start with by exploring the problem space. We'll nail down exactly what a consensus algorithm does, and we'll try to design one ourselves &mdash; only to find that it's not such an easy thing to do! In part 2, we'll talk about the FLP result, a major breakthrough which tells us why the things we were doing in part 1 didn't work. Finally, in part 3, we'll use what we learned from FLP to fix our broken designs from part 1, and end up with Paxos &mdash; the first working consensus algorithm.
+
+Should be a fun ride! Buckle in!
+
+<center>
+  <a name="part1"></a>
+  <h1 style="margin-top: 3em; margin-bottom: 2em">
+    Part 1: Consensus
+  </h1>
+</center>
 
 A consensus algorithm is a protocol for keeping a network of computers in sync.
 
-If that sounds simple, it's actually pretty tricky! Networks aren't reliable: messages can be lost before they get to where they're going. Computer hardware fails; software crashes. With the computer you use day to day, these problems probably don't happen enough to be a big deal in your life. But what if you were managing a 100 computers just like yours? Or 10,000, or a million? On a given day, what are the odds *none* of them is having a problem? At some point, you have to stop asking *whether* you're having problems, and start asking how many! Flaky networks, hardware and software become a fact of life, for you and your code.
+Sound easy? It's actually pretty tricky! Networks aren't reliable: data you send on the network can go missing, with no way to tell what went wrong. Hardware fails; software crashes. With the computers you use day to day, tehse problems probably don't happen enough to be a big deal; but what if you were managing 100 computers? Or 10,000? A million? What are the odds *none* of them have a problem in the next month? What are the odds none of them is having problems right now? Once you have a big enough network, flaky equipment and misbehaving software becomes a fact of life, for you and your code. 
 
-Consensus algorithms keep computers in sync reliably, despite the unreliability of the infrastructure they run out. That's what makes them so useful, yet so hard to design!
+Consensus algorithms keep computers in sync reliably, despite the unreliability of the infrastructure they run on.
 
 I don't think it's overreaching to say fault-tolerant consensus is foundational to distributed system. Even if your service is made up of lots of computers internally, you want to show your users one cohesive whole. That means keeping the state of your service in sync across the underlying computers as users interact with your service. That's what you use consensus algorithms to do!
 
@@ -350,13 +376,20 @@ Adieu, for now! Or, for the impatient, read on . . .
 
 ## When the Going Gets Hard, Prove the Going is Hard and Give Up
 
-Before a working consensus algorithm was discovered, people chewed through this problem just as you might have during your intermission. And they kept running into the same dead end, over and over: they could make an algorithm that provided the coherence, conflict resolution, and no-decoherence properties, and even make it usually fault tolerant; but there'd always be that one little case, one way things could go just a little bit wrong and then boom, one crash brings down the whole system.
+Before a working consensus algorithm was discovered, people chewed through this problem just as you might have during your intermission. And they kept running into the same dead end, over and over: they could make an algorithm that provided the coherence, conflict resolution, and no-decoherence properties, and even make it *usually* fault tolerant; but there'd always be that one little case, one way things could go just a little bit wrong and then boom, one crash brings down the whole system. Every algorithm had at least one window of vulnerability, no matter what they tried.
 
-Well, when you're trying to design an algorithm and you repeatedly run into a dead end, the next thing you should do is try to prove impossibility: that one can never design the algorithm you're trying to design, because that dead end will always come up no matter what you do.
+Well, when you're trying to design an algorithm and you repeatedly run into a dead end, the next thing you should do is try to prove impossibility: that one can never design that algorithm, because that dead end will always come up no matter what you do, due to something about the problem space.
 
-Which is exactly what three researchers did in the mid-1980s:
+Which is exactly what three researchers did in the mid-1980s!
 
-## The FLP Result
+<center>
+  <a name="part2"></a>
+  <h1 style="margin-top: 3em; margin-bottom: 2em">
+    Part 2: FLP
+  </h1>
+</center>
+
+
 
 
 
@@ -370,9 +403,12 @@ TODO the details are
 
 
 
-
-
-
+<center>
+  <a name="part3"></a>
+  <h1 style="margin-top: 3em; margin-bottom: 2em">
+    Part 3: Paxos
+  </h1>
+</center>
 
 
 

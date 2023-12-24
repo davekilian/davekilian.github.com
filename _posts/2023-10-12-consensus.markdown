@@ -18,9 +18,7 @@ draft: true
 
 </div>
 
-If you ask some rando off the street, "Hey, what are some foundational problems in the field of distributed systems?" they'd probably say something like, "What? Who are you? Get away from me!" Others might suggest the problem of *distributed consensus* &mdash; the problem you solve with fancy algorithms like Raft and Paxos.
-
-If you've heard of these algorithms, you're probably also aware of their reputation. When you still have people naming landmark papers things like *In Search of an Understandable Consensus Algorithm* 25 years after the first working consensus algorithm was published, you know something's up! Many people have tried and failed to write understandable explanations of Paxos. In this guide, we repeat their folly.
+If you ask some rando off the street, "Hey, what are some foundational problems in the field of distributed systems?" they'd probably say something like, "What? Who are you? Get away from me!" Others might suggest the problem of *distributed consensus* &mdash; the problem you solve with fancy algorithms like Raft and Paxos. If you've heard of these algorithms, you're probably also aware of their reputation. When you still have people naming landmark papers things like *In Search of an Understandable Consensus Algorithm* 25 years after the first working consensus algorithm was published, you know something's up! Many people have tried and failed to write understandable explanations of Paxos. In this guide, we repeat their folly.
 
 We're going to retrace the line of thinking that led to the original Paxos algorithm. This guide will be long, because it's complete: if you can pass an undergrad programming class and write an app that sends requests and responses on a network, you have enough background to read this thing. I won't use big words or mathematical notation when I don't have to, but I'm not going to go easy on you either &mdash; no handwaving, silly metaphors or dumbing things down.
 
@@ -374,13 +372,7 @@ Adieu, for now! Or, for the impatient, read on . . .
 
 ---
 
-## When the Going Gets Hard, Prove the Going is Hard and Give Up
 
-Before a working consensus algorithm was discovered, people chewed through this problem just as you might have during your intermission. And they kept running into the same dead end, over and over: they could make an algorithm that provided the coherence, conflict resolution, and no-decoherence properties, and even make it *usually* fault tolerant; but there'd always be that one little case, one way things could go just a little bit wrong and then boom, one crash brings down the whole system. Every algorithm had at least one window of vulnerability, no matter what they tried.
-
-Well, when you're trying to design an algorithm and you repeatedly run into a dead end, the next thing you should do is try to prove impossibility: that one can never design that algorithm, because that dead end will always come up no matter what you do, due to something about the problem space.
-
-Which is exactly what three researchers did in the mid-1980s!
 
 <center>
   <a name="part2"></a>
@@ -388,6 +380,14 @@ Which is exactly what three researchers did in the mid-1980s!
     Part 2: FLP
   </h1>
 </center>
+
+Before a working consensus algorithm was discovered, people chewed through this problem just as you might have during your intermission. And they kept running into the same dead end, over and over: they could make an algorithm that provided the coherence, conflict resolution, and no-decoherence properties, and even make it *usually* fault tolerant; but there'd always be that one little case, one way things could go just a little bit wrong and then boom, one crash brings down the whole system. Every algorithm had at least one window of vulnerability, no matter what they tried.
+
+Well, when you're trying to design an algorithm and you repeatedly run into a dead end, the next thing you should do is try to prove impossibility: that one can never design that algorithm, because that dead end will always come up no matter what you do, due to something about the problem space.
+
+Which is exactly what three researchers did in the mid-1980s!
+
+## When the Going Gets Hard, Prove the Going is Hard and Give Up
 
 
 

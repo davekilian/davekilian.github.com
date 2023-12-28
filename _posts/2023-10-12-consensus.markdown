@@ -18,11 +18,11 @@ draft: true
 
 </div>
 
-If you ask some rando off the street, "Hey, what are some foundational problems in the field of distributed systems?" they'd probably say something like, "What? Who are you? Get away from me!" Others might suggest the problem of *distributed consensus* &mdash; the problem you solve with fancy algorithms like Raft and Paxos. If you've heard of these algorithms, you're probably also aware of their reputation. When you still have people naming landmark papers things like *In Search of an Understandable Consensus Algorithm* 25 years after the first working consensus algorithm was published, you know something's up! Many people have tried and failed to write understandable explanations of Paxos. In this guide, we repeat their folly.
+If you ask some rando off the street, "Hey, what are some foundational problems in the field of distributed systems?" they'd probably say something like, "What? Who are you? Get away from me!" Others might suggest the problem of *distributed consensus* &mdash; the problem you solve with fancy algorithms like Raft and Paxos. If you've heard of these algorithms, you're probably also aware of their reputation. When you still have people naming landmark papers things like *In Search of an Understandable Consensus Algorithm* 25 years after the first working consensus algorithm was published, you know something's up! Many people have tried and failed to write understandable explanations of Paxos. In this guide, I will repeat their folly.
 
-We're going to retrace the line of thinking that led to the original Paxos algorithm. This guide will be long, because it's complete: if you can pass an undergrad programming class and write an app that sends requests and responses on a network, you have enough background to read this thing. I won't use big words or mathematical notation when I don't have to, but I'm not going to go easy on you either &mdash; no handwaving, silly metaphors or dumbing things down.
+We're going to retrace the line of thinking that led to the original Paxos algorithm. This guide will be long, because it's self-contained and complete: if you can pass an undergrad programming class and write an app that sends requests and responses on a network, you have enough background to get through this thing. I won't use big words or mathematical notation when I don't have to, but I'm not going to go easy on you either &mdash; no handwaving, silly metaphors or dumbing things down. At the end, you're going to understand the core Paxos algorithm, and you'll understand the train of thought that led us there.
 
-In part 1, we'll start with by exploring the problem space. We'll nail down exactly what a consensus algorithm does, and we'll try to design one ourselves &mdash; only to find that it's not such an easy thing to do! In part 2, we'll talk about the FLP result, a major breakthrough which tells us why the things we were doing in part 1 didn't work. Finally, in part 3, we'll use what we learned from FLP to fix our broken designs from part 1, and end up with Paxos &mdash; the first working consensus algorithm.
+In part 1, we'll start with by exploring the problem space. We'll nail down exactly what a consensus algorithm does, and we'll try to design one ourselves &mdash; only to find that it's not such an easy thing to do! In part 2, we'll talk about FLP, which tells us why the things we were doing in part 1 didn't work. Finally, in part 3, we'll build on what we learned to fix our broken designs and end up with Paxos &mdash; the first working consensus algorithm.
 
 Should be a fun ride! Buckle in!
 
@@ -32,6 +32,70 @@ Should be a fun ride! Buckle in!
     Part 1: Consensus
   </h1>
 </center>
+
+## What is Consensus?
+
+A consensus algorithm is a protocol for keeping a network of computers in sync. They also resolve conflicts between computers in a network: if two different computers try to make different updates to the same shared state at the same time, only one of the updates will succeed, and both computers will find out once and for all which update was accepted. Just like in real life, coming to consensus in a computer network involves disputes being resolved, and the final answer being known to all.
+
+## Why Does Consensus Matter?
+
+Think of a service like GitHub. GitHub stores a lot of code; a lot of people push and pull from Git repositories hosted on GitHub every day. It's too much data and too much load for any one computer to handle; so we can be pretty sure GitHub is a network of computers working together. But do you have any idea how GitHub's network is laid out? I don't &mdash; I just treat GitHub like one really big computer, and leave it to the GitHub peeps figure out how to stitch everything together so it looks like one cohesive service, not a disparate pile of computers on a network. Consensus algorithms are key to doing that.
+
+A consensus algorithm allows a distributed service to ensure that some update happened, once and for all, and cannot be overwritten or forgotten. This makes them foundational to the field of distributed systems; without them, you can't have one cohesive service, because not all servers agree on the current state of users' data.
+
+## Why is Consensus Hard?
+
+Let's talk about reliability for a second. Think about the device you're using to read this guide; have you ever had weird little problems with it? Frozen or crashing apps, weird glitches, system-wide slowdowns, overheating, weird network disconnects, blue screens, and so on? Most likely these kinds of things have happened to you, even if they don't happen enough to disrupt using your device day to day.
+
+But now imagine you were using not just one device, but a thousand, or even a million of them across the world, connected by thousands of miles of network cables. How often do you think you'd be dealing with these kinds of little problems? Heck, you'd probably never be free of them, no matter how hard you tried! Rare problems, multiplied by thousands of machines, or millions of requests per minute, become common. Somewhere in your system, you will have a machines overheating, crashing, getting disconnected from the network, and so on. You can't fix these problems and make them stay fixed; so, your code has to deal with the contingincies of computers having these problems.
+
+Consensus algorithms that can be deployed in practical, real-world settings. 
+
+
+
+Hardware failures and software glitches are a fact of life in any practical real-world computer network. For a consensus algorithm to be useful, it needs to account for these failures, and work despite them.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+things together so that, no matter which GitHub server I connect to today, they always have my latest data.
+
+
+
+
+
+
+
+
+
+
+
+
 
 A consensus algorithm is a protocol for keeping a network of computers in sync.
 

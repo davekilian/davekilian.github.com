@@ -49,65 +49,11 @@ Let's talk about reliability for a second. Think about the device you're using t
 
 But now imagine you were using not just one device, but a thousand, or even a million of them across the world, connected by thousands of miles of network cables. How often do you think you'd be dealing with these kinds of little problems? Heck, you'd probably never be free of them, no matter how hard you tried! Rare problems, multiplied by thousands of machines, or millions of requests per minute, become common. Somewhere in your system, you will have a machines overheating, crashing, getting disconnected from the network, and so on. You can't fix these problems and make them stay fixed; so, your code has to deal with the contingincies of computers having these problems.
 
-Consensus algorithms that can be deployed in practical, real-world settings. 
-
-
-
-Hardware failures and software glitches are a fact of life in any practical real-world computer network. For a consensus algorithm to be useful, it needs to account for these failures, and work despite them.
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-things together so that, no matter which GitHub server I connect to today, they always have my latest data.
-
-
-
-
-
-
-
-
-
-
-
-
-
-A consensus algorithm is a protocol for keeping a network of computers in sync.
-
-Sound easy? It's actually pretty tricky! Networks aren't reliable: data you send on the network can go missing, with no way to tell what went wrong. Hardware fails; software crashes. With the computers you use day to day, tehse problems probably don't happen enough to be a big deal; but what if you were managing 100 computers? Or 10,000? A million? What are the odds *none* of them have a problem in the next month? What are the odds none of them is having problems right now? Once you have a big enough network, flaky equipment and misbehaving software becomes a fact of life, for you and your code. 
-
-Consensus algorithms keep computers in sync reliably, despite the unreliability of the infrastructure they run on.
-
-I don't think it's overreaching to say fault-tolerant consensus is foundational to distributed system. Even if your service is made up of lots of computers internally, you want to show your users one cohesive whole. That means keeping the state of your service in sync across the underlying computers as users interact with your service. That's what you use consensus algorithms to do!
+Consensus algorithms that can be deployed in practical, real-world settings must be designed to work despite hardware failures and software glitches. In technical terms, we say consensus algorithms are **fault-tolerant**, tolerant of "faults" in the underlying hardware or software.
 
 ## Use Cases
 
-I think the best way to understand what a consensus algorithm does is to know of a handful of situations where people commonly use them. So let's come up with some real world use cases:
+So far we have a pretty vague idea of what consensus is or what it does for us. Let's get more concrete. Here are some situations people commonly deploy consensus algorithms:
 
 ### Example 1: Key-Value Store
 

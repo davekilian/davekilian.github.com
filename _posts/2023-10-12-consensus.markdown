@@ -10,8 +10,9 @@ draft: true
 **Table of Contents**
 
 1. [Consensus](#part1)
-2. [FLP](#part2)
-3. [Paxos](#part3)
+2. [Designing a Consensus Algorithm](#part2)
+2. [FLP](#part3)
+3. [Paxos](#part4)
 
 </div>
 
@@ -58,7 +59,7 @@ These kinds of situations pop up all the time when building distributed services
 
 Let's talk about reliability for a second. Think about the device you're using to read this guide; have you ever had weird little problems with it? Freezes, or crashing apps, weird glitches, system-wide slowdowns, overheating, weird network disconnects, blue screens, anything like that? Most likely these things have happened to you, even if they don't happen often enough to be a major disruption day to day.
 
-But now imagine you were using not just one device, but a thousand of them. Or imagine you’re a cloud provider, running hundreds of thousands of these things across the world, connected by thousands of miles of network cables. How often do you think you'd be dealing with these kinds of little problems? Heck, you'd probably never be able to fully rid yourself of them, no matter how hard you tried! Rare problems, multiplied by thousands of machines, become common. If you server a million requests per minute, you’ll get a one-in-a-million error every minute (1,400 times a day). 
+But now imagine you were using not just one device, but a thousand of them. Or imagine you’re a cloud provider, running hundreds of thousands of these things across the world, connected by thousands of miles of network cables. How often do you think you'd be dealing with these kinds of little problems? Heck, you'd probably never be able to fully rid yourself of them, no matter how hard you tried! Rare problems, multiplied by thousands of machines, become common. If you serve a million requests every minute, you should expect to see every possible one-in-a-million problem once every minute (or 1,400 times a day). 
 
 Somewhere in your system, you will have machines overheating, crashing, getting disconnected from the network, losing power randomly, and so on. With so many machines, you can't fix these problems and make them stay fixed; so, your code has to accept that the servers and networks it runs on don’t always behave the way they’re supposed to. Your software has to work even if the underlying OS and hardware don’t! These little problems are called **faults**, and software that works despite faults is said to be **fault-tolerant**.
 
@@ -72,11 +73,7 @@ To get more concrete, it might be helpful to see a few situations where people d
 
 
 
-### Example 2: Cluster Membership
-
-
-
-### Example 3: Locks and Assignment
+### Example 2: Locks and Assignment
 
  
 
@@ -155,6 +152,17 @@ As we continue our discussion, keep these properties in the back of your mind:
 > **Fault Tolerance**: The algorithm continues to work even if a some nodes crash.
 
 If designing an algorithm that checks all these boxes sounds easy, believe me, it's not! But if it sounds daunting, rest assured it is indeed possible. It took a lot of intelligent people a long time to find a solution, but they did find one in the end. This problem is hard, but solvable!
+
+<center>
+  <a name="part2"></a>
+  <h1 style="margin-top: 3em; margin-bottom: 2em">
+    Part 2: Designing a Consensus Algorithm 
+  </h1>
+</center>
+
+
+
+
 
 ---
 TODO we need to formally open a design discussion at some point, and in doing so we want to set a few simplifications up front, such as binary choice and one-shot decisions. Here is probably a good point in the post to do that.
@@ -434,9 +442,9 @@ Adieu, for now! Or, for the impatient, read on . . .
 
 
 <center>
-  <a name="part2"></a>
+  <a name="part3"></a>
   <h1 style="margin-top: 3em; margin-bottom: 2em">
-    Part 2: FLP
+    Part 3: FLP
   </h1>
 </center>
 
@@ -463,9 +471,9 @@ TODO the details are
 
 
 <center>
-  <a name="part3"></a>
+  <a name="part4"></a>
   <h1 style="margin-top: 3em; margin-bottom: 2em">
-    Part 3: Paxos
+    Part 4: Paxos
   </h1>
 </center>
 

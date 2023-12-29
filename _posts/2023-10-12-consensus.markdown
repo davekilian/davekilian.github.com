@@ -121,30 +121,21 @@ As we discussed before, a consensus algorithm that can actually be used in a rea
 
 No matter how many of these things are going on, the algorithm must never violate any of the consensus properties (conflict resolution, coherence, no-decoherence) mentioned above; however, it’s acceptable for the algorithm to proceed slowly or even halt if the system is in bad shape and the fault rate is really high. At the limit, this is unavoidable anyway; if every server loses power, there’s nothing your code can do to make progress! As long as you uphold the consensus properties, you’ve done your best. In short, it’s okay if the algorithm eventually stops working, as long as it never starts doing the wrong thing.
 
-When considering fault tolerance, we always consider the worst case. For example, if the algorithm tolerates the crash of almost every server, but has some special server that’s not allowed to crash, we would say that the algorithm does not even tolerate one crash, because if the one server that crashes happens to be the special one, the algorithm stops working. This might seem harsh, but keep in mind that even rare situations &mdash; like that one special server crashing &mdash; become common at high scale.
+When considering fault tolerance, we always consider the worst case. For example, if the algorithm tolerates the crash of almost every server, but has some special server that’s not allowed to crash, we would say that the algorithm does not even tolerate one crash, because if the one server that crashes happens to be the special one, the algorithm stops working. This might seem harsh, but keep in mind that even rare situations &mdash; like that one special server crashing &mdash; become common at high scale. When considering whether a system tolerates a certain number of faults, always consider the very worst case.
 
-TODO be strict about the worst case 
-
-
-Todo the idea, and being strict about considering worst case because the worst case is common enough. 
-
-
-
-
----
 ### Recap
 
-As we continue our discussion, keep these properties in the back of your mind:
+As we move into the design phase of this book, keep these properties handy; we’ll be referring back to them a lot:
 
-> **Coherence**: Every computer ends up with the same state.
+> **Conflict Resolution**: When conflicting updates are proposed, the algorithm picks one and rejects the others
 >
-> **Conflict Resolution**: When there are multiple proposed states, the algorithm picks one arbitrarily; it is not an error to have multiple proposals.
+> **Coherence**: At the end of the algorithm, every server agrees what decision was made
 >
-> **No Decoherence**: The no-takebacks rule: as soon as even one node can see a proposal was chosen, no other proposal can ever be seen as chosen by anyone, ever.
->
-> **Fault Tolerance**: The algorithm continues to work even if a some nodes crash.
-
-If designing an algorithm that checks all these boxes sounds easy, believe me, it's not! But if it sounds daunting, rest assured it is indeed possible. It took a lot of intelligent people a long time to find a solution, but they did find one in the end. This problem is hard, but solvable!
+> **No-Decoherence**: The instant a decision is made, it is final. New information cannot change committed decisions.
+> 
+> The three properties above are referred together as the **consensus properties**
+> 
+> **Fault Tolerance**: The system degrades gracefully when there are faults in the underlying system. Faults do not ever cause the algorithm to violate a consensus property.
 
 <center>
   <a name="part2"></a>
@@ -153,12 +144,10 @@ If designing an algorithm that checks all these boxes sounds easy, believe me, i
   </h1>
 </center>
 
-
-
-
-
 ---
 TODO we need to formally open a design discussion at some point, and in doing so we want to set a few simplifications up front, such as binary choice, one-shot decisions, completely arbitrary/no-preference conflict resolution. Here is probably a good point in the post to do that.
+
+Update: this is now the opening of a brand new section
 ---
 
 ## A Programming Interface

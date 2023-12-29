@@ -71,7 +71,9 @@ To get more concrete, it might be helpful to see a few situations where people d
 
 ### Example 1: Key-Value Store
 
+A key-value store is basically an implementation of the ‘map’ data structure, stored on one or more servers and made accessible over the network. Common choices include mapping string keys to string values or byte-array keys to byte-array values. For large enough datasets, one server might not be big enough to store the whole thing, so it’s common to support splitting a key-value store across multiple servers. It also usually makes sense to maintain backups in case a server goes offline (maybe it crashed, or maybe we’re rebooting it to install updates).
 
+The kind of conflict that routinely appears in a key-value store is two different clients trying to update the same key at the same time. A consensus algorithm is one reasonable choice for deciding which update is accepted; all client submit their desired key-value updates to the consensus algorithm, and the consensus algorithm informs all clients which update was actually accepted. The client that was accepted moves on; the other clients can retry, return error, etc as needed.
 
 ### Example 2: Locks and Assignment
 

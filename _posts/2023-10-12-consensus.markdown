@@ -144,10 +144,21 @@ As we move into the design phase of this book, keep these properties handy; we�
   </h1>
 </center>
 
----
-TODO we need to formally open a design discussion at some point, and in doing so we want to set a few simplifications up front, such as binary choice, one-shot decisions, completely arbitrary/no-preference conflict resolution. Here is probably a good point in the post to do that.
+At this point our knowledge of consensus algorithms is rather textbook; let’s get more practical by inventing a working algorithm ourselves. In this section we’ll try out a few ideas, just to play around and get a feel for the problem space. The ideas we come up with in this section will be good, but incomplete. We’ll find ourselves repeatedly hitting a dead end. We won’t be able to get our designs in this section fully working until part 3, where we figure out what the dead end is and how to get around it.
 
-Update: this is now the opening of a brand new section
+## A Few Restrictions
+
+TODO justify
+
+TODO binary decision, red vs blue
+
+TODO one-shot decision
+
+TODO no-preference / arbitrary conflict resolution
+
+
+---
+TODO starting from here we have old content from before the intro and properties section rework. It should be mostly fine but there are probably small details that need updating
 ---
 
 ## A Programming Interface

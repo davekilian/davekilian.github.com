@@ -1,6 +1,6 @@
 ---
 layout: post
-title: Zero to Consensus
+title: Little Book of Consensus Algorithms
 author: Dave
 draft: true
 ---
@@ -40,6 +40,14 @@ In part 1, we'll start by exploring the problem space. We'll nail down exactly w
 ## What is Consensus?
 
 A consensus algorithm is a protocol for keeping a network of computers in sync, resolving conflicts along the way as needed.
+
+TODO small rework of the below
+
+* Consensus means agreement
+* Implies prior disagreement
+* Usually element of closure, ability to move on
+* Define conflict as two servers want to update the same state and both updates can’t be combined; one must be accepted and others must be rejected
+* Also, after we explain that conflicts arise, say that you can use a consensus algorithm to take care of the conflict or you can invent CRDTs to avoid them problem altogether 
 
 In real life, we talk about ‘reaching consensus’ when there are multiple points of view that conflict with one another; we say consensus has been reached once the conflict has been resolved and everyone has accepted the resolution. At that point everybody is in sync, and old disagreements are not to be reopened. Everyone can now move forward.
 
@@ -143,6 +151,8 @@ As we move into the design phase of this book, keep these properties handy; we�
     Part 2: Designing a Consensus Algorithm 
   </h1>
 </center>
+
+TODO you don’t understand a piece of code until you try to change it, and you don’t understand an algorithm until you try to design it. Best way to start is just start trying stuff, it probably won’t work but you’ll figure your way around the problem space as you go
 
 At this point our knowledge of consensus algorithms is rather textbook; let’s get more practical by inventing a working algorithm ourselves. In this section we’ll try out a few ideas, just to play around and get a feel for the problem space. The ideas we come up with in this section will be good, but incomplete. We’ll find ourselves repeatedly hitting a dead end. We won’t be able to get our designs in this section fully working until part 3, where we figure out what the dead end is and how to get around it.
 

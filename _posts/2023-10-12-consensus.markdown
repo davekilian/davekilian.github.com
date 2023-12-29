@@ -27,7 +27,7 @@ Today, the struggle to develop and understand consensus algorithms continues. On
 
 We're going to retrace the original line of thought that led to the discovery of Paxos, which is the first consensus algorithm ever discovered. Our discussion will be self-contained and complete: if you can pass an undergrad programming class and write code that runs in the cloud, you have enough background to get through this thing. I won't use big words or mathematical notation when I don't have to, but I'm not going to go easy on you either &mdash; no handwaving, silly metaphors or oversimplifications. At the end, you're going to understand the core Paxos algorithm, and you'll understand how somebody could have come up with it.
 
-In part 1, we'll start with by exploring the problem space. We'll nail down exactly what a consensus algorithm does, and we'll try to design one ourselves &mdash; only to find we keep hitting a dead end! In part 2, we'll talk about FLP, a major discovery that makes it clear why the things we were doing in part 1 didn't work. Finally, in part 3, we'll use what FLP taught us to fix our broken designs, and end up with Paxos &mdash; the first working consensus algorithm. Let’s jump in ...
+In part 1, we'll start by exploring the problem space. We'll nail down exactly what a consensus algorithm does, and we'll try to design one ourselves &mdash; only to find we keep hitting a dead end! In part 2, we'll talk about FLP, a major discovery that makes it clear why the things we were doing in part 1 didn't work. Finally, in part 3, we'll use what FLP taught us to fix our broken designs, and end up with Paxos &mdash; the first working consensus algorithm. Let’s jump in ...
 
 <center>
   <a name="part1"></a>
@@ -38,7 +38,7 @@ In part 1, we'll start with by exploring the problem space. We'll nail down exac
 
 ## What is Consensus?
 
-A consensus algorithm is a protocol for keeping a network of computers in sync, resolving conflicts as needed.
+A consensus algorithm is a protocol for keeping a network of computers in sync, resolving conflicts along the way as needed.
 
 In real life, we talk about ‘reaching consensus’ when there are multiple points of view that conflict with one another; we say consensus has been reached once the conflict has been resolved and everyone has accepted the resolution. At that point everybody is in sync, and old disagreements are not to be reopened.
 
@@ -48,7 +48,7 @@ Similarly, networks of servers need to reach consensus when there are multiple c
 
 Consensus algorithms are what allow you to make a network of servers look like a single cohesive service. Without them, users would have to constantly worry about which data is on which server, like we did in the early days of the web. (Nameservers and FTP shares, anyone?)
 
-Take GitHub for example. GitHub stores a lot of code, and a lot of people push and pull from Git repos on GitHub every day. It’s too much data and too much load for any one server to handle, so we can be pretty sure GitHub is a distributed service running across a whole bunch of servers. I don’t know about you, but I personally have never needed to worry about any of GitHub’s servers or how their network is laid out internally. I just point my browser or my git client to their URL and go manage some repos. GitHub presents itself as a single cohesive service, abstracting away from me the details of what servers they run code on or how their network is laid out.
+Take GitHub for example. GitHub stores a lot of code, and a lot of people push and pull from Git repos on GitHub every day. It’s too much data and too much load for any one server to handle, so we can be pretty sure GitHub is a distributed service running across a whole bunch of servers. I don’t know about you, but I personally have never needed to worry about any of GitHub’s servers or how their network is laid out internally. I just point my browser or my git client to their URL and go manage some repos. I can do that because GitHub presents itself as a single cohesive service, abstracting away from me the details of what servers they run code on or how their network is laid out.
 
 Services like these tend to be rife with potential for conflicts. Say we have two users, Alice and Bob, who both want to push some commits to the same repo. If you’ve used Git, you may know that only the first person to push their commits will succeed; whoever pushes second will have to rebase on the first person’s commits and then push again. So if Alice and Bob both try to push their commits at the same time, GitHub has to decide who goes first (their commits are accepted as-is) and who goes second (and must rebase). There’s a problem though: Alice and Bob might be connected to different servers. How are the two servers going to discover Alice and Bob’s conflict, resolve it, and present a single consistent timeline of events that is the same for Alice, Bob, and anyone else using the repo? Probably by using a consensus algorithm, or some other system that relies on a consensus algorithm.
 
@@ -58,13 +58,13 @@ These kinds of situations pop up all the time when building distributed services
 
 Let's talk about reliability for a second. Think about the device you're using to read this guide; have you ever had weird little problems with it? Freezes, or crashing apps, weird glitches, system-wide slowdowns, overheating, weird network disconnects, blue screens, anything like that? Most likely these things have happened to you, even if they don't happen often enough to be a major disruption day to day.
 
-But now imagine you were using not just one device, but a thousand of them. Or maybe you’re a cloud provider, running hundreds of thousands of these things across the world, connected by thousands of miles of network cables. How often do you think you'd be dealing with these kinds of little problems? Heck, you'd probably never be able to fully rid yourself of them, no matter how hard you tried! Rare problems, multiplied by thousands of machines, or millions of requests per minute, become common. Somewhere in your system, you will have machines overheating, crashing, getting disconnected from the network, losing power randomly, and so on. With so many machines, you can't fix these problems and make them stay fixed; so, your code has to accept that the servers and networks it runs on don’t always behave the way they’re supposed to &mdash; your software has to work even if the underlying OS and hardware don’t! These little problems are called **faults**, and software that works despite faults is said to be **fault-tolerant**.
+But now imagine you were using not just one device, but a thousand of them. Or maybe you’re a cloud provider, running hundreds of thousands of these things across the world, connected by thousands of miles of network cables. How often do you think you'd be dealing with these kinds of little problems? Heck, you'd probably never be able to fully rid yourself of them, no matter how hard you tried! Rare problems, multiplied by thousands of machines, or millions of requests per minute, become common. Somewhere in your system, you will have machines overheating, crashing, getting disconnected from the network, losing power randomly, and so on. With so many machines, you can't fix these problems and make them stay fixed; so, your code has to accept that the servers and networks it runs on don’t always behave the way they’re supposed to. Your software has to work even if the underlying OS and hardware don’t! These little problems are called **faults**, and software that works despite faults is said to be **fault-tolerant**.
 
 The hard thing about designing consensus algorithms that can be deployed in practical, real-world settings is making them fault-tolerant. They have to provide perfect, exact guarantees, but run on an imperfect platform that routinely fails to provide its stated guarantees.
 
 ## Use Cases
 
-So far we have a vague idea of what consensus is and what it does for us. Let's get more concrete. Here are some situations people commonly deploy consensus algorithms:
+To get more concrete, it might be helpful to see a few situations where people deploy consensus algorithms:
 
 ### Example 1: Key-Value Store
 
@@ -79,6 +79,10 @@ So far we have a vague idea of what consensus is and what it does for us. Let's 
  
 
 ## Properties of a Consensus Algorithm
+
+---
+TODO: with significant rework of opening prose, I think we can simplify this section. The way I now describe consensus both IRL and in code should map fairly well to the properties we’re about to describe here. For example, we’ve already said that consensus means not reopening past decisions, and we talked about how users of the algorithm need the decision to be final so they can make downstream decisions based on what consensus decided, which leads straight into the no-decoherence property; we just need to stress the tiny timescales in which we want that property to hold.
+---
 
 Think about our examples above. What do they all rely on the consensus algorithm to do?
 

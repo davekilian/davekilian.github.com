@@ -17,45 +17,17 @@ draft: true
 
 Ask some rando off the street, "Hey, what are some foundational problems in the field of distributed systems?" and they'll probably say something like, "What? Who are you? Get away from me!" Others might suggest the problem of *distributed consensus* &mdash; the problem you solve with fancy algorithms like Raft and Paxos. 
 
-I find these algorithms kind of amazing. For one, they’re the bedrock on which the entire online world is built. If a system is distributed and manages any kind of shared state, without fail, there’s a consensus algorithm running in there somewhere. The average dev doesn’t usually need to interact with consensus algorithms directly, but the databases and cloud services we build the online world on are themselves built on consensus algorithms. Consensus is everywhere!
+I find these algorithms kind of amazing. For one, they’re the bedrock on which the entire online world is built. If a system is distributed and manages any kind of shared state, without fail, there’s always a consensus algorithm to be found running in there somewhere. The average dev doesn’t usually need to interact with consensus algorithms directly, but the databases and cloud services we build the online world on are themselves built on consensus algorithms. Consensus is everywhere!
 
 It’s kind of incredible that these algorithms exist at all. They do things that feel like it should be impossible to do. The environment of distributed systems is unforgiving; platforms provide very few guarantees, and the guarantees you get on paper don’t always hold in practice due to hardware malfunctions, software crashes, networks glitches and so on. It’s a world where anything that can go wrong will go wrong, is going wrong, and has been going wrong for weeks unnoticed. It’s like a perverse game of Simon Says, where you take dependencies on what you think are already very weak assumptions only to find that &ndash; Simon didn’t say! &ndash; that assumption can break too. Look at the world that way, and it seems almost impossible that an algorithm running in that environment could ever provide complete and utter certainty, reliably; yet that’s exactly what consensus algorithms manage to do! No wonder they’re everywhere.
 
 On top of all that, it’s a small miracle that we managed to discover a working consensus algorithm at all. The first one we discovered was the culmination and many years of work by many very intelligent people, and that process was full of false starts and wrong directions. Throughout the process, people were all but certain an impossibility proof was just around the corner. In fact, even when a working algorithm was first published, people didn’t get it &mdash; people came out of the author’s presentation thinking it was a big elaborate joke. (That the algorithm was presented by a guy wearing an Indiana Jones getup probably didn’t help.)
 
-Today, the struggle to develop and understand consensus algorithms continues. One of the biggest recent advancements in this space was published in a paper titled *In Search of an Understandable Consensus Algorithm*, and that’s 25 years after the first working algorithm was published!
+Today, the struggle to develop and understand consensus algorithms continues. One of the biggest recent advancements in this space was published in a paper titled *In Search of an Understandable Consensus Algorithm*, and that’s 25 years after the first working algorithm was published! The original author of the original consensus algorithm published the algorithm twice, but people still don’t get it. Much ink has been put to paper trying to explain how these things work, to no avail. Many people have written blogs trying to make Paxos easy to understand, and failed; in this mini-book, I will repeat their folly!
 
----
+We're going to retrace the original line of thought that led to the discovery of Paxos, which is the first consensus algorithm ever discovered. Our discussion will be self-contained and complete: if you can pass an undergrad programming class and write code that runs in the cloud, you have enough background to get through this thing. I won't use big words or mathematical notation when I don't have to, but I'm not going to go easy on you either &mdash; no handwaving, silly metaphors or oversimplifications. At the end, you're going to understand the core Paxos algorithm, and you'll understand how somebody could have come up with it.
 
-
-
-
-
-
-
-
-
-TODO I find them kind of amazing, both in what they can do and in what a valiant struggle it was to come up with a working one. And the struggle isn’t over - 
-
-
-
---
-
-These little-understood algorithms power every cloud service you rely on. Without them, you wouldn’t have the cloud; you’d just have a pile of servers you’d have to manage individually. Anytime you have a service that runs on multiple servers, where a
-
-TODO borderline amazing they exist at all. In a world of anything that can go wrong will go wrong, is going wrong, has been going wrong for months; consensus algorithms provide a level of certainty that we have no business 
-
-TODO but designing one was no mean feat. The title of the Paxos paper. Many failed attempts to explain these. Repeat their folly.
-
-TODO outline-
-
----
-
-If you've heard of these algorithms, you're probably also aware of their reputation. When you still have people naming landmark papers things like *In Search of an Understandable Consensus Algorithm* 25 years after the first working consensus algorithm was published, you know something's up! Many people have tried and failed to write understandable explanations of Paxos. In this guide, I will repeat their folly.
-
-We're going to retrace the line of thinking that led to the original Paxos algorithm. This guide will be long, because it's self-contained and complete: if you can pass an undergrad programming class and write an app that sends requests and responses on a network, you have enough background to get through this thing. I won't use big words or mathematical notation when I don't have to, but I'm not going to go easy on you either &mdash; no handwaving, silly metaphors or dumbing things down. At the end, you're going to understand the core Paxos algorithm, and you'll understand the train of thought that led us there.
-
-In part 1, we'll start with by exploring the problem space. We'll nail down exactly what a consensus algorithm does, and we'll try to design one ourselves &mdash; only to find that it's not such an easy thing to do! In part 2, we'll talk about FLP, which tells us why the things we were doing in part 1 didn't work. Finally, in part 3, we'll build on what we learned to fix our broken designs and end up with Paxos &mdash; the first working consensus algorithm.
+In part 1, we'll start with by exploring the problem space. We'll nail down exactly what a consensus algorithm does, and we'll try to design one ourselves &mdash; only to find we keep hitting a dead end! In part 2, we'll talk about FLP, which tells us why the things we were doing in part 1 didn't work. Finally, in part 3, we'll use what FLP taught us to fix our broken designs and end up with Paxos &mdash; the first working consensus algorithm.
 
 Should be a fun ride! Buckle in!
 

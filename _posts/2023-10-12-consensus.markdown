@@ -107,16 +107,31 @@ To safely treat decisions as final, we need to be pretty strict about the no-dec
 
 I’ll call the three properties together the **consensus properties**, since they fall directly out of the definition of a consensus algorithm. There’s still one more property we need:
 
-## Fault Tolerance
+### Fault Tolerance
+
+As we discussed before, a consensus algorithm that can actually be used in a real production environment must tolerate real production faults, because it’s just not feasible to get the entire network running perfectly and keep it that way. A consensus algorithm should be resilient to things like:
+
+* Hardware failures
+* Server crashes
+* Power loss
+* Servers taken down for upgrade
+* Network disconnects
+* Slow networks
+* Lost network messages
+
+No matter how many of these things are going on, the algorithm must never violate any of the consensus properties (conflict resolution, coherence, no-decoherence) mentioned above; however, it’s acceptable for the algorithm to proceed slowly or even halt if the system is in bad shape and the fault rate is really high. At the limit, this is unavoidable anyway; if every server loses power, there’s nothing your code can do to make progress! As long as you uphold the consensus properties, you’ve done your best. In short, it’s okay if the algorithm eventually stops working, as long as it never starts doing the wrong thing.
+
+When considering fault tolerance, we always consider the worst case. For example, if the algorithm tolerates the crash of almost every server, but has some special server that’s not allowed to crash, we would say that the algorithm does not even tolerate one crash, because if the one server that crashes happens to be the special one, the algorithm stops working. This might seem harsh, but keep in mind that even rare situations &mdash; like that one special server crashing &mdash; become common at high scale.
+
+TODO be strict about the worst case 
 
 
+Todo the idea, and being strict about considering worst case because the worst case is common enough. 
 
 
 
 
 ---
-A good consensus algorithm should work despite hardware failures, software crashes, power loss, machines being taken down for upgrade, network disconnets, slow networks, and lost network messages. This should apply to every computer, every network connection, and every network message equally: e.g. it should be ok for *any* node to crash, or *any* network message to go missing, at any time.
-
 ### Recap
 
 As we continue our discussion, keep these properties in the back of your mind:

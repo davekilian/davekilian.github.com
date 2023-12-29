@@ -99,48 +99,15 @@ Lets unpack that. I see three separate properties:
 
 **Conflict resolution**: The algorithm gracefully handles conflicts when they arise; for example, it’s not an error for multiple servers to try to obtain the same distributed lock at the same time, even though the lock can’t be granted to all the servers simultaneously. The algorithm does something to resolve the conflict (in this example, choosing which server gets the lock).
 
-**Coherence**: There is one, and only one decision treated as final. Every server can eventually find out about it. In short, coherence means all servers are in sync by the time the algorithm finishes. For example, coherence means all servers know which server got the lock, and no server erroneously believes some other server got the lock.
+**Coherence**: Every server can eventually find out what decision the algorithm made. In other words, all servers are in sync by the time the algorithm finishes. Continuing with the lock service example, coherence would mean every server agrees which server got the lock; no server erroneously believes some other server got the lock.
 
-**No-Decoherence**: Once consensus is reached, the decision is final. No matter what new information becomes available in the future, it won’t change a decision the consensus algorithm has already made. This is what makes it safe for calling code to act on the decision. For example, it would be no good for the consensus algorithm powering a distributed lock server to reserve the right to change its mind &mdash; otherwise the consensus algorithm could decide a server no longer holds the lock *after* that server has already started running the lock-protected code!
+**No-Decoherence**: Once consensus is reached, the decision is final. No matter what new information becomes available in the future, it won’t change a decision the consensus algorithm has already made. This is what makes it safe for calling code to act on the decision. If we didn’t have this, consensus would not be useful for our lock server, because the consensus algorithm could change its mind and decide a server no longer holds the lock *after* that server has already started running the lock-protected code!
 
-TODO actually quite strict about timeframes here
+To safely treat decisions as final, we need to be pretty strict about the no-decoherence property. A consensus algorithm must ensure no server *ever* sees the wrong result, even while the algorithm is still running and hasn’t completed yet. Equivalently: the instant *any* server can see a decision has been made, it must be impossible for the decision to change. The step that makes a decision visible must also lock that decision in as one atomic operation.
 
-TODO call these the consensus properties
+I’ll call the three properties together the **consensus properties**, since they fall directly out of the definition of a consensus algorithm. There’s still one more property we need:
 
-TODO in a new heading, fault tolerance
-
-TODO a new recap and outro
-
-
-
-
-
----
-TODO: with significant rework of opening prose, I think we can simplify this section. The way I now describe consensus both IRL and in code should map fairly well to the properties we’re about to describe here. For example, we’ve already said that consensus means not reopening past decisions, and we talked about how users of the algorithm need the decision to be final so they can make downstream decisions based on what consensus decided, which leads straight into the no-decoherence property; we just need to stress the tiny timescales in which we want that property to hold.
----
-
-Think about our examples above. What do they all rely on the consensus algorithm to do?
-
-Unfortunately, there isn't a well-accepted set of consensus properties we can rattle off here. Database people have ACID (*atomic, consistent, isolated, durable*); there's no similarly catchy acronym for consensus algorithms. We're going to have to wing it. Of course, we still ought to come up with big fancy words to name our ideas; gotta sound smart if we want to be taken seriously! (Also, having 1-2 word names for these will be useful, since we're going to refer back to these quite a bit.)
-
-### Coherence
-
-First, let's cover the basic correctness condition. The point of a consensus algorithm is to take some state, and keep it in sync across a network of computers; so when a consensus algorithm finishes, all the computers had better end up with the same state! Let's call this most basic requirement the **coherence** property.
-
-### Conflict Resolution
-
-What else? Another core feature we'll need is **conflict resolution**. What if two people try to update the same key of our key-value store at the same time? What if two nodes try to obtain the same lock using our distributed lock service in parallel? When multiple answers are possible, we need to choose one and only one correct answer. We need a way to resolve concurrent updates that conflict with one another.
-
-At least for our purposes, it should be fine for the algorithm to resolve the conflicts however it chooses, even at random if it wants to. The algorithm does not ever need to prefer one kind of answer over another; it can resolve conflicts arbitrarily.
-
-### No Decoherence
-
-Another observation: resolving conflicts alone isn't enough. We need to add a constraint: the algorithm needs to make a decision once and for all, and never go back on it. As soon as the algorithm tells any computers, "this is the answer that everyone has agreed upon," it must be impossible for any other computer to ever think that we agreed on some other value.
-
-
-
-
-
+## Fault Tolerance
 
 
 
@@ -148,31 +115,6 @@ Another observation: resolving conflicts alone isn't enough. We need to add a co
 
 
 ---
-
-An alternate way to explain the same idea:
-
-* During the algorithm, there must not be a time where anyone can see a wrong answer
-* Equivalently: once the conflict is resolved, we must never change our minds
-* Think of the chaos that would ensure without that guarantee!
-* But note this rule is actually quite strict. We want it to apply for miniscule timescales
-* The *instant* someone can tell the conflict is resolved, we can never change our minds
-
----
-
-
-
-
-
-Another observation: resolving conflicts alone isn't enough. We need to add a constraint: the algorithm needs to make a decision once and for all, and never go back on it.
-
-People are going to use consensus to make decisions, e.g. to decide whether or not a key-value overwrite was successful, a node is in a cluster, a thread obtained a lock, etc. A consensus algorithm that can report one decision, but then change it's mind later, would be useless! You wouldn't be able to make any hard decisions. For example, if consensus says you got a lock, but it can change its mind and take away your lock at any time, what good is your lock?
-
-We need to ensure any decision that has been (or can be) communicated to a client is final: it cannot be changed 3 years from now or 3 nanoseconds from now. Let's call this no-takebacks rule **no-decoherence**.
-
-### Fault Tolerance
-
-And finally, we know from earlier that problems like spotty networks, hardware failures and software crashes are a fact of life. These kinds of problems are called **faults**, and we our consensus algorithm should work despite them; it should be **fault-tolerant**.
-
 A good consensus algorithm should work despite hardware failures, software crashes, power loss, machines being taken down for upgrade, network disconnets, slow networks, and lost network messages. This should apply to every computer, every network connection, and every network message equally: e.g. it should be ok for *any* node to crash, or *any* network message to go missing, at any time.
 
 ### Recap

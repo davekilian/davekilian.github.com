@@ -20,15 +20,15 @@ Ask some rando off the street, "Hey, what are some foundational problems in the 
 
 I find these algorithms kind of amazing. For one, they’re the bedrock on which the entire online world is built. If a system is distributed and manages any kind of shared state, there’s always a consensus algorithm to be found running in there somewhere, without fail. The average dev may not need to interact with consensus algorithms directly, but the databases and cloud services we build the online world on are themselves built on consensus algorithms. Consensus is everywhere!
 
-It’s kind of incredible that these algorithms exist at all. They do things that feel impossible. The environment of distributed systems is unforgiving; platforms provide surprisingly few guarantees, and the guarantees you get on paper don’t always hold in practice due to hardware malfunctions, software crashes, networks glitches and so on. It’s a world where anything that can go wrong will go wrong, is going wrong, and has been going wrong for weeks unnoticed. It’s like a perverse game of Simon Says, where you take dependencies on what you think are already very weak assumptions only to find that &ndash; Simon didn’t say! &ndash; that assumption can break too. Look at the world that way, and it seems almost impossible that an algorithm running in that environment could ever provide complete and utter certainty, reliably; yet that’s exactly what consensus algorithms manage to do! No wonder they’re everywhere.
+It’s kind of incredible that these algorithms exist at all. They do things that feel impossible. The environment of distributed systems is unforgiving; platforms provide surprisingly few guarantees, and the guarantees you get on paper don’t always hold in practice due to hardware malfunctions, software crashes, networks glitches and so on. It’s a world where anything that can go wrong will go wrong, is going wrong, and has been going wrong for weeks unnoticed. It’s like a perverse game of Simon Says, where you take dependencies on what you think are already very weak assumptions only to find that &ndash; Simon didn’t say! &ndash; that assumption can break too. Look at the world that way, and it seems almost impossible that an algorithm running in that environment could ever provide complete and utter certainty, and even do so pretty reliably; but that’s exactly what consensus algorithms manage to do! No wonder they’re everywhere.
 
-On top of all that, it’s a small miracle that we managed to discover a working consensus algorithm at all. The first one we discovered was the culmination and many years of hard work by many very intelligent people, and that process was full of false starts and wrong directions. Throughout the process, people were all but certain an impossibility proof was just around the corner. In fact, even when a working algorithm was first published, people didn’t get it &mdash; people came out of the author’s presentation thinking it was a big elaborate joke. (It probably didn’t help the author was wearing an Indiana Jones getup, pretending his invention was an archaeological discovery, but still!)
+On top of all that, it’s a small miracle that we managed to discover a working consensus algorithm at all. The first one we discovered was the culmination and many years of hard work by many intelligent people, and that process was full of false starts and wrong directions. Throughout the journey, people were all but certain an impossibility proof was just around the corner. In fact, even when a working algorithm was first published, people didn’t get it &mdash; people came out of the author’s presentation thinking it was some kind of practical joke. (It probably didn’t help the author was wearing an Indiana Jones getup, pretending his algorithm was an archaeological find, but still!)
 
 Today, the struggle to develop and understand consensus algorithms continues. One of the biggest recent advancements in this space was published in a paper titled *In Search of an Understandable Consensus Algorithm*, and that’s 25 years after the first working algorithm was published! The original author of the original consensus algorithm published the algorithm twice, but people still don’t get it. Much ink has been put to paper trying to explain how these things work, to no avail. Many people have written blogs trying to make Paxos easy to understand, and failed; in this little book, I am going to repeat their folly.
 
-We're going to retrace the original line of thought that led to the discovery of Paxos, which is the first consensus algorithm ever discovered. Our discussion will be self-contained and complete: if you can pass an undergrad programming class and write code that runs in the cloud, you have enough background to get through this thing. I won't use big words or mathematical notation when I don't have to, but I'm not going to go easy on you either &mdash; no handwaving, stretching metaphors or oversimplifying. At the end, you're going to understand the core Paxos algorithm, and you'll understand how somebody could have come up with it.
+We're going to retrace the original line of thought that led to the discovery of Paxos, which is the first consensus algorithm ever discovered. Our discussion will be self-contained and complete: if you can pass an undergrad programming class and deploy your code to the cloud, you have enough background to get through this thing. I won't use big words or mathematical notation when I don't have to, but I'm not going to go easy on you either &mdash; no handwaving, stretching metaphors or oversimplifying. At the end, you're going to understand the core Paxos algorithm, and you'll understand how somebody could have come up with it.
 
-In part 1, we'll start by exploring the problem space. We'll nail down exactly what a consensus algorithm does, and we'll try to design one ourselves &mdash; only to find we keep hitting a dead end! In part 2, we'll talk about FLP, a major discovery that makes it clear why the things we were doing in part 1 didn't work. Finally, in part 3, we'll use what FLP taught us to fix our broken designs, and end up with Paxos &mdash; the first working consensus algorithm. Let’s jump in.
+In part 1, we'll start by exploring the problem space. We'll nail down exactly what a consensus algorithm does, and when you’d want to use one. In part 2, we’ll start trying to design an algorithm to meet the needs laid out in part 1 &mdash; only to find ourselves running into a dead end! In part 3 we'll talk about FLP, a major discovery that makes it clear why the things we were doing in part 2 didn't work. Finally, in part 4, we'll use what FLP taught us to fix our broken designs, and end up with Paxos &mdash; the first working consensus algorithm. Let’s jump in!
 
 <center>
   <a name="part1"></a>
@@ -41,9 +41,9 @@ In part 1, we'll start by exploring the problem space. We'll nail down exactly w
 
 A consensus algorithm is a protocol for keeping a network of computers in sync, resolving conflicts along the way as needed.
 
-In real life, we talk about ‘reaching consensus’ when there are multiple points of view that conflict with one another; we say consensus has been reached once the conflict has been resolved and everyone has accepted the resolution. At that point everybody is in sync, and old disagreements are not to be reopened.
+In real life, we talk about ‘reaching consensus’ when there are multiple points of view that conflict with one another; we say consensus has been reached once the conflict has been resolved and everyone has accepted the resolution. At that point everybody is in sync, and old disagreements are not to be reopened. Everyone can now move forward.
 
-Similarly, networks of servers need to reach consensus when there are multiple conflicting updates happening at the same time. A consensus algorithm resolves the conflict, makes the outcome available to all servers, and prevents the conflict from ever arising again in the future. This allows code using the consensus algorithm to treat decisions made by the consensus algorithm as final, and provides a way for all servers to eventually find out about the outcome at their own pace.
+Similarly, networks of servers need to reach consensus when there are multiple conflicting updates happening at the same time. A consensus algorithm resolves the conflict, makes the outcome available to all servers, and prevents the conflict from ever arising again in the future. Code using the consensus algorithm can safely treat decisions made by the consensus algorithm as final, and act on them. The algorithm also provides a way for every server to eventually find out about the outcome at its own pace.
 
 ## Why Does Consensus Matter?
 
@@ -59,7 +59,7 @@ These kinds of situations pop up all the time when building distributed services
 
 Let's talk about reliability for a second. Think about the device you're using to read this guide; have you ever had weird little problems with it? Freezes, or crashing apps, weird glitches, system-wide slowdowns, overheating, weird network disconnects, blue screens, anything like that? Most likely these things have happened to you, even if they don't happen often enough to be a major disruption day to day.
 
-But now imagine you were using not just one device, but a thousand of them. Or imagine you’re a cloud provider, running hundreds of thousands of these things across the world, connected by thousands of miles of network cables. How often do you think you'd be dealing with these kinds of little problems? Heck, you'd probably never be able to fully rid yourself of them, no matter how hard you tried! Rare problems, multiplied by thousands of machines, become common. If you serve a million requests every minute, you should expect to see every possible one-in-a-million problem once every minute (or 1,400 times a day). 
+But now imagine you were using not just one device, but a thousand of them. Or imagine you’re a cloud provider, running hundreds of thousands of these things across the world, connected by thousands of miles of network cables. How often do you think you'd be dealing with these kinds of little problems? Heck, you'd probably never be able to fully rid yourself of them, no matter how hard you tried! Rare problems, multiplied by thousands of machines, become common. If you serve a million requests every minute, you should expect to see every possible one-in-a-million problem once every minute (over 1,400 times a day). 
 
 Somewhere in your system, you will have machines overheating, crashing, getting disconnected from the network, losing power randomly, and so on. With so many machines, you can't fix these problems and make them stay fixed; so, your code has to accept that the servers and networks it runs on don’t always behave the way they’re supposed to. Your software has to work even if the underlying OS and hardware don’t! These little problems are called **faults**, and software that works despite faults is said to be **fault-tolerant**.
 
@@ -67,21 +67,53 @@ The hard thing about designing consensus algorithms that can be deployed in prac
 
 ## Use Cases
 
-To get more concrete, it might be helpful to see a few situations where people deploy consensus algorithms:
+Let’s take a look at a few situations where people deploy consensus algorithms:
 
 ### Example 1: Key-Value Store
 
-A key-value store is basically an implementation of the ‘map’ data structure, stored on one or more servers and made accessible over the network. Common choices include mapping string keys to string values or byte-array keys to byte-array values. For large enough datasets, one server might not be big enough to store the whole thing, so it’s common to support splitting a key-value store across multiple servers. It also usually makes sense to maintain backups in case a server goes offline (maybe it crashed, or maybe we’re rebooting it to install updates).
+A key-value store is a type of database, basically an implementation of the ‘map’ data structure stored on one or more servers and made accessible over the network. Common choices include mapping string keys to string values or byte-array keys to byte-array values. For large enough datasets, one server might not be big enough to store the whole thing, so it’s common to support splitting a key-value store across multiple servers. It also usually makes sense to maintain backups in case a server goes offline (maybe it crashed, or maybe we’re rebooting it to install updates).
 
-The kind of conflict that routinely appears in a key-value store is two different clients trying to update the same key at the same time. A consensus algorithm is one reasonable choice for deciding which update is accepted; all client submit their desired key-value updates to the consensus algorithm, and the consensus algorithm informs all clients which update was actually accepted. The client that was accepted moves on; the other clients can retry, return error, etc as needed.
+One kind of conflict that routinely appears in a key-value store is two different clients trying to update the same key at the same time. A consensus algorithm can be used here to decide which update is accepted; all client submit their desired key-value updates to the consensus algorithm, and the consensus algorithm informs all clients which update was actually accepted. The client that was accepted moves on; the other clients can retry, return an error, or do whatever else makes sense in context. But nobody erroneously thinks some other update was the accepted one.
 
-An alternate strategy is to assign individual keys to individual servers, TODO lead into the next section 
+### Example 2: Lock Service
 
-### Example 2: Locks and Assignment
+A distributed lock service implements the networked version of the mutex locks you may have encountered in multithreaded code. A thread which obtains a distributed lock can be certain no other thread on any server in the network also holds the lock at the same time. Since a server could crash before releasing a lock, locks in a distributed lock service usually come with some kind of timeout; if the server doesn’t renew the lock before the timeout expires, it automatically loses the lock. 
 
- 
+A lock service like this can be useful for a variety of things; for example, the key-value store from the previous example might use such a lock service to decide which keys of the overall store are assigned to which servers, and which servers maintain backups of which keys. 
+
+The main type of conflict that arises in a lock service is two or more servers trying to obtain the same lock at the same time. A consensus algorithm can determine which node ‘wins’ and actually obtains the lock; all other nodes learn through the consensus algorithm that they did not obtain the lock, and wait for it accordingly.
 
 ## Properties of a Consensus Algorithm
+
+Now let’s take what we know so far, and try to distill a set of requirements a consensus algorithm should meet. 
+
+Unfortunately, there isn't a well-accepted set of consensus properties we can rattle off here. Database people have ACID (*atomic, consistent, isolated, durable*); there's no similarly catchy acronym for consensus algorithms. We're going to have to wing it.
+
+I don’t usually like using big words if it can be avoided, but this is one case where I think they’re necessary: these are very specific ideas, and we’re going to need to refer back to them a lot, so it’d be good to have one big word instead of lots-of-little-ones-repeated-all-the-time. Plus, big words are a necessary evil if you want to sound smart, get that promo / grant, etc.
+
+### The Consensus Properties
+
+Fundamentally, consensus algorithms take a set of conflicting options, decide on one, and guarantee that decision cannot be undone. This allows the decision to be treated as final, which in turn allows calling code using the consensus algorithm to move on and act on that decision.
+
+Lets unpack that. I see three separate properties:
+
+**Conflict resolution**: The algorithm gracefully handles conflicts when they arise; for example, it’s not an error for multiple servers to try to obtain the same distributed lock at the same time, even though the lock can’t be granted to all the servers simultaneously. The algorithm does something to resolve the conflict (in this example, choosing which server gets the lock).
+
+**Coherence**: There is one, and only one decision treated as final. Every server can eventually find out about it. In short, coherence means all servers are in sync by the time the algorithm finishes. For example, coherence means all servers know which server got the lock, and no server erroneously believes some other server got the lock.
+
+**No-Decoherence**: Once consensus is reached, the decision is final. No matter what new information becomes available in the future, it won’t change a decision the consensus algorithm has already made. This is what makes it safe for calling code to act on the decision. For example, it would be no good for the consensus algorithm powering a distributed lock server to reserve the right to change its mind &mdash; otherwise the consensus algorithm could decide a server no longer holds the lock *after* that server has already started running the lock-protected code!
+
+TODO actually quite strict about timeframes here
+
+TODO call these the consensus properties
+
+TODO in a new heading, fault tolerance
+
+TODO a new recap and outro
+
+
+
+
 
 ---
 TODO: with significant rework of opening prose, I think we can simplify this section. The way I now describe consensus both IRL and in code should map fairly well to the properties we’re about to describe here. For example, we’ve already said that consensus means not reopening past decisions, and we talked about how users of the algorithm need the decision to be final so they can make downstream decisions based on what consensus decided, which leads straight into the no-decoherence property; we just need to stress the tiny timescales in which we want that property to hold.
@@ -169,7 +201,7 @@ If designing an algorithm that checks all these boxes sounds easy, believe me, i
 
 
 ---
-TODO we need to formally open a design discussion at some point, and in doing so we want to set a few simplifications up front, such as binary choice and one-shot decisions. Here is probably a good point in the post to do that.
+TODO we need to formally open a design discussion at some point, and in doing so we want to set a few simplifications up front, such as binary choice, one-shot decisions, completely arbitrary/no-preference conflict resolution. Here is probably a good point in the post to do that.
 ---
 
 ## A Programming Interface

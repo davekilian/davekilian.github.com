@@ -75,6 +75,8 @@ A key-value store is basically an implementation of the ‘map’ data structure
 
 The kind of conflict that routinely appears in a key-value store is two different clients trying to update the same key at the same time. A consensus algorithm is one reasonable choice for deciding which update is accepted; all client submit their desired key-value updates to the consensus algorithm, and the consensus algorithm informs all clients which update was actually accepted. The client that was accepted moves on; the other clients can retry, return error, etc as needed.
 
+An alternate strategy is to assign individual keys to individual servers, TODO lead into the next section 
+
 ### Example 2: Locks and Assignment
 
  

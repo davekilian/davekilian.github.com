@@ -9,7 +9,7 @@ draft: true
 
 **Table of Contents**
 
-1. [Consensus](#part1)
+1. [The Consensus Problem](#part1)
 2. [Designing a Consensus Algorithm](#part2)
 2. [FLP](#part3)
 3. [Paxos](#part4)
@@ -18,24 +18,32 @@ draft: true
 
 Ask some rando off the street, "Hey, what are some foundational problems in the field of distributed systems?" and they'll probably say something like, "What? Who are you? Get away from me!" Others might suggest the problem of *distributed consensus* &mdash; the problem you solve with fancy algorithms like Raft and Paxos. 
 
-I find these algorithms kind of amazing. For one, they’re the bedrock on which the entire online world is built. If a system is distributed and manages any kind of shared state, there’s always a consensus algorithm to be found running in there somewhere, without fail. The average dev may not need to interact with consensus algorithms directly, but the databases and cloud services we build the online world on are themselves built on consensus algorithms. Consensus is everywhere!
+These algorithms are kind of amazing. For one, they’re the bedrock on which the entire online world is built. If a system is distributed and manages any kind of shared state, there’s always a consensus algorithm to be found running in there somewhere, without fail. The average dev may not need to interact with consensus algorithms directly, but the databases and cloud services we build the online world on are themselves built on consensus algorithms. Consensus is everywhere!
 
 It’s kind of incredible that these algorithms exist at all. They do things that feel impossible. The environment of distributed systems is unforgiving; platforms provide surprisingly few guarantees, and the guarantees you get on paper don’t always hold in practice due to hardware malfunctions, software crashes, networks glitches and so on. It’s a world where anything that can go wrong will go wrong, is going wrong, and has been going wrong for weeks unnoticed. It’s like a perverse game of Simon Says, where you take dependencies on what you think are already very weak assumptions only to find that &ndash; Simon didn’t say! &ndash; that assumption can break too. Look at the world that way, and it seems almost impossible that an algorithm running in that environment could ever provide complete and utter certainty, and even do so pretty reliably; but that’s exactly what consensus algorithms manage to do! No wonder they’re everywhere.
 
-On top of all that, it’s a small miracle that we managed to discover a working consensus algorithm at all. The first one we discovered was the culmination and many years of hard work by many intelligent people, and that process was full of false starts and wrong directions. Throughout the journey, people were all but certain an impossibility proof was just around the corner. In fact, even when a working algorithm was first published, people didn’t get it &mdash; people came out of the author’s presentation thinking it was some kind of practical joke. (It probably didn’t help the author was wearing an Indiana Jones getup, pretending his algorithm was an archaeological find, but still!)
+On top of all that, it’s a small miracle that we managed to discover a working consensus algorithm at all. The first one we discovered was the culmination and many years of hard work by many intelligent people, and that process was a long journey, full of false starts and wrong directions. Along the way, people were all but certain an impossibility proof was just around the corner. In fact, even when a working algorithm was first published, people didn’t get it &mdash; people came out of the author’s presentation thinking it was some kind of practical joke. (It probably didn’t help the author was wearing an Indiana Jones getup, pretending his algorithm was an archaeological find, but still!)
 
-Today, the struggle to develop and understand consensus algorithms continues. One of the biggest recent advancements in this space was published in a paper titled *In Search of an Understandable Consensus Algorithm*, and that’s 25 years after the first working algorithm was published! The original author of the original consensus algorithm published the algorithm twice, but people still don’t get it. Much ink has been put to paper trying to explain how these things work, to no avail. Many people have written blogs trying to make Paxos easy to understand, and failed; in this little book, I am going to repeat their folly.
+Today, the struggle to develop and understand consensus algorithms continues. One of the biggest recent advancements in this space was published in a paper titled *In Search of an Understandable Consensus Algorithm*, and that’s 25 years after the first working algorithm was published! The original author of the original consensus algorithm published the algorithm twice, but people still don’t get it. Much ink has been put to paper trying to explain how these things work, to no avail. Many people have written blogs trying to make Paxos easy to understand, and failed; in this little book, I shall repeat their folly.
 
 We're going to retrace the original line of thought that led to the discovery of Paxos, which is the first consensus algorithm ever discovered. Our discussion will be self-contained and complete: if you can pass an undergrad programming class and deploy your code to the cloud, you have enough background to get through this thing. I won't use big words or mathematical notation when I don't have to, but I'm not going to go easy on you either &mdash; no handwaving, stretching metaphors or oversimplifying. At the end, you're going to understand the core Paxos algorithm, and you'll understand how somebody could have come up with it.
 
-In part 1, we'll start by exploring the problem space. We'll nail down exactly what a consensus algorithm does, and when you’d want to use one. In part 2, we’ll start trying to design an algorithm to meet the needs laid out in part 1 &mdash; only to find ourselves running into a dead end! In part 3 we'll talk about FLP, a major discovery that makes it clear why the things we were doing in part 2 didn't work. Finally, in part 4, we'll use what FLP taught us to fix our broken designs, and end up with Paxos &mdash; the first working consensus algorithm. Let’s jump in!
+In chapter 1, we'll start by exploring the problem space. We'll nail down exactly what a consensus algorithm does, and when you’d want to use one. In chapter 2, we’ll start trying to design an algorithm to meet the needs laid out in chapter 1 &mdash; only to find ourselves running into a dead end! In chapter 3 we'll talk about FLP, a major discovery that makes it clear why the things we were doing in chapter 2 didn't work. Finally, in chapter 4, we'll use what FLP taught us to fix our broken designs, and end up with Paxos &mdash; the first working consensus algorithm.
 
 <center>
   <a name="part1"></a>
   <h1 style="margin-top: 3em; margin-bottom: 2em">
-    Part 1: Consensus
+    1: The Consensus Problem
   </h1>
 </center>
+
+## What is Consensus?
+
+The word “consensus” means agreement, usually with the implication that some prior disagreement is now closed, not to be reopened.
+
+TODO not exactly sure how I want to say it, but basically the goal is to move on. You were previously stuck because of a prior disagreement, and by making a decision and refusing to reopen the discussion, you now have a shared agreement you can use to move forward. <-- way too many words here
+
+---
 
 ## TODO
 
@@ -173,7 +181,7 @@ As we move into the design phase of this book, keep these properties handy; we�
 <center>
   <a name="part2"></a>
   <h1 style="margin-top: 3em; margin-bottom: 2em">
-    Part 2: Designing a Consensus Algorithm 
+    2: Designing a Consensus Algorithm 
   </h1>
 </center>
 
@@ -476,7 +484,7 @@ Adieu, for now! Or, for the impatient, read on . . .
 <center>
   <a name="part3"></a>
   <h1 style="margin-top: 3em; margin-bottom: 2em">
-    Part 3: FLP
+    3: FLP
   </h1>
 </center>
 
@@ -505,7 +513,7 @@ TODO the details are
 <center>
   <a name="part4"></a>
   <h1 style="margin-top: 3em; margin-bottom: 2em">
-    Part 4: Paxos
+    4: Paxos
   </h1>
 </center>
 

@@ -284,6 +284,10 @@ But maybe we can rescue this design? What if we had the leader make backups on o
 
 ## Appointing Leaders is a Consensus Problem
 
+---
+TODO a takeaway we should add here: a lot of things that look like solutions to the consensus problem are themselves things that rely on consensus ... e.g. consensus is easy if you have reliable leader election, but reliable leader election relies on consensus so we can’t use it. So any time you say “does this solve the consensus problem,” first ask, “does this depend on a solution to the consensus problem?” Can you find a conflict that must be resolved globally for the algorithm to function correctly? For leader election that conflict is “who is the leader?” On second thought, this might just be an entire new reflow of this heading ... 
+---
+
 A leader-based consensus algorithm relies on every node agreeing which node is currently the leader. If different nodes obey different leaders, Very Bad Things (TM) can happen.
 
 Consider the following network. Node 1 is currently the leader; nodes 2-5 are following. Nobody has made a proposal yet, so the current consensus `value` on the leader is `null`:

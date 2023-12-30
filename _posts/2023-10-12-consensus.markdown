@@ -39,9 +39,7 @@ In chapter 1, we'll start by exploring the problem space. We'll nail down exactl
 
 ## What is Consensus?
 
-The word “consensus” means agreement, usually with the implication that some prior disagreement is now closed, not to be reopened.
-
-TODO not exactly sure how I want to say it, but basically the goal is to move on. You were previously stuck because of a prior disagreement, and by making a decision and refusing to reopen the discussion, you now have a shared agreement you can use to move forward. <-- way too many words here
+The name “consensus” is an analogy for how people make decisions in the real world. In real life, the word “consensus” means agreement, usually with the implication that some prior disagreement is now closed, not to be reopened. We seek consensus when we need to make a decision once and for all in order to move forward; once we’ve moved forward, it’s too late to reopen the decision. The situation is similar for a network of servers running a consensus algorithm.
 
 ---
 

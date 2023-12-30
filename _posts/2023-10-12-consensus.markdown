@@ -37,6 +37,31 @@ In part 1, we'll start by exploring the problem space. We'll nail down exactly w
   </h1>
 </center>
 
+## TODO
+
+I want to try a bigger refactor here. The basis is outlined in the heading below. I think we can clean up, simplify and clarify part 1 entirely.
+
+First, we can define consensus IRL in a way analogous to the properties we want to provide. You just say that consensus ...
+
+1. Means agreement (coherence)
+2. Implies prior disagreement was possible (conflict resolution)
+3. Implies decisions are final / we can move on (no decoherence)
+
+Then the interesting discussion involved what kind of disagreements that pop up in distributed systems, basically outlining consensus problems*. Examples we already wrote up of conflicts are
+
+1. GitHub
+2. KV store
+3. Lock service
+
+What we want to drive home is how state shared across servers makes it possible for two different servers to try to do two mutually incompatible updates simultaneously. That is the consensus problem; consensus algorithms are protocols the servers can use to decide which update to take and which to reject. 
+
+As sidebars here we can now discuss
+
+1. CRDTs as an alternate strategy that ensures simultaneous updates never conflict (conflict-free) and do lazy merges
+2. Consensus is fundamental because these conflicts arise due to presenting your network as a single cohesive service
+
+But ignoring the sidebar, having defined consensus IRL and then shown the kind of disagreements servers on a network can have, we’re now well situated to repeat the definition of consensus and apply it to computers, then refine into the set of properties.
+
 ## What is Consensus?
 
 A consensus algorithm is a protocol for keeping a network of computers in sync, resolving conflicts along the way as needed.

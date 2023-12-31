@@ -53,6 +53,12 @@ Let’s take a look at a few examples of situations where conflicts between serv
 
 ### GitHub Repository
 
+GitHub stores a lot of code, and a lot of people push and pull from Git repos on GitHub every day. It’s too much data and too much load for any one server to handle, so we can be pretty sure GitHub is a distributed service running across a whole bunch of servers. I don’t know about you, but I personally have never needed to worry about any of GitHub’s servers or how their network is laid out internally. I just point my browser or my git client to their URL and go manage some repos. I can do that because GitHub presents itself as a single cohesive service, abstracting away from me the details of what servers they run code on or how their network is laid out.
+
+Services like these tend to be rife with potential for conflicts. Say we have two users, Alice and Bob, who both want to push some commits to the same repo. If you’ve used Git, you may know that only the first person to push their commits will succeed; the other person will have to rebase on the first person’s commits and then try again. So if Alice and Bob both try to push their commits at the same time, GitHub has to decide who goes first (their commits are accepted as-is) and who goes second (and must rebase). There’s a problem though: Alice and Bob might be connected to different servers. How are the two servers going to discover Alice and Bob’s conflict, resolve it amongst themselves, and present a single consistent timeline of events that is the same for Alice, Bob, and everyone else using the repo? Looks like we’ve got a consensus problem on our hands!
+
+The code running on these two servers will now need to decide whether Alice or Bob gets to merge their commits first. To GitHub, it doesn’t really matter who wins the race and who must rebase; the key requirement is that both Alice and Bob see the same winner. So the servers need to make a quick decision amongst themselves, and stick to it forever so that Alice, Bob and everyone else using the repo sees the same final state.
+
 ### Key-Value Store
 
 ### Lock Services

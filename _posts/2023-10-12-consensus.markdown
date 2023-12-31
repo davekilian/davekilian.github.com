@@ -79,7 +79,7 @@ TODO the takeaway is shared state + parallel update = potential for conflicts. M
 
 TODO inset box: the need for consensus exists because of conflicts. If you can do the updates without conflicts, you don’t need consensus. CRDTs.
 
-TODO maybe mention that consensus can be boxed up into higher level primtivies. For example, if the key-value store uses consensus to provide consistent views of the key-value store, the GitHub servers can resolve the commit conflicts by storing the commit data in a KV store and letting the KV store do the conflict resolution internally. That’s how you can end up relying on consensus algorithms even without knowing what they are: the databases and services underneath you implement consensus algorithms for you and abstract them away.
+TODO maybe mention that consensus can be boxed up into higher level primtivies. For example, if the key-value store uses consensus to provide consistent views of the key-value store, the GitHub servers can resolve the commit conflicts by storing the commit data in a KV store and letting the KV store do the conflict resolution internally. And as we mentioned, the KV-store might actually implement consensus using the lock service! That’s how you can end up relying on consensus algorithms even without knowing what they are: the databases and services underneath you implement consensus algorithms for you and abstract them away. But keep digging through the infrastructure your stuff runs on, and eventually you will find something that can be recognized as the consensus algorithms described in this book.
 
 ## Why Consensus is Hard
 

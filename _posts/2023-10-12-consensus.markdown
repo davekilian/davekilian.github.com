@@ -37,13 +37,13 @@ In chapter 1, we'll start by exploring the problem space. We'll nail down exactl
   </h1>
 </center>
 
-The name “consensus” is an analogy for how people make decisions in the real world. In real life, the word “consensus” means agreement, usually with the implication that some prior disagreement is now resolved, closed, and not to be reopened. We seek consensus when we need to make a decision once and for all in order to move forward; once we’ve moved forward, it’s too late to reopen the decision. The situation is similar for a network of servers running a consensus algorithm.
+The name “consensus” algorithm comes from an analogy with how people make decisions in the real world. In real life, the word “consensus” means agreement, often with the implication that some prior disagreement is now resolved, closed, not to be reopened. We seek consensus when we need to make a decision once and for all so we can move forward. The situation is similar for a network of servers running a consensus algorithm.
 
-Distributed services need consensus algorithms because conflicts and disagreements tend to arise naturally any time you have shared state that can be updated by two servers in parallel. If two servers try to update some shared state without knowing about each other’s updates, they can end up disagreeing what the updated state should become. These conflicts must be resolved in order for the system to complete the update and move forward. Algorithms for resolving these conflicts are called consensus algorithms.
-
-Let’s take a look at a few examples of situations where these conflicts can arise &mdash; examples where some kind of consensus algorithm is needed:
+Distributed services need consensus algorithms because conflicts and disagreements tend to arise naturally. Any time you have state that can be updated by two servers in parallel, and those servers don’t know about each other’s updates, they can end up disagreeing what the updated state should become. These conflicts must be resolved once and for all so the system to complete the update and move forward. Algorithms for resolving these conflicts are called consensus algorithms.
 
 ## Example Use Cases
+
+Let’s take a look at a few examples of situations where these conflicts can arise &mdash; examples where some kind of consensus algorithm is needed:
 
 ### GitHub Repository
 

@@ -67,9 +67,15 @@ Say Alice and Bob are again connected to different servers. This time they both 
 
 ### Lock Service
 
-A distributed lock service implements the networked version of the mutex locks you may have encountered in multithreaded code. A thread which obtains a distributed lock can be certain no other thread on any server in the network also holds the lock at the same time. Since a server could crash before releasing a lock, locks in a distributed lock service usually come with some kind of timeout; if the server doesn’t renew the lock before the timeout expires, it automatically loses the lock. 
+A distributed lock service implements the networked version of the mutex locks you may have encountered in multithreaded code. A thread which obtains a distributed lock can be certain no other thread on any server in the network also holds the lock at the same time. Locks in a distributed lock service often come with a timeout, so that the lock can be released automatically if a server crashes before releasing its lock. A lock service like this can be useful for a variety of things; for example, the key-value store from the previous example might use this service to lock keys for update, or assign a group of keys to a single server so the server can manage all those keys using plain (non-distributed) locks. 
 
-A lock service like this can be useful for a variety of things; for example, the key-value store from the previous example might use such a lock service to decide which keys of the overall store are assigned to which servers, and which servers maintain backups of which keys. 
+---
+
+TODO rewrite as Alice and Bob
+
+---
+
+
 
 The main type of conflict that arises in a lock service is two or more servers trying to obtain the same lock at the same time. A consensus algorithm can determine which node ‘wins’ and actually obtains the lock; all other nodes learn through the consensus algorithm that they did not obtain the lock, and wait for it accordingly.
 

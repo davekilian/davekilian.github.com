@@ -69,19 +69,13 @@ Say Alice and Bob are again connected to different servers. This time they both 
 
 A distributed lock service implements the networked version of the mutex locks you may have encountered in multithreaded code. A thread which obtains a distributed lock can be certain no other thread on any server in the network also holds the lock at the same time. Locks in a distributed lock service often come with a timeout, so that the lock can be released automatically if a server crashes before releasing its lock. A lock service like this can be useful for a variety of things; for example, the key-value store from the previous example might use this service to lock keys for update, or assign a group of keys to a single server so that server can manage all the keys using plain (non-distributed) locks. 
 
----
-
-TODO rewrite as Alice and Bob
-
----
-
-
-
-The main type of conflict that arises in a lock service is two or more servers trying to obtain the same lock at the same time. A consensus algorithm can determine which node ‘wins’ and actually obtains the lock; all other nodes learn through the consensus algorithm that they did not obtain the lock, and wait for it accordingly.
+Once again, say Alice and Bob are connected to different servers. This time they're both trying to open the same document on a writing service. The writing service internally holds a lock while a doc is being edited, so Alice's and Bob's servers now both try to obtain the same lock at the same time. By definition of a lock, they can't both take the lock at the same time, so the service needs to guarantee one server gets the lock, one doesn't, and both agree who has the lock. Another consensus problem!
 
 ### Takeaways
 
 TODO the takeaway is shared state + parallel update = potential for conflicts. Must resolve the conflict to move forward. 
+
+TODO maybe this is a good time to point out this always happens, because you're building a group of servers that behave as a single cohesive service. So whatever state those servers all share has to be kept up to date consistently no matter which server is doing the update, and any time two users operate on the same data you have the potential for conflicts.
 
 TODO inset box: the need for consensus exists because of conflicts. If you can do the updates without conflicts, you don’t need consensus. CRDTs.
 
@@ -566,7 +560,6 @@ TODO the details are
     4: Paxos
   </h1>
 </center>
-
 
 
 

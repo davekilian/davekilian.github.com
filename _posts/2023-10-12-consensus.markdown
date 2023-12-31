@@ -61,13 +61,25 @@ The code running on these two servers will now need to decide whether Alice or B
 
 ### Key-Value Store
 
-### Lock Services
+A key-value store is a type of database, basically an implementation of the ‘map’ data structure stored on servers and made accessible over the network. For large enough datasets, one server might not be big enough to store the whole map, so it’s common to support splitting a key-value store across multiple servers. It also usually makes sense to maintain backups in case a server goes offline (maybe it crashed, or maybe we’re rebooting it to install updates).
+
+Say Alice and Bob are again connected to different servers. This time they both change a system config setting, causing both servers to try to update the same key in the key-value store. Now we again have a disagreement: the two servers want to update the same key to different values. Once again, it doesn’t really matter whether Alice’s config update is accepted or Bob’s, but it is important that all servers are using the same config! Hence the key-value store has a consensus problem on its hands: it needs to ensure everyone is using the same value for that key.
+
+### Lock Service
+
+A distributed lock service implements the networked version of the mutex locks you may have encountered in multithreaded code. A thread which obtains a distributed lock can be certain no other thread on any server in the network also holds the lock at the same time. Since a server could crash before releasing a lock, locks in a distributed lock service usually come with some kind of timeout; if the server doesn’t renew the lock before the timeout expires, it automatically loses the lock. 
+
+A lock service like this can be useful for a variety of things; for example, the key-value store from the previous example might use such a lock service to decide which keys of the overall store are assigned to which servers, and which servers maintain backups of which keys. 
+
+The main type of conflict that arises in a lock service is two or more servers trying to obtain the same lock at the same time. A consensus algorithm can determine which node ‘wins’ and actually obtains the lock; all other nodes learn through the consensus algorithm that they did not obtain the lock, and wait for it accordingly.
 
 ### Takeaways
 
 TODO the takeaway is shared state + parallel update = potential for conflicts. Must resolve the conflict to move forward. 
 
 TODO inset box: the need for consensus exists because of conflicts. If you can do the updates without conflicts, you don’t need consensus. CRDTs.
+
+TODO maybe mention that consensus can be boxed up into higher level primtivies. For example, if the key-value store uses consensus to provide consistent views of the key-value store, the GitHub servers can resolve the commit conflicts by storing the commit data in a KV store and letting the KV store do the conflict resolution internally. That’s how you can end up relying on consensus algorithms even without knowing what they are: the databases and services underneath you implement consensus algorithms for you and abstract them away.
 
 ## Why Consensus is Hard
 

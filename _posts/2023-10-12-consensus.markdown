@@ -37,9 +37,13 @@ In chapter 1, we'll start by exploring the problem space. We'll nail down exactl
   </h1>
 </center>
 
-The name “consensus” algorithm comes from an analogy with how people make decisions in the real world. In real life, the word “consensus” means agreement, often with the implication that some prior disagreement is now resolved, closed, not to be reopened. We seek consensus when we need to make a decision once and for all so we can move forward. The situation is similar for a network of servers running a consensus algorithm.
+When distributed systems programmers use the term “consensus” to describe their code, they’re noticing that sometimes programs need to make group decisions, just like people. 
 
-Distributed services need consensus algorithms because conflicts and disagreements tend to arise naturally. Any time you have state that can be updated by two servers in parallel, and those servers don’t know about each other’s updates, they can end up disagreeing what the updated state should become. These conflicts must be resolved once and for all so the system to complete the update and move forward. Algorithms for resolving these conflicts are called consensus algorithms.
+Think of a time you and a group of other people were stuck on a decision. Maybe you all wanted to go to a restaurant but couldn’t decide where to go, or you all wanted to go see a movie but couldn’t decide which one. If you’ve ever accepted a group decision even though you didn’t get exactly what you wanted, you already understand how consensus works! (And if not, maybe you should rethink some life choices!) The word “consensus” basically means “agreement,” but it usually also implies urgency and finality: we all want to have a decision more than we want to get our way, so we all come to an agreement and stick to it. Once consensus is reached, we avoid reopening the discussion, because it would jeopardize the one thing we all want and already have: agreement.
+
+Groups of programs get stuck on decisions too. Usually it’s because there’s some data that two servers are trying to update at the same time; if the servers don’t know about each other’s updates, they can end up disagreeing over what the final state should be. Like with human consensus, the servers just need a resolution, and the priority is to get to consensus so we can make progress, even if means one server gets it way and the other server fails to do its update. 
+
+That’s the gist anyways. But it’s more helpful to think in specifics:
 
 ## Example Use Cases
 

@@ -37,6 +37,11 @@ In chapter 1, we'll start by exploring the problem space. We'll nail down exactl
   </h1>
 </center>
 
+TODO a couple ideas
+
+1. Lead in with like “a lot of computing terms are based on real-life metaphors” and then frame the real-life portion of the below as the metaphor behind the term “consensus” algorithm
+2. Don’t struggle to explain that conflicts exist. Just finish this little intro paragraph as like “programs can disagree too, let’s see how.” Each example will then end with an example-specific connect-up back to the real-world discussion we started the section with
+
 The basic problem consensus algorithms solve is *resolving conflicts*. We call them ‘consensus’ algorithms on the observation that sometimes the way programs come to a group decision is a lot like how people do it:
 
 Think of a time you and a group of other people were stuck on a decision. Maybe you all wanted to go to a restaurant but couldn’t decide where to go, or you all wanted to go see a movie but couldn’t decide which one. If you’ve ever accepted a group decision even though you didn’t get exactly what you wanted, you already understand how consensus works. (If not, maybe you should rethink some life choices!) The word “consensus” basically means “agreement,” but it usually also implies urgency and finality: everybody wants to work out an agreement and stick to it, so the group can move on (e.g. everyone wants to pick *a* movie so they can all finally go to the movies). People might have individual preferences, but they won’t jeopardize consensus by pushing their own views too hard: each person agrees having a group decision is more important than getting what he or she thinks is the best option. And once consensus is reached, nobody’s going to be willing to reopen past disagreements: the point of getting to consensus is to end the disagreement and be done with it. That’s the kind of thing we usually have in mind when we talk about group consensus.

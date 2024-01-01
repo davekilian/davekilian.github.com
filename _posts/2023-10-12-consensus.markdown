@@ -39,9 +39,19 @@ In chapter 1, we'll start by exploring the problem space. We'll nail down exactl
 
 A lot of computing terms come from real-life metaphors. The real-life metaphor behind consensus algorithms goes something like this:
 
-TODO rewrite the next paragraph as two parts, first a full metaphor story thing and second an explanation of what consensus means in that context.
+Imagine you and a group of other people are stuck on a decision. Maybe you all want to go to a restaurant but you can’t decide where to go. It’s a conundrum: everyone wants to go out to eat, but until you all agree *where* to go, nobody goes anywhere. Everyone wants the same thing, but nobody’s getting what they want! People might throw out some ideas at this point, but the goal isn’t to debate the best possible place to eat &mdash; it’s just to find an option everyone can agree to, so the group can move on and go eat something. That provisional agreement, made so the whole group can move on, is called *consensus*.
 
-Imagine you and a group of other people were stuck on a decision. Maybe you all want to go to a restaurant but can’t decide where to go, or you all want to go see a movie but can’t decide which one. If you’ve ever accepted a group decision even though you didn’t get exactly what you wanted, you already understand what consensus algorithms do. (If not, maybe you should rethink some life choices!) The word “consensus” basically means “agreement,” but it usually also implies urgency and finality: everybody wants to work out an agreement and stick to it, so the group can move on (e.g. everyone wants to pick *a* movie so they can all finally go to the movies). People might have individual preferences, but they won’t jeopardize consensus by pushing their own views too hard: each person agrees having a group decision is more important than getting what he or she thinks is the best option. And once consensus is reached, nobody’s going to be willing to reopen past disagreements: the point of getting to consensus is to end the disagreement and be done with it. That’s the kind of thing we usually have in mind when we talk about group consensus.
+The dictionary definition of “consensus” is basically “agreement,” but in our context we use the word to mean agreement that lets us move forward based on a group decision. That implies making a decision that’s good enough for everyone, even if not everyone is getting exactly what they wanted, and it also implies sticking to the decision, lest we get stuck in indecision again.
+
+This situation is actually a pretty good metaphor for how consensus problems work in distributed systems programming. Groups of programs can get similarly stuck on decisions. Let’s see how that happens:
+
+---
+
+TODO finish a full story thing. Then a second paragraph to explain the definition of “consensus” in this context
+
+---
+
+If you’ve ever accepted a group decision even though you didn’t get exactly what you wanted, you already understand what consensus algorithms do. (If not, maybe you should rethink some life choices!) The word “consensus” basically means “agreement,” but it usually also implies urgency and finality: everybody wants to work out an agreement and stick to it, so the group can move on (e.g. everyone wants to pick *a* movie so they can all finally go to the movies). People might have individual preferences, but they won’t jeopardize consensus by pushing their own views too hard: each person agrees having a group decision is more important than getting what he or she thinks is the best option. And once consensus is reached, nobody’s going to be willing to reopen past disagreements: the point of getting to consensus is to end the disagreement and be done with it. That’s the kind of thing we usually have in mind when we talk about group consensus.
 
 Groups of programs get stuck on decisions too. Let’s see a few examples of what that looks like in practice:
 

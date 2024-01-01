@@ -146,37 +146,36 @@ As we move into the design phase of this book, keep these properties handy; we�
   </h1>
 </center>
 
-TODO you don’t understand a piece of code until you try to change it, and you don’t understand an algorithm until you try to design it. Best way to start is just start trying stuff, it probably won’t work but you’ll figure your way around the problem space as you go
+Just as the best way to understand a piece of code is to change it, the best way to understand an algorithm is to try designing it yourself. In this chapter, we’ll try to design a fault-tolerant consensus algorithm. We won’t be able to get all the way there in one chapter, but we’ll learn a few important things along the way.
 
-At this point our knowledge of consensus algorithms is rather textbook; let’s get more practical by inventing a working algorithm ourselves. In this section we’ll try out a few ideas, just to play around and get a feel for the problem space. The ideas we come up with in this section will be good, but incomplete. We’ll find ourselves repeatedly hitting a dead end. We won’t be able to get our designs in this section fully working until part 3, where we figure out what the dead end is and how to get around it.
+## A Couple Restrictions
 
-## A Few Restrictions
+To keep things from getting too complicated too fast, let’s start out by placing a couple of limitations on our design. The goal is to make it easier to get to a working consensus algorithm to begin with, while ensuring there’s still a path from the more basic thing we start with to the more advanced thing we want to end up with.
 
-TODO justify
+First, we’ll start by making a **binary decision**: our algorithm will be designed to handle exactly two conflicting updates, and the algorithm needs to get all nodes to agree on one of the two. In real life, we’d probably want an algorithm to handle arbitrary many conflicts, but if we start by handling two, it’s very likely we’ll find a way to extend the algorithm from two conflicts to N conflicts. 
 
-TODO binary decision, red vs blue
+To make it easier to talk about the two conflicting options, we’ll also give them names: the <span style=“color:red”>red</span> option and the <span style=“color:blue”>blue</span> blue option:
 
-TODO one-shot decision
+[diagram introducing the two colored circles we’ll use throughout the book]
 
-TODO no-preference / arbitrary conflict resolution
+Remember, these options can stand in for anything else: 0 and 1, yes and no, apples and oranges, etc. 
 
+Furthermore, we’re going to restrict ourselves to building **one-shot** consensus. The algorithm will be able to resolve conflicts one time, and never change it. This is too simplistic for real-world use; for example, it would mean the lock server would be able to grant a lock to one thread one time, and never release it. But if we can build a one-shot primitive, we can find ways to implement a sequence of updates by using a stream of one-shot decisions.
 
----
-TODO starting from here we have old content from before the intro and properties section rework. It should be mostly fine but there are probably small details that need updating
----
+So, in conclusion: we’ll design a consensus algorithm that picks one of two options, one time, and sticks with it forever. And we think we’ll be able to extend that into an algorithm that works with any number of conflicts, any number of times.
 
 ## A Programming Interface
 
-Given what we now know about requirements, let's think about what kind of API we want give to clients of our consensus algorithm. Maybe it'll tell us something important about how to structure our implementation.
+To nail down the design further, let's think about what kind of API we want give to clients using our consensus algorithm.
 
 If we want the conflict-resolution property to really make sense, we need to collect proposals separately from deciding on which proposal to accept. So we probably want to split our interface into two methods:
 
-* **propose()**: offers the consensus system a value you'd like to change the state to
+* **propose()**: offers the consensus system a value you'd like to change the state to, which can either be “red” or “blue”
 * **query()**: ask the consensus system what value the state actually was changed to
 
-Code that wants to update the shared state first calls **propose** with the value it'd prefer, followed by **query** to see what value was chosen. Code that just wants to read the shared state can skip **propose** and just call **query**. The consensus system guarantees every **query** call returns the same value, as required by the coherence and no-decoherence rules.
+Code that wants to update the shared state first calls **propose** with the value it prefers, followed by **query** to see what value was chosen. Code that just wants to read the shared state can skip **propose** and just call **query**. The consensus system guarantees every **query** call returns the same value, as required by the coherence and no-decoherence rules.
 
-For example, think about the lock server example from before: we could make that work by defining a shared consensus variable called `owner`, which is defined as:
+For example, we could make the lock server example work by defining a shared consensus variable called `owner`, which is defined as:
 
 * the ID of the node which currently holds the lock
 * `null` if nobody has the lock yet
@@ -193,29 +192,11 @@ try acquire lock() {
 
 If many nodes call this simultaneously, only one node's proposal will be selected, and every node's **query** call will return that node's ID. The node with that ID will then return true, and do whatever it needs to do under the lock; all other nodes will see they don't have the lock, and do someting else.
 
-## First Stab at a Design
-
-Let's get cracking! To recap, we want to build a consensus algorithm that runs on a network of computers, keeping some kind of shared state in sync. It provides two methods that can be called on any of those computers, any number of times concurrently:
-
-* **propose**: accepts a value the caller would like to write to the shared state
-* **query**: returns the current value of the shared state to the caller
-
-We want these methods to provide the following guarantees:
-
-* **coherence**: all computers always see the same return value from query()
-* **conflict-resolution**: if there are multiple propose() calls, one of them is chosen arbitrarily to be the value query() always returns
-* **no-decoherence**: if query() returns a particular value, you can safely assume all past and future calls to query() have/will return that value on every node
-* **fault-tolerance**: the algorithm works even if computers, networks and software flake out on us
-
-This is what we want to end up with, at least. For now, let's also put an additional constraint on our design: we're going to start by building a one-shot consensus algorithm. Once a proposed value has been chosen, we won't allow it to be changed ever again.
-
-This is probably too simple for real-world use cases; it would mean that a lock, once acquired, cannot be released, or a key-value pair, once written, cannot be overwritten. But once we have a one-shot consensus primitive, there are probably clever ways to upgrade it into a consensus primitive that supports overwrites We'll focus on that later. For now, we'll worry about getting a one-shot consensus algorithm to work.
-
-The shared variable that we're proposing values for and querying values of, can have any type: it can be an int, bool, char, string, list, map, or a tuple of any of those &mdash; as long as you're good with setting it once and never changing it, at least for now!
+Make sense? Then let’s take our first stab at a design:
 
 ## A Leader-Based Algorithm
 
-To get us started, let me propose a basic design:
+Let me propose a basic design:
 
 Given a network of computers, we pick one of the nodes in the network and designate it the **leader**. Maybe a human sets a config option on all nodes in the network so they all know which node is the leader. We then make the leader the center of all activity: it receives all proposals, decides which one to accept, and returns the accepted proposal on queries.
 
@@ -270,19 +251,15 @@ Is this a valid consensus algorithm? Let's check:
 * **coherence**: ✅ &mdash; once the leader's `value` has been set, every query method call returns that value.
 * **conflict resolution**: ✅ &mdash; if multiple clients make proposals, the leader only picks one of them (namely, the first one it received)
 * **no-decoherence**: ✅ &mdash; the leader never changes the accepted proposal once it has been initialized the first time
-* **fault-tolerance**: hmm ... we might have a problem here.
+* **fault-tolerance**: hmm ... we have a problem here.
 
-At least the way we've designed the algorithm so far, it would seem the leader is a **single point of failure** &mdash; if it crashes, or loses power, or gets disconnected from the network, or any number of other bad things happen to the leader, nobody else is going to be able propose or query the consensus variable. That's no good.
+At least the way we've designed the algorithm so far, it would seem the leader is a **single point of failure** &mdash; if it crashes, or loses power, or gets disconnected from the network, or any number of other bad things happen to the leader, nobody else is going to be able propose or query the consensus variable. Even one fault halts the entire algorithm; so the algorithm is not fault-tolerant.
 
-But maybe we can rescue this design? What if we had the leader make backups on other nodes, and promoted one of those backup nodes to become the new leader if the original leader goes offline? It's a cool idea, but it turns out not to work for one simple reason:
+But maybe we can rescue this design? What if we maintain backups of the leader’s state, and promote one of the backup nodes to leader when the leader fails? It’s a good idea, save for one major problem:
 
 ## Appointing Leaders is a Consensus Problem
 
----
-TODO a takeaway we should add here: a lot of things that look like solutions to the consensus problem are themselves things that rely on consensus ... e.g. consensus is easy if you have reliable leader election, but reliable leader election relies on consensus so we can’t use it. So any time you say “does this solve the consensus problem,” first ask, “does this depend on a solution to the consensus problem?” Can you find a conflict that must be resolved globally for the algorithm to function correctly? For leader election that conflict is “who is the leader?” On second thought, this might just be an entire new reflow of this heading ... 
----
-
-A leader-based consensus algorithm relies on every node agreeing which node is currently the leader. If different nodes obey different leaders, Very Bad Things (TM) can happen.
+You see, promoting a backup node to leader only works if all nodes in the network agree that backup node is now the leader. If some nodes think one node is the leader and other nodes think another node is the leader, there are two leaders in the system. If the two leaders get out of sync, then the two sets of nodes listening to the two leaders start returning different values from their **query()** method, and the coherence property is violated. 
 
 Consider the following network. Node 1 is currently the leader; nodes 2-5 are following. Nobody has made a proposal yet, so the current consensus `value` on the leader is `null`:
 
@@ -298,34 +275,35 @@ Well, here's the problem: node 1 was the leader, and nodes 3-5 cannot talk to it
 
 [daigram]
 
-Uh oh, now there are two leaders! A situation like this, where a system can end up with more than one leader when it expects only one, is called **split-brain**. Here, split-brain can result in different leaders deciding on different proposals: say node 2 proposes <span style="color:blue">blue</span> and node 4 proposes <span style="color:red">red</span>. Then the different sub-networks end up with different accepted proposals:
+Uh oh, now there are two leaders! And now that there are two leaders, they can decide on different things. Say node 2 proposes <span style="color:blue">blue</span> and node 4 proposes <span style="color:red">red</span>. Then the different sub-networks end up with different accepted proposals:
 
 [diagram]
 
 Now a client that queries the system can either receive <span style="color:blue">blue</span> or <span style="color:red">red</span>; clearly the coherence property is not upheld.
 
-How do we fix this? We need every node in the system to agree which node is the leader during a failover. That way, the failover from node 1 to node 3 either happens completely or it doesn't happen at all. A usable algorithm for appointing a leader during a failover situation would need to provide:
+This situation, where a system expects to have one leader but actually ends up with two or more, is called **split-brain**. To prevent split-brain, we need a way to get all nodes to agree which node is currently the leader node.
 
-* Coherence: every node agrees which node is the leader
-* Conflict resolution: it's not an error for different nodes to disagree who should be leader
-* No-decoherence: nobody even temporarily believes the wrong node is the leader
-* Fault-tolerance: leaders can be appointed even if there are hardware or software faults
+Alas, getting all nodes to agree which node is currently the leader is a consensus problem. If you’re trying to solve the consensus problem in the first place, you can’t rely on having the problem already solved! So if we don’t know how to make a consensus algorithm, we don’t know how to safely promote a backup node to leader either. We can’t use this approach to design our algorithm.
 
-Yup, that's right: appointing a leader *is* a consensus problem. So if we don't know how to make a consensus algorithm yet, we don't know how to make a working leader failover algorithm yet either. We'd best avoid depending on leader nodes for now.
+But we did learn an important lesson: a lot of ideas which look like potential solutions to the consensus problem, themselves rely on a solution to the consensus problem. So if we ever find an easy answer, we should first check if the solution is easy only because it assumes an existing solution of the very consensus problem we’re trying to solve.
 
-So where does that leave us? The starting example I chose didn't work out, but we did learn something important in the process: we need to design a **peer-to-peer** algorithm. Instead of putting one node in charge, we need ot set things up so nodes cooperate as equals, haggling out which proposal should be accepted.
+So where does that leave us? The starting example I chose didn't work out, but we did learn something important in the process: we need to design a **peer-to-peer** algorithm. Instead of putting one node in charge, we need to set things up so nodes cooperate as equals, haggling out which proposal should be accepted.
 
 Do you know of any way to do that?
 
 ## Second Stab at a Design
 
-I'll bet you use peer-to-peer consensus algorithms all the time in real life:
+I'll bet you’ve used peer-to-peer consensus algorithms in real life:
 
-Say you're with a group of friends, and you all decide you want to eat at a restaurant for lunch, but you don't already know what restaurant you all want to go to. What do you do? Well, maybe someone throws out a restaurant, someone else throws out a different one, someone agrees, someone disagrees. Before you know it, a group opinion has formed, and once it's clear most of you want to go to that curry pizza place down the road, everyone else falls in line. Boom, consensus!
+Imagine the restaurant example once again. What exactly happens once you realize you need to decide on a place to go? Maybe someone throws out an idea, someone else throws out a different one, someone agrees, someone disagrees. Before you know it, a group opinion has formed. Book, consensus reached!
 
-Kinda sounds like voting ... do you think we could make an algorithm out of that?
+Kinda sounds like voting to me ... do you think we could make an algorithm out of that?
 
 ## The Majority-Rules Voting Algorithm
+
+---
+TODO continue redrafting based on the new intro starting from here
+---
 
 We can do something pretty similar to the example above in code, with one big caveat: in the real-life friends example, everyone had their own opinion about what restaurant they wanted to go to; in our algorithm, we're resolving conflicts completely arbitrarily. So we can do a similar kind of voting thing, except that every node will 'vote' for literally the first proposal it hears about, instead of providing any opinion of its own.
 

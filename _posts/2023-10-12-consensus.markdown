@@ -301,21 +301,17 @@ Kinda sounds like voting to me ... do you think we could make an algorithm out o
 
 ## The Majority-Rules Voting Algorithm
 
----
-TODO continue redrafting based on the new intro starting from here
----
+We can totally code up something that throws out proposals and votes on them, just like in the restaurant example above. But unlike real life, where people have preferences among options, we’ll code an algorithm where each node votes for whichever option it heard about first.
 
-We can do something pretty similar to the example above in code, with one big caveat: in the real-life friends example, everyone had their own opinion about what restaurant they wanted to go to; in our algorithm, we're resolving conflicts completely arbitrarily. So we can do a similar kind of voting thing, except that every node will 'vote' for literally the first proposal it hears about, instead of providing any opinion of its own.
+Here's a sketch:
 
-With that, here's a basic plan:
-
-Every node in the network will have its own local accepted proposal variable, which will keep calling `value`. Initially, `value` is null. When someone calls **propose()**, we set the local `value` to that proposal, "voting" for it. We then send the proposal to all other nodes; when the other nodes receive our proposal, they also "vote" for it by setting their local `value` variables if they haven't already voted for something else yet.
+Every node in the network will have its own local accepted proposal variable, which will keep calling `value`. Initially, `value` is null. When client code calls our **propose()** method, proposing red or blue, we send that proposal to all nodes, including ourselves. When a node receives a proposal, it checks its local `value` variable; if it’s still null, then this is the first proposal this node has received, so it sets its local `value` variable to that proposal, “voting” for it.
 
 A node can only vote for one value, and can never change its vote once set &mdash; so if a node votes for someone else's value, and gets a local **propose()** method call, nothing should happen, because this node already voted for something else and cannot change its vote.
 
-Finally, we implement **query()** by tallying votes: see which proposal we voted for, as well as what proposal all our peers voted for. If one proposal has been accepted by more than half of the nodes, we declare it the winner, and return that value. Boom, consensus!
+Finally, we implement **query()** by tallying votes: ask every node what it voted for (what its current `value` variable holds), and see if any proposal has been voted in by a majority, more than half of the nodes. If so, that is the consensus decision; otherwise, consensus is considered to be not yet reached.
 
-One problem with this design already, as given, is that it doesn't support more than two proposals: with three proposals, it's possible that each proposal gets enough votes that no vote can reach majority. For now, let's just pretend this doesn't happen. But this is something we'll have to circle back to and fix later though.
+One problem we’ll need to deal with is split votes: what if every node votes, but no proposal reaches a majority? For now we’re only letting clients propose red or blue, so there are only two possible proposals; if we have an even number of nodes, it could be that each proposal ends up with exactly half the votes. At that point, our consensus algorithm is stuck: there is no majority proposal, and there are no more votes, so there’s no way to make further progress. But we can fix this by requiring the algorithm to run on an odd number of nodes; that way when all the votes are in, no matter how the votes work out, either red or blue must have gotten more than half the votes.
 
 Here's the algorithm again, as pseudocode:
 
@@ -359,18 +355,18 @@ consensus {
 }
 ```
 
-So, assuming no more than two proposals so that we can guarantee a majority gets reached ... does *this* design work?
+So ... does *this* design work?
 
-* **coherence**: ✅ &mdash; if every node votes for only one proposal, only one proposal can reach a majority, and that's the proposal **query()** always returns
-* **conflict resolution**: ✅ &mdash; the voting system allows for multiple proposals and decides in a basically arbitrary way which will be accepted
-* **no-decoherence**: ✅ &mdash; nodes cannot change their votes, so once a proposal reaches majority, it cannot lose its majority
+* **coherence**: ✅ &mdash; only one proposal can reach a majority, and that's the proposal **query()** always returns
+* **conflict resolution**: ✅ &mdash; the voting system allows for multiple proposals and decides which will be accepted
+* **no-decoherence**: ✅ &mdash; nodes cannot change their votes, so once a proposal reaches majority, it cannot lose its majority. Vote counts are like stonks, they always go up
 * **fault-tolerance**: . . . 😀 I told you this would be tricky, didn't I? 
 
-No, this algorithm isn't fault-tolerant either, but we're getting better at this &mdash; this time, the problem is much more subtle!
+No, this algorithm isn't fault-tolerant either! But we're getting better at this &mdash; this time, the problem is much more subtle.
 
-This design is pretty resilient, but depending on how things play out, it sometimes has a **window of vulnerability** where one extremely poorly timed crash could bring the entire system to a halt, preventing a majority from being reached until that computer is brought back online. This case might be rare, but it still happens as a result of just one crash, so technically we have to admit this algorithm cannot withstand just one crash &mdash; hence, it's not fault-tolerant.
+This design is pretty resilient, but depending on how things play out, it sometimes has a **window of vulnerability** where one extremely poorly timed crash could bring the entire system to a halt, preventing a majority from being reached until that computer is brought back online. This case might be rare, but it still happens as a result of just one crash, so by worst-case analysis we technically have to admit this algorithm cannot withstand just one crash &mdash; hence, it's not fault-tolerant.
 
-Why not? Let's watch this in action:
+More specifically, the problem is that one crash leaves us once again with an even number of nodes, so split votes become a problem again. Let's watch this in action:
 
 Say we have a cluster of 7 nodes. One proposes <span style="color:blue">blue</span>, the other <span style="color:red">red</span>:
 
@@ -398,23 +394,25 @@ Or blue?
 
 [diagram with 3 red, 3 blue, one blue instead of red]
 
-Or maybe it actually hadn't made a decision yet, and it's safe to tiebreak?
+Or maybe it actually hadn't made a decision yet, and it's safe to tiebreak some other way?
 
 [diagram with 3 red, 3 blue, one blank in a thought bubble]
 
-If we want to move on without the node that crashed and still uphold the no-decoherence property in all cases, we really need to know whether the crashed node made a decision, and if so what it is. But the node is offline; it can't tell us what it already did. We're good and stuck now, up until we manage to get the node back up and running from where it left off.
+If we want to move on without the node that crashed and still uphold the no-decoherence guarantee, we really need to know whether the crashed node voted, and if so what it voted for. But the node is gone; it can't tell us what it already did. In fact, it might even be gone for good; what if it went offline because it caught on fire. Things happen in data centers, you know?
 
-To conclude, the loss of a single node with this algorithm is usually just fine, but in cases like the above it can be catastrophic, bringing the entire system to a halt. So, this algorithm is not fault-tolerant.
+We're good and stuck now, up until we manage to get the node back up and running from where it left off. Which may not be possible. Because of fires.
+
+To conclude, the loss of a single node with this algorithm is usually just fine, but in cases like the above it can lead to a split vote, and then we’re good and stuck. So sadly, this algorithm also is not fault tolerant.
 
 ---
 
 ## Intermission
 
-If you have the time, this would be a good point to step away from your computer and think over the above. What went wrong with our two approaches above? Can you think of a way to fix either one? Or a different strategy entirely for implementing fault-tolerant consensus?
+If you have the time, this would be a good point to step away from your computer and think over the above. What went wrong with our two approaches above? Can you think of a way to fix either one? Or a different strategy entirely?
 
 Based on how long it took the field to come up with a working algorithm, I'm guessing you won't be able to find the solution in an afternoon walk through the woods. But thinking through a variety of approaches and seeing how they hit the same dead end will give you a better feel for the problem space, and set up for the next half of this article.
 
-Adieu, for now! Or, for the impatient, read on . . .
+Adieu, perhaps, for now!
 
 ---
 
@@ -427,7 +425,7 @@ Adieu, for now! Or, for the impatient, read on . . .
   </h1>
 </center>
 
-Before a working consensus algorithm was discovered, people chewed through this problem just as you might have during your intermission. And they kept running into the same dead end, over and over: they could make an algorithm that provided the coherence, conflict resolution, and no-decoherence properties, and even make it *usually* fault tolerant; but there'd always be that one little case, one way things could go just a little bit wrong and then boom, one crash brings down the whole system. Every algorithm had at least one window of vulnerability, no matter what they tried.
+Before a working consensus algorithm was discovered, people chewed through this problem just as you might have during the intermission above. And they kept running into the same dead end, over and over. They could make an algorithm that provided the coherence, conflict resolution, and no-decoherence properties, and even make it *usually* fault tolerant; but there'd always be that one case, one little window of vulnerability where a particular node must not crash, lest the entire algorithm grind to a halt.
 
 Well, when you're trying to design an algorithm and you repeatedly run into a dead end, the next thing you should do is try to prove impossibility: that one can never design that algorithm, because that dead end will always come up no matter what you do, due to something about the problem space.
 

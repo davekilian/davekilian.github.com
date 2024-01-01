@@ -9,7 +9,7 @@ draft: true
 
 **Table of Contents**
 
-1. [The Consensus Problem](#part1)
+1. [Consensus Problems](#part1)
 2. [Designing a Consensus Algorithm](#part2)
 2. [FLP](#part3)
 3. [Paxos](#part4)
@@ -33,7 +33,7 @@ In chapter 1, we'll start by exploring the problem space. We'll nail down exactl
 <center>
   <a name="part1"></a>
   <h1 style="margin-top: 3em; margin-bottom: 2em">
-    1: The Consensus Problem
+    1: Consensus Problems
   </h1>
 </center>
 

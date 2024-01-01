@@ -79,7 +79,7 @@ Even though problems of consensus are pervasive in distributed systems, the aver
 
 ## Fault-Tolerant Consensus
 
-So far, consensus algorithms don’t sound very hard to design. There are lots of simple heuristics for resolving conflicts in a consistent way: for example, all nodes could pick the update that has the earliest timestamp, or have some way to sort the nodes and pick the update that came from the node with the lowest ID. The only reason consensus sounds simple so far is because we’re missing an entire dimension of the problem.
+So far, consensus algorithms don’t sound very hard to design. There are lots of simple heuristics for resolving conflicts in a consistent way: for example, all nodes could pick the update that has the earliest timestamp, or have some way to sort the nodes and pick the update that came from the node with the lowest ID. Sadly, the only reason consensus sounds simple so far is because we’re missing an entire dimension of the problem.
 
 Let's talk about reliability for a second. Think about the device you're using to read this book; have you ever had weird little problems with it? Freezes, or crashing apps, weird glitches, system-wide slowdowns, overheating, weird network disconnects, blue screens, anything like that? Im guessing these things have happened to you, even if they don't happen often enough to be a major disruption day to day.
 
@@ -87,7 +87,59 @@ But now imagine you were using not just one device, but a thousand of them. Or i
 
 Consensus algorithms that can be deployed in practical, real-world settings is making them fault-tolerant. Designing fault-tolerant consensus algorithms turns out to be hellishly difficult. These algorithms need to provide perfect, exact guarantees, but run on an imperfect platform that routinely fails to provide its stated guarantees. How does one do that?
 
-## Properties of a Consensus Algorithm
+## Properties of a Fault-Tolerant Consensus Algorithm
+
+To finish our discussion about the problem space, let’s nail down a set of properties any useful consensus algorithm should have. Unfortunately for us, there isn't a well-accepted set of consensus properties we can rattle off here. Database people have ACID (*atomic, consistent, isolated, durable*); there's no similarly catchy acronym for consensus algorithms. We'll have to wing it.
+
+This is one of those rare cases where I think it makes sense to use a few big fancy words to describe our ideas. Each of these properties will mean something specific, and we’ll be referring back to these a lot as we try to design a working consensus algorithm, so it’d be useful to have some nice short 1-2 word names for our consensus properties, even if that means we end up having to use big words for little ideas.
+
+### The Consensus Properties
+
+Fundamentally, consensus algorithms take a set of conflicting options, decide on one, and guarantee that decision cannot be undone. This allows the decision to be treated as final, which in turn allows calling code using the consensus algorithm to move on and act on that decision.
+
+Lets unpack that. I see three separate properties:
+
+**Conflict resolution**: The algorithm gracefully handles conflicts when they arise; for example, it’s not an error for multiple servers to try to obtain the same distributed lock at the same time, even though the lock can’t be granted to all the servers simultaneously. The algorithm does something to resolve the conflict (in this example, choosing which server gets the lock).
+
+**Coherence**: Every server can eventually find out what decision the algorithm made. In other words, all servers are in sync by the time the algorithm finishes. Continuing with the lock service example, coherence would mean every server agrees which server got the lock; no server erroneously believes some other server got the lock.
+
+**No-Decoherence**: Once consensus is reached, the decision is final. No matter what new information becomes available in the future, it won’t change a decision the consensus algorithm has already made. This is what makes it safe for calling code to act on the decision. If we didn’t have this, consensus would not be useful for our lock server, because the consensus algorithm could change its mind and decide a server no longer holds the lock *after* that server has already started running the lock-protected code!
+
+To safely treat decisions as final, we need to be pretty strict about the no-decoherence property. A consensus algorithm must ensure no server *ever* sees the wrong result, even while the algorithm is still running and hasn’t completed yet. Equivalently: the instant *any* server can see a decision has been made, it must be impossible for the decision to change. The step that makes a decision visible must also lock that decision in as one atomic operation.
+
+I’ll call the three properties together the **consensus properties**, since they fall directly out of the definition of a consensus algorithm. There’s still one more property we need:
+
+### Fault Tolerance
+
+As we discussed before, a consensus algorithm that can actually be used in a real production environment must tolerate real production faults, because it’s just not feasible to get the entire network running perfectly and keep it that way. A consensus algorithm should be resilient to things like:
+
+* Hardware failures
+* Server crashes
+* Power loss
+* Servers taken down for upgrade
+* Network disconnects
+* Slow networks
+* Lost network messages
+
+No matter how many of these things are going on, the algorithm must never violate any of the consensus properties (conflict resolution, coherence, no-decoherence) mentioned above; however, it’s acceptable for the algorithm to proceed slowly or even halt if the system is in bad shape and the fault rate is really high. At the limit, this is unavoidable anyway; if every server loses power, there’s nothing your code can do to make progress! As long as you uphold the consensus properties, you’ve done your best. In short, it’s okay if the algorithm eventually stops working, as long as it never starts doing the wrong thing.
+
+When considering fault tolerance, we always consider the worst case. For example, if the algorithm tolerates the crash of almost every server, but has some special server that’s not allowed to crash, we would say that the algorithm does not even tolerate one crash, because if the one server that crashes happens to be the special one, the algorithm stops working. This might seem harsh, but keep in mind that even rare situations &mdash; like that one special server crashing &mdash; become common at high scale. When considering whether a system tolerates a certain number of faults, always consider the very worst case.
+
+### Recap
+
+As we move into the design phase of this book, keep these properties handy; we’ll be referring back to them a lot:
+
+> **Conflict Resolution**: When conflicting updates are proposed, the algorithm picks one and rejects the others
+>
+> **Coherence**: At the end of the algorithm, every server agrees what decision was made
+>
+> **No-Decoherence**: The instant a decision is made, it is final. New information cannot change committed decisions.
+> 
+> The three properties above are referred together as the **consensus properties**
+> 
+> **Fault Tolerance**: The system degrades gracefully when there are faults in the underlying system. Faults do not ever cause the algorithm to violate a consensus property.
+
+
 
 ---
 

@@ -513,8 +513,14 @@ For this next part, let's going to take a page out of [Eugenia Cheng's book](htt
 Here are the rules:
 
 * I will present you with a consensus algorithm. I won't tell you what it is in advance, but I'll claim it provides 
-* Your goal is to crash the algorithm, so that my algorithm 
-* 
+* Your goal is to crash the algorithm, so that it gets stuck and never makes a decision
+* You are not allowed to change the rules of my algorithm or edit any of its steps
+* You do have complete control over all the indeterminate stuff, like the order network messages are delivered to nodes or the relative order of concurrent instructions running on different nodes in parallel
+* You get to crash one node exactly one time. That node, once crashed, stays offline forever
+
+You will always win this game if you play the FLP strategy. Here's all you need to do:
+
+
 
 
 

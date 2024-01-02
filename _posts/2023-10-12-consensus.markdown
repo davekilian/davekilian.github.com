@@ -318,6 +318,7 @@ Here's the algorithm again, as pseudocode:
 ```
 consensus {
   value: Proposal; // the accepted proposal
+  peers: Node[]; // all nodes in the network
   
   init {
     value := null // no accepted proposal yet
@@ -325,14 +326,13 @@ consensus {
   
   // this is the propose() API
   propose(proposal) {
-    if (value == null) {
-      value := proposal
-      peers.all.send(proposal)
-    }
+    // peers.all includes this node as well
+    peers.all.send(proposal)
   }
   
   // received a proposal from a peer
   on peer proposal(proposal) {
+    // accept the first proposal, ignore others
     if (value == null) {
       value := proposal
     }
@@ -459,7 +459,9 @@ Together, these tell a kind of story about how consensus algorithms work. Confli
 
 If you think about it, this means the story has a climax: there must be a single step of the algorithm that makes a decision once and for all. Before that step runs, the system could still choose either red or blue; after that step, all fates are sealed, and either red or blue has been chosen. For this book, we'll call this step the **decision point**. It would be redundant to continue doing decision-making work after the decision point, all the algorithm really needs to do afterward is make sure every node can find out what decision was made.
 
-In the leader-based replication algorithm, the decision point is when the leader receives the first proposal and assigns it to its local `value` varaible, here:
+Without knowing anything about what consensus algorithm you've invented, I can be certain that the decision point is always a single step &mdash; a single instruction, or a single line of code basically &mdash; that runs on a single node. How do I know that? Simple: every step of a distributed algorithm runs on a single node, and the decision point *is* a single step of the algorithm by definition (it's the one that brings the system as a whole from "undecided" to having a permanent locked-in decision).
+
+In the leader-based replication algorithm, the decision point is easy to find: it's the point when the leader receives the first proposal and assigns it to its local `value` varaible, here:
 
 ```
   on client proposal {
@@ -470,17 +472,25 @@ In the leader-based replication algorithm, the decision point is when the leader
   }
 ```
 
-For majority voting, the decision point is when one proposal reaches a majority of the nodes' votes.
+For majority voting, it's a little trickier to find. The decision point for majority voting is when one proposal receives a majority of the nodes' votes. That line of code was here:
 
-In both cases, the decision point is a single step &mdash; a single line of code &mdash; running on a single node. In fact, no matter what algorithm you've invented, the decision point is always a single step running on a single node. How do I know that? Simple: every step of a distributed algorithm runs on a single node, and the decision point is by definition a single step of the algorithm (the one that brings the system as a whole from "undecided" to having a permanent locked-in decision).
+```
+  // received a proposal from a peer
+  on peer proposal(proposal) {
+    // accept the first proposal, ignore others
+    if (value == null) {
+      value := proposal  <-- vote registered
+    }
+  }
+```
 
+But that line of code is only *sometimes* the decision point!
 
+* Sometimes a node votes, but even after doing so, no proposal has a majority yet. So the vote is insufficient to make a decision
+* Other times a node votes after a proposal already has a majority: the vote is redundant
+* Only one vote causes a proposal to cross from sub-majority to majority. This vote is the algorithm's decision point
 
-
-
-
-
-TODO we have to cover potential decision points vs decision points somehow
+Let's call things like the voting step a **potential decision point**: sometimes a potential decision point is the system's decision point, but some potential decision points are insufficient (executing them does not cause the system to decide), and sometimes they're redundant (the system has already decided).
 
 TODO new heading that introduces the idea of redundancy.
 

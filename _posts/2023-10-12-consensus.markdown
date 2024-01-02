@@ -487,12 +487,18 @@ For majority voting, it's a little trickier to find. The decision point for majo
 But that line of code is only *sometimes* the decision point!
 
 * Sometimes a node votes, but even after doing so, no proposal has a majority yet. So the vote is insufficient to make a decision
-* Other times a node votes after a proposal already has a majority: the vote is redundant
-* Only one vote causes a proposal to cross from sub-majority to majority. This vote is the algorithm's decision point
+* Other times a node votes after a proposal already has a majority. So the vote is redundant
+* Only one vote causes a proposal to cross the critical boundary sub-majority to majority. This vote locks in the majority, preventing other proposals from ever reaching a majority. So that vote is the algorithm's decision point.
 
-Let's call things like the voting step a **potential decision point**: sometimes a potential decision point is the system's decision point, but some potential decision points are insufficient (executing them does not cause the system to decide), and sometimes they're redundant (the system has already decided).
+We'll call things like the voting step a **potential decision point**: sometimes a potential decision point is the system-wide decision point, but more often, potential decision points are either insufficient (executing them does not cause the system to decide), and sometimes they're redundant (the system has already decided). The only reason to have more than one potential decision point is to deal with system faults.
 
-TODO new heading that introduces the idea of redundancy.
+TODO we now need to finish the idea of equating potential decision points to fault tolerance.
+
+TODO segue out as how many decision points do you get? Something like, the big idea that FLP had was: how many potential decision points do you get?
+
+## All Good Things Must Come to an End
+
+
 
 <center>
   <a name="part4"></a>

@@ -504,39 +504,27 @@ Before we move on, we need to recitfy a teensy little mistake we made all the wa
 
 That should be obvious, right? What good is a consensus algorithm that never finishes? Alas, it would seem adding this property to the mix shall be our downfall. If a consensus algorithm consists of a finite number of steps, and every potential decision point is a step of the algorithm, then we only have a finite supply of potential decision points!
 
-This alone is not a problem. But it is the beginning of our undoing. The main contribution of the FLP paper &mdash; the so-called "FLP result" &mdash; finishes the job. The three authors showed that even one node crash is enough for any consensus algorithm to run out of potential decision points. In other words, you cannot satisfy all 5 properties (Conflict-Resolution, Coherence, No-Decoherence, Fault-Tolerance and Termination) at the same time; this is by virtue of the properties themselves, and has nothing to do with how the algorithm implements the properties.
-
-The line of reasoning is as follows . . .
+This alone is not a problem. But it is the beginning of our undoing. The line of reasoning is as follows . . .
 
 ## The FLP Result
 
-Let's recap a few things we've figured out so far:
+We'll show that any consensus algorithm that provides *Conflict-Resolution*, *Coherence*, *No-Decoherence* and *Termination* is not *Fault-Tolerant*: it can fail by exiting without making a decision in the event just one node crashes. We'll show this happens by virtue of the properties themselves, not any detail of how the algorithm implements the properties, thus showing *any* algorithm which correctly implements termination-guaranteed consensus cannot be fault tolerant:
 
-First: we know from the *Conflict-Resolution*, *Coherence* and *No-Decoherence* properties that every consensus algorithm must have a "decision point," which is a step running on a single node that decides once and for all what value the system will decide on.
+First, as we discussed earlier, we know from the algorithm's *Conflict-Resolution*, *Coherence* and *No-Decoherence* properties that it must have a "decision point," which is a step running on a single node that decides once and for all what value the system will decide on.
 
-We also know that an algorithm with a single decision point is not *Fault-Tolerant*, because the node that runs that decision point can crash. To provide fault-tolerance, the algorithm must provide many *potential* decision points; that way, if one never executes because the node crashed, it's okay, other ones running on healthy nodes can compenstate for the failure.
+If the algorithm has just one decision point, we know it is not *Fault-Tolerant* because the node that runs the decision point can crash. However, it's possible the algorithm provides many *potential* decision points so that, if one potential decision point never executes due to a crash, other ones running on healthy nodes can potentially compenstate for the failure.
 
-Or can they? Because we also know, by *Termination*, that we only have a finite supply of potential decision points. What if a node crashes right as it's executing the last one?
+However, due to the *Termination* guarantee, we know there is a finite supply of potential decision points. With this, we can use the following procedure to identify one situation where the algorithm exits without deciding due to just one node crash:
 
-In fact, for any consensus algorithm that provides all of the properties mentioned above, the following procedure can be used to find a way to make the algorithm terminate without making a decision in the event just one node crashes:
+First, take the algorithm's set of potential decision points. If there are any superfluous ones that cannot decide anything because they are always redundant, remove them. We are left with the set of potential decision points that can actually make decisions.
 
-Consider any consensus algorithm that terminates; it should have a finite set of decision points. Take all of its potential decision points, and if there are any completely superfluous ones that can never actually make a decision, remove them. You're left with a finite number of potential decision points that can actually make a decision.
+Next, find an execution of the algorithm which uses every potential decision point, not making a decision until the very last one. In other words, find an execution where no potential decision point is redundant: all but the last one run without making a final decision, and then the last one makes the decision. We know such an execution of the algorithm exists, because none of the potential decision points is superfluous. <-- TODO why is this true?
 
----
+For this execution consider the case where every potential decision point except the last one executes. By construction, we know the algorithm has not decided yet. Now assume the node which runs the final potential decision point crashes. The system has not decided, and now there are no potential decision points remaining. The algorithm now has no choice but to terminate without deciding. Since the algorithm failed, but there was only one fault (one node crash), we conclude the algorithm was not fault-tolerant.
 
-TODO we failed to justify the ability to sequence the potential decision points
+None of this was specific to any one algorithm; our line of reasoning only stems from the fact that the algorithm provides the *Conflict-Resolution*, *Coherence*, *No-Decoherence* and *Termination* properties. Therefore, *any* algorithm that provides these properties is not *Fault-Tolerant*. &#8718;
 
----
-
-Consider the potential decision point that runs last. Since we know the last one potentially *can* make the system-wide decision, it must be possible for all the previous potential decision points to run and *not* make a decision!
-
-Consider the execution where you get all the way to the last potential decision point without making a decision. Say the node that's supposed to run that step crashes, just before or just after executing it, and stays offline permanently. Now there are no more potential decision points remaining.
-
-Think about the situation we've gotten ourselves into. The algorithm has not made a decision yet, and there are also no more potential decision points, so it cannot make a decision in the future either. It's going to have to terminate without having made a decision. Which means, the algorithm sustained only one fault (one node crashed) and yet still failed to reach a decision. Therefore the algorithm was not fault-tolerant.
-
-But nothing about any of this was specific to any one algorithm; our line of reasoning only stems from the fact that the algorithm provides the *Conflict-Resolution*, *Coherence*, *No-Decoherence* and *Termination* properties. Therefore, *any* algorithm that provides these properties is not *Fault-Tolerant*. &#8718;
-
-That's the complete FLP proof, sans the state machines and math language. But even then, maybe thinking abstractly about all possible consensus algorithms hurts your brain; certainly it hurts mine. So let's take a page out of [Eugenia Cheng's book](https://www.hachettebookgroup.com/titles/eugenia-cheng/beyond-infinity/9780465094820/?lens=basic-books), and recap the proof as a strategy game. Allow me to present:
+That's the complete FLP result; but if you're like me, thinking abstract about all possible consensus algorithms simultaneously hurts your brain; it certainly hurts mine. So let's take a page out of [Eugenia Cheng's book](https://www.hachettebookgroup.com/titles/eugenia-cheng/beyond-infinity/9780465094820/?lens=basic-books), and recap the proof as a strategy game. Allow me to present . . .
 
 ## The Crashing Game
 

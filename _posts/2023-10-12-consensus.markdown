@@ -518,7 +518,13 @@ However, due to the *Termination* guarantee, we know there is a finite supply of
 
 First, take the algorithm's set of potential decision points. If there are any superfluous ones that cannot decide anything because they are always redundant, remove them. We are left with the set of potential decision points that can actually make decisions.
 
-Next, find an execution of the algorithm which uses every potential decision point, not making a decision until the very last one. In other words, find an execution where no potential decision point is redundant: all but the last one run without making a final decision, and then the last one makes the decision. We know such an execution of the algorithm exists, because none of the potential decision points is superfluous. <-- TODO why is this true?
+Next, find an execution of the algorithm which uses every potential decision point, not making a decision until the very last one. In other words, find an execution where no potential decision point is redundant: all but the last one run without making a final decision, and then the last one makes the decision. We know such an execution of the algorithm exists, because none of the potential decision points is superfluous.
+
+---
+
+TODO: why is the last sentence of the above paragraph true?
+
+---
 
 For this execution consider the case where every potential decision point except the last one executes. By construction, we know the algorithm has not decided yet. Now assume the node which runs the final potential decision point crashes. The system has not decided, and now there are no potential decision points remaining. The algorithm now has no choice but to terminate without deciding. Since the algorithm failed, but there was only one fault (one node crash), we conclude the algorithm was not fault-tolerant.
 

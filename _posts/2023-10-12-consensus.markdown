@@ -496,13 +496,19 @@ Having more than one potential decision point creates redundancy in our algorith
 
 But majority voting still doesn't have as many potential decision points as it needs, does it? Because sometimes you can get into a split vote, using up all potential decision points except the last one, and then if the last node crashes, your last potential decision point is gone too, and you're stuck with no decision point, and no potential decision points left.
 
-The FLP proof is, basically, that every consensus algorithm has this problem. No matter how potential decision points you have, you can always run out before the end of the algorithm.
+The FLP proof is, basically, that every consensus algorithm has this problem. No matter how potential decision points you have, you can always run out before the end of the algorithm. All because of one pesky truth:
 
 ## All Good Things Must Come to an End
 
-TODO list of properties again, but this time add termination as a property
+Coming up with a complete list of assumptions is hard. One of the key insights of the FLP result is to point out an assumption we accidentally took for granted:
+
+> **Termination**: the consensus algorithm exits after a finite number of steps
+
+That should be obvious, right? What good is a consensus algorithm that never finishes? Alas, adding this property to the mix is our downfall. It means that we have a finite supply of potential decision points. If we crash just before, or just after the last potential decision point executes, we run out. And if we run out of potential decision points without making a decision, the algorithm is now stuck, indefinitely.
 
 TODO now consider the set of potential decision points. If there are any superflous PDPs &mdash; ones which are redundant, no matter how the algorithm plays out &mdash; forget about them. There are a finite number of remaining PDPs, and you need every single one of them, because by definition none of them is superfluous. What happens if you make it all the way to the last PDP without making a decision, and that node crashes? Game over, man! Game over!
+
+TODO nod to Eugenia Cheng and do the crashing game. Consider if we want to do it as concept reinforcement or to introduce the proof the first time around.
 
 
 

@@ -447,7 +447,7 @@ Working this way makes it easy to get lost in abstraction, so along the way if y
 
 ## Decisions, Decisions
 
-Take another look at what we've been calling the consensus properties:
+To understand the FLP result, first we need to adopt Fisher, Lynch and Paterson's unique way of looking at all possible consensus algorithms abstractly. Take another look at what we've been calling the consensus properties:
 
 > **Conflict Resolution**: When conflicting updates are proposed, the algorithm picks one and rejects the others
 >
@@ -459,9 +459,7 @@ Together, these tell a kind of story about how consensus algorithms work. Confli
 
 If you think about it, this means the story has a climax: there must be a single step of the algorithm that makes a decision once and for all. Before that step runs, the system could still choose either red or blue; after that step, all fates are sealed, and either red or blue has been chosen. We'll call this step the **decision point**.
 
-Without knowing anything about what consensus algorithms you or anyone else has invented, I can be certain that the decision point is always a single step &mdash; a single instruction, or a single line of code basically &mdash; that runs on a single node. How do I know that? Simple: every step of a distributed algorithm runs on a single node, and the decision point *is* a single step of the algorithm, by definition. So I should always be able to find one step on one node that locks in a system-wide decision, and the rest of the algorithm should be spent disseminating that decision to all other nodes in the system.
-
-In the leader-based replication algorithm, the decision point is easy to find: it's the point when the leader receives the first proposal and assigns it to its local `value` varaible, here:
+Since every step of a distributed algorithm runs on a single node, and a decision point is just a special name for a step of the distributed algorithm, we know the decision point is a single instruction &mdash; a single line of code, basically &mdash; running on a single node. In the leader-based replication algorithm, that line is easy to find: it's the point when the leader receives the first proposal and assigns it to its local `value` variable, here:
 
 ```
   on client proposal {
@@ -484,21 +482,29 @@ For majority voting, it's a little trickier to find. The decision point for majo
   }
 ```
 
-But that line of code is only *sometimes* the decision point!
+Except that line of code is only *sometimes* the decision point!
 
 * Sometimes a node votes, but even after doing so, no proposal has a majority yet. So the vote is insufficient for making a decision
 * Other times a node votes after a proposal already has a majority. So the vote is redundant
 * Only one vote causes a proposal to cross the critical boundary sub-majority to majority. This vote locks in the majority, preventing other proposals from ever reaching a majority. So that vote is the algorithm's decision point.
 
-So maybe we should amend our definitions so that registering a vote counts as a decision point. Let's say this:
+So maybe we should amend our definitions so that registering a vote counts as a decision point too. Let's say this:
 
 > A **decision point** *potentially* makes a system wide-decision. However, it may be **insufficient** (executing it does not cause the system to reach a decision), or **redundant** (the system had already made a decision before it executed).
 
-At first glance, it seems like all we should need to do to make a fault-tolerant consensus algorithm is set up the algorithm to have many decision points running on many different nodes; that way, if a node crashes without executing its own decision points, other decision points executing on other nodes can compenstate for its loss. Then all we need to figure out how to do is set up the system as a whole so that one, and only one of the decision points actually makes the decision; the rest should either be insufficient or redundant.
+That's compatible with the way the FLP paper analyzes consensus algorithms: as a set of potential decision points glued together by code that transmits messages on the network, disseminates results, and so on. Every consensus algorithm has at least one decision point, and the decision points are the interesting parts of the algorithm.
 
-But we already know that's wrong. Majority voting already has one decision point per node, and yet one crash is still enough to break the algorithm so it never reaches a decision (if all but one node get into a split vote, and that one last node crashes without voting). But could we fix majority voting so it doesn't have this problem, or find another algorithm that doesn't?
+At first glance, it might seem like one could make a consensus algorithm fault tolerant by setting up many decision points running on many nodes; that way, if a node crashes without executing its own decision point, other decision points executing on healthy nodes still have a chance to make the final decision. But we tried this in the majority voting example and it didn't work: there was still a way losing just one node could leave us with a split vote, unable to make progress. Through the FLP looking glass, we'd say the loss of just one potential decision point 
 
-According to the FLP paper, the answer is no, we cannot. No matter how many decision points we include in our algorithm, if the algorithm has a *finite* number of decisions points, there's a way it can get stuck in exactly the same way.
+But is that a problem with majority voting, or more generally a problem with having a finite number of decision points? According to the FLP result, it's the latter: any algorithm that has a finite number of decision points can terminate without making a decision if just one node crashes. Let's see how . . .
+
+## The FLP Result
+
+
+
+
+
+
 
 
 
@@ -525,44 +531,6 @@ Also, I reformulated above so we can say "decision point" instead of potential d
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
----
-
-
-
-
-
-
-
-
-
-But majority voting still doesn't have as many potential decision points as it needs, does it? We found that sometimes you can get into a split vote, using up all potential decision points except the last one, and then if the last node crashes, your last potential decision point is gone too, and you're stuck with no decision, and no potential decision points left. The FLP proof is, basically, that this problem isn't fixable: no matter how many potential decision points you add, you can always get to the very last one and crash instead of deciding.
-
-## All Good Things Must Come to an End
-
-Before we move on, we need to recitfy a teensy little mistake we made all the way back in chapter 1. You see, coming up with a complete list of assumptions is hard. One of the key insights of the FLP paper is to point out an assumption we accidentally took for granted:
-
-> **Termination**: the consensus algorithm exits after a finite number of steps
-
-That should be obvious, right? What good is a consensus algorithm that never finishes? Alas, it would seem adding this property to the mix shall be our downfall. If a consensus algorithm consists of a finite number of steps, and every potential decision point is a step of the algorithm, then we only have a finite supply of potential decision points!
-
-This alone is not a problem. But it is the beginning of our undoing. The line of reasoning is as follows . . .
-
-## The FLP Result
 
 We'll show that any consensus algorithm that provides *Conflict-Resolution*, *Coherence*, *No-Decoherence* and *Termination* is not *Fault-Tolerant*: it can fail by exiting without making a decision in the event just one node crashes. We'll show this happens by virtue of the properties themselves, not any detail of how the algorithm implements the properties, thus showing *any* algorithm which correctly implements termination-guaranteed consensus cannot be fault tolerant:
 

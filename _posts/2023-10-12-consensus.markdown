@@ -1,6 +1,6 @@
 ---
 layout: post
-title: Little Book of Consensus Algorithms
+title: Consensus Algorithms
 author: Dave
 draft: true
 ---
@@ -410,9 +410,14 @@ To conclude, the loss of a single node with this algorithm is usually just fine,
 
 If you have the time, this would be a good point to step away from your computer and think over the above. What went wrong with our two approaches above? Can you think of a way to fix either one? Or a different strategy entirely?
 
-Based on how long it took the field to come up with a working algorithm, I'm guessing you won't be able to find the solution in an afternoon walk through the woods. But thinking through a variety of approaches and seeing how they hit the same dead end will give you a better feel for the problem space, and set up for the next half of this article.
+This is the point in the thought process where the field as a whole got stuck, for years. People kepts trying to find ways around this problem, or different solutions that don't have this problem, and failed to find a way through, repeatedly. Based on that, I'm guessing you won't copme up with a working solution in an afternoon walk through the woods. But think through a variety of approaches and seeing them not play out might help build your understanding of the problem space, and what we'd have to figure out how to do if we wanted to make a fault-tolerant consensus algorithm.
 
-Adieu, perhaps, for now!
+If you take me up on this exercise, two things to keep in mind:
+
+1. If you think you have the solution, remember to do an absolute-worst case analysis: like with the voting example above, if there's one specific execution where the loss of one specific node at the exact wrong time blocks the algorithm from making progress, it's not fault tolerant. Sometimes, finding that one situation is tricky!
+2. Be wary of solutions which appear to work, but actually rely on some other form of consensus. For example, in our single-leader algorithm, we found that getting all nodes to agree on a leader is itself a consensus problem, and thus we couldn't rely on safe leader election to design a consensus algorithm in the first place.
+
+Of course, for the curious and the impatient, you can also just read on. With that, it's adieu for now, perhaps!
 
 ---
 
@@ -424,28 +429,41 @@ Adieu, perhaps, for now!
     3: FLP
   </h1>
 </center>
+## When the Going Gets Tough, the Tough Prove the Going's Too Tough ... and Give Up
 
-Before a working consensus algorithm was discovered, people chewed through this problem just as you might have during the intermission above. And they kept running into the same dead end, over and over. They could make an algorithm that provided the coherence, conflict resolution, and no-decoherence properties, and even make it *usually* fault tolerant; but there'd always be that one case, one little window of vulnerability where a particular node must not crash, lest the entire algorithm grind to a halt.
+Before a working consensus algorithm was discovered, people chewed through this problem just as you might have during the intermission above. And they kept running into the same dead end, over and over. They could make an algorithm that provided all the consensus properties, and even still make it *usually* fault tolerant, but there'd always be that one case, one little window of vulnerability where one node crashing brings the entire algorithm to a standstill.
 
-Well, when you're trying to design an algorithm and you repeatedly run into a dead end, the next thing you should do is try to prove impossibility: that one can never design that algorithm, because that dead end will always come up no matter what you do, due to something about the problem space.
+Some advice: when you're trying to solve a problem, and no matter what you do, you keep running into the same dead end, the next thing you should try is to prove impossibility: show that dead end will always come up no matter what you do, due to something about the problem space. That proves the problem is actually not solvable, which will save you the time of trying to solve the unsolvable!
 
-Which is exactly what three researchers did in the mid-1980s!
+Well, that's exactly what three researchers did in the mid-1980s. In their paper *Impossibility of Distributed Consensus with One Faulty Process*, Fischer, Lynch and Paterson ("FLP") explained exactly why nobody could come up with a consensus algorithm that always tolerates faults. Their paper uses the language of formal mathematics to explain their ideas in the form of a mathematical proof, but tied up in all the state machines and network models and whatnot is a simple and insightful idea. In this chapter, we'll lay out that idea in simpler terms.
 
-## When the Going Gets Hard, Prove the Going is Hard and Give Up
+## The Goal
 
+A note for people who don't eat mathematical proofs for breakfast: what we're about to build is an *impossibility proof*. We want to make the argument that there is no such thing as a fault-tolerant consensus algorithm.
 
+To do that, we're going to talk about all possible consensus algorithms at the same time, using abstraction. Just as you can take objects like "Car" and "Boat" and "Airplane" and unite them under some abstract "Vehicle" interface so we can make code that works for all possible vehicles, so too are we now going to abstract away the details of actual consensus algorithms so we can make a statement about all consensus algorithms abstractly. And the statement we're going to try to make is, all consensus algorithms have a way of getting stuck: there's at least one execution where a single node crashing is enough to bring the algorithm to a standstill and prevent the system from ever reaching consensus.
 
+Working this way makes it easy to get lost in abstraction, so along the way if you find yourself lost, try to map what we're talking about abstractly to a real consensus algorithm you already know, such as the leader-based replication and majority voting algorithms we talked about in chapter 2. With that, let's get cracking!
 
+## Decisions, Decisions
 
-TODO the details are
+Take another look at what we've been calling the consensus properties:
 
-* *Impossibility of Distributed Consensus with One Faulty Process*
-* Fischer, Lynch, Paterson
-* 1985
+> **Conflict Resolution**: When conflicting updates are proposed, the algorithm picks one and rejects the others
+>
+> **Coherence**: At the end of the algorithm, every server agrees which update was picked
+>
+> **No-Decoherence**: The instant a decision is made, it is final. New information cannot change committed decisions.
 
+Together, these tell a kind of story about how consensus algorithms work. Conflict resolution says, at the start of the algorithm, there are two options (we've been calling them "red" and "blue"), and either could be the one the algorithm ends up choosing. Coherence says, at the end, there is only one chosen option: red or blue. And no-decoherence says the decision is made in some way that also instantaneously locks it in, ensuring it can never be undone.
 
+If you think about it, this means the story has a climax: there must be a single step of the algorithm that makes a decision once and for all. Before that step runs, the system could still choose either red or blue; after that step, all fates are sealed, and either red or blue has been chosen. Any further decisionmaking working would be redundant, all the algorithm really needs to do after that point is make sure every node can find out what decision was made.
 
+TODO: examples of the decision point in our two examples from ch 2. The decision point for leader replication is when the leader receives the first proposal and sets value := propsed. The decision point for majority voting is when one candidate reaches a majority number of votes
 
+TODO the decision point is a single step running on a single node. It has to be, because it's one step and every step runs on a single node. 
+
+TODO new heading that introduces the idea of redundancy.
 
 <center>
   <a name="part4"></a>

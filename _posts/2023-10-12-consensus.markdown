@@ -435,11 +435,11 @@ Before a working consensus algorithm was discovered, people chewed through this 
 
 Some advice: when you're trying to solve a problem, and no matter what you do, you keep running into the same dead end, the next thing you should try is to prove impossibility: show that dead end will always come up no matter what you do, due to something about the problem space. That proves the problem is actually not solvable, which will save you the time of trying to solve the unsolvable!
 
-Well, that's exactly what three researchers did in the mid-1980s. In their paper *Impossibility of Distributed Consensus with One Faulty Process*, Fischer, Lynch and Paterson ("FLP") explained exactly why nobody could come up with a consensus algorithm that always tolerates faults. Their paper uses the language of formal mathematics to explain their ideas in the form of a mathematical proof, but tied up in all the state machines and network models and whatnot is a simple and insightful idea. In this chapter, we'll lay out that idea in simpler terms.
+Well, that's exactly what three researchers did in the mid-1980s. In their paper *Impossibility of Distributed Consensus with One Faulty Process*, Fischer, Lynch and Paterson (the "FLP" in "FLP result") explained exactly why nobody could come up with an always-fault-tolerant consensus algorithm. Their paper uses the language of formal mathematics to explain their ideas in the form of a proof, but tied up in all the state machines and network models and whatnot is a simple and insightful idea. In this chapter, we'll see what they saw.
 
 ## The Goal
 
-A note for people who don't eat mathematical proofs for breakfast: what we're about to build is an *impossibility proof*. We want to make the argument that there is no such thing as a fault-tolerant consensus algorithm.
+A note for people who don't eat math for breakfast: we're about to build is an *impossibility proof*; we want to make the argument that there is no such thing as a fault-tolerant consensus algorithm.
 
 To do that, we're going to talk about all possible consensus algorithms at the same time, using abstraction. Just as you can take objects like "Car" and "Boat" and "Airplane" and unite them under some abstract "Vehicle" interface so we can make code that works for all possible vehicles, so too are we now going to abstract away the details of actual consensus algorithms so we can make a statement about all consensus algorithms abstractly. And the statement we're going to try to make is, all consensus algorithms have a way of getting stuck: there's at least one execution where a single node crashing is enough to bring the algorithm to a standstill and prevent the system from ever reaching consensus.
 
@@ -457,11 +457,30 @@ Take another look at what we've been calling the consensus properties:
 
 Together, these tell a kind of story about how consensus algorithms work. Conflict resolution says, at the start of the algorithm, there are two options (we've been calling them "red" and "blue"), and either could be the one the algorithm ends up choosing. Coherence says, at the end, there is only one chosen option: red or blue. And no-decoherence says the decision is made in some way that also instantaneously locks it in, ensuring it can never be undone.
 
-If you think about it, this means the story has a climax: there must be a single step of the algorithm that makes a decision once and for all. Before that step runs, the system could still choose either red or blue; after that step, all fates are sealed, and either red or blue has been chosen. Any further decisionmaking working would be redundant, all the algorithm really needs to do after that point is make sure every node can find out what decision was made.
+If you think about it, this means the story has a climax: there must be a single step of the algorithm that makes a decision once and for all. Before that step runs, the system could still choose either red or blue; after that step, all fates are sealed, and either red or blue has been chosen. For this book, we'll call this step the **decision point**. It would be redundant to continue doing decision-making work after the decision point, all the algorithm really needs to do afterward is make sure every node can find out what decision was made.
 
-TODO: examples of the decision point in our two examples from ch 2. The decision point for leader replication is when the leader receives the first proposal and sets value := propsed. The decision point for majority voting is when one candidate reaches a majority number of votes
+In the leader-based replication algorithm, the decision point is when the leader receives the first proposal and assigns it to its local `value` varaible, here:
 
-TODO the decision point is a single step running on a single node. It has to be, because it's one step and every step runs on a single node. 
+```
+  on client proposal {
+    // accept the first proposal, ignore others
+    if (value == null) {
+      value := proposal   <-- decision point
+    }
+  }
+```
+
+For majority voting, the decision point is when one proposal reaches a majority of the nodes' votes.
+
+In both cases, the decision point is a single step &mdash; a single line of code &mdash; running on a single node. In fact, no matter what algorithm you've invented, the decision point is always a single step running on a single node. How do I know that? Simple: every step of a distributed algorithm runs on a single node, and the decision point is by definition a single step of the algorithm (the one that brings the system as a whole from "undecided" to having a permanent locked-in decision).
+
+
+
+
+
+
+
+TODO we have to cover potential decision points vs decision points somehow
 
 TODO new heading that introduces the idea of redundancy.
 

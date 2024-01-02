@@ -429,7 +429,7 @@ Of course, for the curious and the impatient, you can also just read on. With th
     3: FLP
   </h1>
 </center>
-## When the Going Gets Tough, the Tough Prove the Going's Too Tough ... and Give Up
+## When the Going Gets Tough, the Tough Prove the Going's Actually Pretty Tough ... and Give Up
 
 Before a working consensus algorithm was discovered, people chewed through this problem just as you might have during the intermission above. And they kept running into the same dead end, over and over. They could make an algorithm that provided all the consensus properties, and even still make it *usually* fault tolerant, but there'd always be that one case, one little window of vulnerability where one node crashing brings the entire algorithm to a standstill.
 
@@ -492,33 +492,43 @@ But that line of code is only *sometimes* the decision point!
 
 We'll call things like the voting step a **potential decision point**: sometimes a potential decision point is the system-wide decision point, but more often, potential decision points are either insufficient (executing them does not cause the system to decide), and sometimes they're redundant (the system has already decided). Basically, each one tries to make the system-wide decision, and the system as a whole is set up to ensure one, and only one actually makes a decision.
 
-Having more than one potential decision point lets the algorithm deal with faults, by creating redundancy: if a node that needs to execute a potential decision point crashes, it's not a problem, some other node can execute another potential decision point to compensate. The only tricky thing is to make sure at least one of those potential decision points manages to make the decision, and the decision is only made once. For example, the leader-based replication ended up not being fault tolerant because there is only one node that runs potential decision points &mdash; the leader &mdash; and if you lose the leader, you lose all your potential decision points. Majority voting has many more potential decision points (one per node), so it has many more opportunites to compensate if a node crashes.
+Having more than one potential decision point lets the algorithm tolerate faults via redundancy: if a node that needs to execute a potential decision point crashes, it's not a problem, some other node can execute another potential decision point to compensate. The only tricky thing is to make sure at least one of those potential decision points manages to make the decision, and the decision is only made once. For example, the leader-based replication turned out not to provide fault-tolerance because it had only one potential decision point &mdash; the point when the leader receives its first proposal &mdash; so if you lose the leader, you've lost your only potential decision point. Majority voting has many potential decision points (one vote per node), so it has many opportunites to compensate for a crash.
 
-But majority voting still doesn't have as many potential decision points as it needs, does it? Because sometimes you can get into a split vote, using up all potential decision points except the last one, and then if the last node crashes, your last potential decision point is gone too, and you're stuck with no decision point, and no potential decision points left. The FLP proof is, basically, that every consensus algorithm has this problem. No matter how potential decision points you have, you can always run out before the end of the algorithm.
+But majority voting still doesn't have as many potential decision points as it needs, does it? We found that sometimes you can get into a split vote, using up all potential decision points except the last one, and then if the last node crashes, your last potential decision point is gone too, and you're stuck with no decision, and no potential decision points left. The FLP proof is, basically, that this problem isn't fixable: no matter how many potential decision points you add, you can always get to the very last one and crash instead of deciding.
 
 ## All Good Things Must Come to an End
 
-Coming up with a complete list of assumptions is hard. One of the key insights of the FLP result is to point out an assumption we accidentally took for granted: we should have added this to our list of properties all the way back in chapter 1 ...
+Before we move on, we need to recitfy a teensy little mistake we made all the way back in chapter 1. You see, coming up with a complete list of assumptions is hard. One of the key insights of the FLP paper is to point out an assumption we accidentally took for granted:
 
 > **Termination**: the consensus algorithm exits after a finite number of steps
 
-That should be obvious, right? What good is a consensus algorithm that never finishes? Alas, adding this property to the mix is our downfall. The problem is, if a consensus algorithm consists of a finite number of steps, and every potential decision point is a step of the algorithm, then we only have a finite supply of potential decision points. If we run out before a decision is made, the algorithm is toast!
+That should be obvious, right? What good is a consensus algorithm that never finishes? Alas, it would seem adding this property to the mix shall be our downfall. If a consensus algorithm consists of a finite number of steps, and every potential decision point is a step of the algorithm, then we only have a finite supply of potential decision points!
 
-The main contribution of the FLP paper &mdash; the so-called "FLP result" &mdash; shows that even one node crash is enough for any consensus algorithm to run out of potential decision points. In other words, you cannot satisfy all 5 properties (Conflict-Resolution, Coherence, No-Decoherence, Fault-Tolerance and Termination) at the same time; this is by virtue of the properties themselves, and has nothing to do with how the algorithm implements the properties. That's why we kept getting stuck!
+This alone is not a problem. But it is the beginning of our undoing. The main contribution of the FLP paper &mdash; the so-called "FLP result" &mdash; finishes the job. The three authors showed that even one node crash is enough for any consensus algorithm to run out of potential decision points. In other words, you cannot satisfy all 5 properties (Conflict-Resolution, Coherence, No-Decoherence, Fault-Tolerance and Termination) at the same time; this is by virtue of the properties themselves, and has nothing to do with how the algorithm implements the properties.
 
 The line of reasoning is as follows . . .
 
 ## The FLP Result
 
-Let's recap what we know so far.
+Let's recap a few things we've figured out so far:
 
-For one: we know from the *Conflict-Resolution*, *Coherence* and *No-Decoherence* properties that every consensus algorithm must have a "decision point," which is a step running on a single node that decides once and for all what value the system will decide on.
+First: we know from the *Conflict-Resolution*, *Coherence* and *No-Decoherence* properties that every consensus algorithm must have a "decision point," which is a step running on a single node that decides once and for all what value the system will decide on.
 
-We also know that an algorithm with a single decision point is not *Fault-Tolerant*, because the node that runs that decision point can crash. To provide fault-tolerance, the algorithm must provide many potential decision points; if one of those never executes because the node crashed, it's okay, other potential decision points will still run and can compenstate for the failure.
+We also know that an algorithm with a single decision point is not *Fault-Tolerant*, because the node that runs that decision point can crash. To provide fault-tolerance, the algorithm must provide many *potential* decision points; that way, if one never executes because the node crashed, it's okay, other ones running on healthy nodes can compenstate for the failure.
 
 Or can they? Because we also know, by *Termination*, that we only have a finite supply of potential decision points. What if a node crashes right as it's executing the last one?
 
-Consider any consensus algorithm that terminates. Take all of its potential decision points, and if there are any completely superfluous decision points that are wholly redundant (they can never actually make a decision), remove them. You're left with a finite number of decision points that can actually make a decision. Consider the potential decision point that runs last. Since we know the last one potentially *can* make the system-wide decision, it must be possible for all the previous potential decision points to run and *not* make a decision!
+In fact, for any consensus algorithm that provides all of the properties mentioned above, the following procedure can be used to find a way to make the algorithm terminate without making a decision in the event just one node crashes:
+
+Consider any consensus algorithm that terminates; it should have a finite set of decision points. Take all of its potential decision points, and if there are any completely superfluous ones that can never actually make a decision, remove them. You're left with a finite number of potential decision points that can actually make a decision.
+
+---
+
+TODO we failed to justify the ability to sequence the potential decision points
+
+---
+
+Consider the potential decision point that runs last. Since we know the last one potentially *can* make the system-wide decision, it must be possible for all the previous potential decision points to run and *not* make a decision!
 
 Consider the execution where you get all the way to the last potential decision point without making a decision. Say the node that's supposed to run that step crashes, just before or just after executing it, and stays offline permanently. Now there are no more potential decision points remaining.
 
@@ -542,7 +552,7 @@ You will always win this game if you play the FLP strategy. Here's all you need 
 
 TODO finish this
 
-TODO new heading or two to apply the FLP proof to each of leader-based replication and majority voting
+TODO new heading or two to apply the FLP proof to each of leader-based replication and majority voting. We could make these examples of the crashing games as sub-heading: I present the algorithm, and then say your FLP strategy is to do this: yadda yadda
 
 ## Doing the Impossible
 

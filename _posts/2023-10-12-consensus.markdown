@@ -500,17 +500,33 @@ The FLP proof is, basically, that every consensus algorithm has this problem. No
 
 ## All Good Things Must Come to an End
 
-Coming up with a complete list of assumptions is hard. One of the key insights of the FLP result is to point out an assumption we accidentally took for granted:
+Coming up with a complete list of assumptions is hard. One of the key insights of the FLP result is to point out an assumption we accidentally took for granted: we should have added this to our list of properties all the way back in chapter 1 ...
 
 > **Termination**: the consensus algorithm exits after a finite number of steps
 
-That should be obvious, right? What good is a consensus algorithm that never finishes? Alas, adding this property to the mix is our downfall. It means that we have a finite supply of potential decision points. If we crash just before, or just after the last potential decision point executes, we run out. And if we run out of potential decision points without making a decision, the algorithm is now stuck, indefinitely.
+That should be obvious, right? What good is a consensus algorithm that never finishes? Alas, adding this property to the mix is our downfall. The consensus properties imply the need for potential decision points, one of which makes the decision; termination implies we can only have so many potential decision points before the algorithm exits; and fault tolerance implies we can lose some potential decision points. Put them together, and it means you can run out of potential decision points before the decision is made, and end up stuck indefinitely. The main contribution of the FLP result is in showing how this is guaranteed to happen for any possible consensus algorithm. Let's see how it works.
+
+For this next part, let's going to take a page out of [Eugenia Cheng's book](https://www.hachettebookgroup.com/titles/eugenia-cheng/beyond-infinity/9780465094820/?lens=basic-books), and think of the proof as a game between adversaries. Allow me to present:
+
+## The Crashing Game
+
+Here are the rules:
+
+* I will present you with a consensus algorithm. I won't tell you what it is in advance, but I'll claim it provides 
+* Your goal is to crash the algorithm, so that my algorithm 
+* 
+
+
+
+
 
 TODO now consider the set of potential decision points. If there are any superflous PDPs &mdash; ones which are redundant, no matter how the algorithm plays out &mdash; forget about them. There are a finite number of remaining PDPs, and you need every single one of them, because by definition none of them is superfluous. What happens if you make it all the way to the last PDP without making a decision, and that node crashes? Game over, man! Game over!
 
 TODO nod to Eugenia Cheng and do the crashing game. Consider if we want to do it as concept reinforcement or to introduce the proof the first time around.
 
+## Doing the Impossible
 
+TODO segue out. Start by being a little distressed like, oh no, this is a book about fault-tolerant consensus algorithms and we just proved fault-tolerant consensus algorithms don't exist? Well, don't worry. Actually, we proved "fault-tolerant consensus algorithms that terminate" don't exist. We didn't say anything about consensus algorithms that don't terminate. I mean, it's far-fetched, but maybe we can make a consensus algorithm that doesn't terminate? Then hard cut to the "4: Paxos" heading below.
 
 <center>
   <a name="part4"></a>

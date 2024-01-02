@@ -459,7 +459,7 @@ Together, these tell a kind of story about how consensus algorithms work. Confli
 
 If you think about it, this means the story has a climax: there must be a single step of the algorithm that makes a decision once and for all. Before that step runs, the system could still choose either red or blue; after that step, all fates are sealed, and either red or blue has been chosen. For this book, we'll call this step the **decision point**. It would be redundant to continue doing decision-making work after the decision point, all the algorithm really needs to do afterward is make sure every node can find out what decision was made.
 
-Without knowing anything about what consensus algorithm you've invented, I can be certain that the decision point is always a single step &mdash; a single instruction, or a single line of code basically &mdash; that runs on a single node. How do I know that? Simple: every step of a distributed algorithm runs on a single node, and the decision point *is* a single step of the algorithm by definition (it's the one that brings the system as a whole from "undecided" to having a permanent locked-in decision).
+Without knowing anything about what consensus algorithms you or anyone else has invented, I can be certain that the decision point is always a single step &mdash; a single instruction, or a single line of code basically &mdash; that runs on a single node. How do I know that? Simple: every step of a distributed algorithm runs on a single node, and the decision point *is* a single step of the algorithm, by definition (namely, the decision point is the step that brings the system as a whole from "undecided" to having a permanent, locked-in decision).
 
 In the leader-based replication algorithm, the decision point is easy to find: it's the point when the leader receives the first proposal and assigns it to its local `value` varaible, here:
 
@@ -492,9 +492,11 @@ But that line of code is only *sometimes* the decision point!
 
 We'll call things like the voting step a **potential decision point**: sometimes a potential decision point is the system-wide decision point, but more often, potential decision points are either insufficient (executing them does not cause the system to decide), and sometimes they're redundant (the system has already decided). The only reason to have more than one potential decision point is to deal with system faults.
 
-TODO we now need to finish the idea of equating potential decision points to fault tolerance.
+Having more than one potential decision point creates redundancy in our algorithm, so that if a node that needs to execute a potential decision point crashes, some other node can run another potential decision point in compensation. As long as one of those potential decision points manages to make the decision, the algorithm should be fault tolerant, theoretically. For example, the leader-based replication ended up not being fault tolerant because there is only one node that runs potential decision points &mdash; the leader &mdash; and if you lose the leader, you lose everything. Majority voting has many more potential decision points (one per node), so it has many more opportunites to compensate if a node crashes.
 
-TODO segue out as how many decision points do you get? Something like, the big idea that FLP had was: how many potential decision points do you get?
+But majority voting still doesn't have as many potential decision points as it needs, does it? Because sometimes you can get into a split vote, using up all potential decision points except the last one, and then if the last node crashes, your last potential decision point is gone too, and you're stuck with no decision point, and no potential decision points left.
+
+The FLP proof is, basically, that every consensus algorithm has this problem. No matter how potential decision points you have, you can always run out before the end of the algorithm.
 
 ## All Good Things Must Come to an End
 

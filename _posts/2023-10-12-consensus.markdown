@@ -498,6 +498,10 @@ TODO segue out as how many decision points do you get? Something like, the big i
 
 ## All Good Things Must Come to an End
 
+TODO list of properties again, but this time add termination as a property
+
+TODO now consider the set of potential decision points. If there are any superflous PDPs &mdash; ones which are redundant, no matter how the algorithm plays out &mdash; forget about them. There are a finite number of remaining PDPs, and you need every single one of them, because by definition none of them is superfluous. What happens if you make it all the way to the last PDP without making a decision, and that node crashes? Game over, man! Game over!
+
 
 
 <center>

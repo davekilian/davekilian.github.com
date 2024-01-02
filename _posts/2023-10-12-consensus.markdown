@@ -447,7 +447,7 @@ Working this way makes it easy to get lost in abstraction, so along the way if y
 
 ## Decisions, Decisions
 
-To understand the FLP result, first we need to adopt Fisher, Lynch and Paterson's unique way of looking at all possible consensus algorithms abstractly. Take another look at what we've been calling the consensus properties:
+To understand the FLP result, first we need to adopt Fischer, Lynch and Paterson's unique way of looking at all possible consensus algorithms abstractly. Take another look at what we've been calling the consensus properties:
 
 > **Conflict Resolution**: When conflicting updates are proposed, the algorithm picks one and rejects the others
 >
@@ -496,9 +496,53 @@ That's compatible with the way the FLP paper analyzes consensus algorithms: as a
 
 At first glance, it might seem like one could make a consensus algorithm fault tolerant by setting up many decision points running on many nodes; that way, if a node crashes without executing its own decision point, other decision points executing on healthy nodes still have a chance to make the final decision. But we tried this in the majority voting example and it didn't work: there was still a way losing just one node could leave us with a split vote, unable to make progress. Through the FLP looking glass, we'd say the loss of just one potential decision point 
 
-But is that a problem with majority voting, or more generally a problem with having a finite number of decision points? According to the FLP result, it's the latter: any algorithm that has a finite number of decision points can terminate without making a decision if just one node crashes. Let's see how . . .
+But is that a problem with majority voting, or more generally a problem with having a limited number of decision points? According to the FLP result, it's the latter: any algorithm that has a finite number of decision points can terminate without making a decision if just one node crashes. Let's see how . . .
 
 ## The FLP Result
+
+FLP gives us a procedure we can use on any consensus algorithm to get it stuck, unable to make a decision, as long as it has a fixed number of decision points. Here's all you need to do:
+
+
+
+
+
+---
+
+TODO: wait ... not only did we fail to justify the sequentializing aspect before, but also throwing away the superfluous ones is also nonsense if not justified! People might add redundant decision points specifically to handle faults, so it doesn't make sense to just ignore them on the basis of them not needing to do anything, right?
+
+Maybe it's time to reread the paper.
+
+---
+
+
+
+
+
+First, analyze the algorithm and find its decision points. If present, throw away any 'superfluous' ones that are always redundant &mdash; ones that are guaranteed to execute after the 
+
+
+
+ list its decision points. If there are any 'superfluous' ones that are always redundant (they never decide anything), remove them. We should be left with a subset of the algorithm's decision points that can actually 
+
+
+
+
+
+
+
+
+
+
+
+---
+
+First, take the algorithm's set of potential decision points. If there are any superfluous ones that cannot decide anything because they are always redundant, remove them. We are left with the set of potential decision points that can actually make decisions.
+
+Next, find an execution of the algorithm which uses every potential decision point, not making a decision until the very last one. In other words, find a way the algorithm can play out where no potential decision point is redundant: all but the last one run without making a final decision, and then the last one makes the decision. We know such an execution of the algorithm exists, because none of the potential decision points is superfluous.
+
+For this execution consider the case where every potential decision point except the last one executes. By construction, we know the algorithm has not decided yet. Now assume the node which runs the final potential decision point crashes. The system has not decided, and now there are no potential decision points remaining. The algorithm now has no choice but to terminate without deciding. Since the algorithm failed, but there was only one fault (one node crash), we conclude the algorithm was not fault-tolerant.
+
+---
 
 
 

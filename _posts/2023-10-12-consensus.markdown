@@ -486,17 +486,15 @@ For majority voting, it's a little trickier to find. The decision point for majo
 
 But that line of code is only *sometimes* the decision point!
 
-* Sometimes a node votes, but even after doing so, no proposal has a majority yet. So the vote is insufficient to make a decision
+* Sometimes a node votes, but even after doing so, no proposal has a majority yet. So the vote is insufficient for making a decision
 * Other times a node votes after a proposal already has a majority. So the vote is redundant
 * Only one vote causes a proposal to cross the critical boundary sub-majority to majority. This vote locks in the majority, preventing other proposals from ever reaching a majority. So that vote is the algorithm's decision point.
 
-We'll call things like the voting step a **potential decision point**: sometimes a potential decision point is the system-wide decision point, but more often, potential decision points are either insufficient (executing them does not cause the system to decide), and sometimes they're redundant (the system has already decided). The only reason to have more than one potential decision point is to deal with system faults.
+We'll call things like the voting step a **potential decision point**: sometimes a potential decision point is the system-wide decision point, but more often, potential decision points are either insufficient (executing them does not cause the system to decide), and sometimes they're redundant (the system has already decided). Basically, each one tries to make the system-wide decision, and the system as a whole is set up to ensure one, and only one actually makes a decision.
 
-Having more than one potential decision point creates redundancy in our algorithm, so that if a node that needs to execute a potential decision point crashes, some other node can run another potential decision point in compensation. As long as one of those potential decision points manages to make the decision, the algorithm should be fault tolerant, theoretically. For example, the leader-based replication ended up not being fault tolerant because there is only one node that runs potential decision points &mdash; the leader &mdash; and if you lose the leader, you lose everything. Majority voting has many more potential decision points (one per node), so it has many more opportunites to compensate if a node crashes.
+Having more than one potential decision point lets the algorithm deal with faults, by creating redundancy: if a node that needs to execute a potential decision point crashes, it's not a problem, some other node can execute another potential decision point to compensate. The only tricky thing is to make sure at least one of those potential decision points manages to make the decision, and the decision is only made once. For example, the leader-based replication ended up not being fault tolerant because there is only one node that runs potential decision points &mdash; the leader &mdash; and if you lose the leader, you lose all your potential decision points. Majority voting has many more potential decision points (one per node), so it has many more opportunites to compensate if a node crashes.
 
-But majority voting still doesn't have as many potential decision points as it needs, does it? Because sometimes you can get into a split vote, using up all potential decision points except the last one, and then if the last node crashes, your last potential decision point is gone too, and you're stuck with no decision point, and no potential decision points left.
-
-The FLP proof is, basically, that every consensus algorithm has this problem. No matter how potential decision points you have, you can always run out before the end of the algorithm. All because of one pesky truth:
+But majority voting still doesn't have as many potential decision points as it needs, does it? Because sometimes you can get into a split vote, using up all potential decision points except the last one, and then if the last node crashes, your last potential decision point is gone too, and you're stuck with no decision point, and no potential decision points left. The FLP proof is, basically, that every consensus algorithm has this problem. No matter how potential decision points you have, you can always run out before the end of the algorithm.
 
 ## All Good Things Must Come to an End
 
@@ -504,9 +502,33 @@ Coming up with a complete list of assumptions is hard. One of the key insights o
 
 > **Termination**: the consensus algorithm exits after a finite number of steps
 
-That should be obvious, right? What good is a consensus algorithm that never finishes? Alas, adding this property to the mix is our downfall. The consensus properties imply the need for potential decision points, one of which makes the decision; termination implies we can only have so many potential decision points before the algorithm exits; and fault tolerance implies we can lose some potential decision points. Put them together, and it means you can run out of potential decision points before the decision is made, and end up stuck indefinitely. The main contribution of the FLP result is in showing how this is guaranteed to happen for any possible consensus algorithm. Let's see how it works.
+That should be obvious, right? What good is a consensus algorithm that never finishes? Alas, adding this property to the mix is our downfall. The problem is, if a consensus algorithm consists of a finite number of steps, and every potential decision point is a step of the algorithm, then we only have a finite supply of potential decision points. If we run out before a decision is made, the algorithm is toast!
 
-For this next part, let's going to take a page out of [Eugenia Cheng's book](https://www.hachettebookgroup.com/titles/eugenia-cheng/beyond-infinity/9780465094820/?lens=basic-books), and think of the proof as a game between adversaries. Allow me to present:
+To recapitulate: a consensus algorithm that terminates only has so many chances to make a decision. If a node that was supposed to try and make a decision crashes, but we have more chances left, it's not a problem; but if we used up all our other chances without getting to a decision and now we're on our last chance, and *that* node happens to crash, then we have no decision *and* no more chances left. That's the FLP result!
+
+## The FLP Result
+
+To recap, the FLP result says that a consensus algorithm that terminates cannot be fault tolerate. You cannot satisfy all 5 properties (Confclit-Resolution, Coherence, No-Decoherence, Fault-Tolerance and Termination) at the same time; this is by virtue of the properties themselves, and has nothing to do with how the algorithm upholds the properties.
+
+The line of reasoning is as follows:
+
+First, we know from the Conflict-Resolution, Coherence and No-Decoherence properties that the algorithm must have a "decision point," which is a step running on a single node that decides once and for all what value the system will decide on.
+
+We also know that an algorithm with a single decision point is not Fault-Tolerant, because the node that runs that decision point can crash. Thus, we know the algorithm must provide a many potential decision points; if one fails to execute because a node crashes, that's okay, because other potential decision points which still run can compensate for the missing one.
+
+But we also know, by Termination, that we have a finite supply of decision points. This poses a problem:
+
+Consider an arbitrary consensus algorithm, and consider its set of potential decision points. If there are any decision points that are wholly redundant (they can never actually make a decision), remove them. By definition, all you have left are decision points that can potentially make a decision. Consider the execution of that algorithm where all but one of those potential decision points execute, but do not make a decision; we know such an execution exists, because otherwise the last potential decision point would be redundant, and we're not worrying about redundant ones. Now we have a situation where no nodes have crashed, all but one potential decision point have been used up, and still there is no decision. If the node that runs the last potential decision point crashes, the the final decision point will be up, but no decision will be made. In this situation, the algorithm has sustained just one crash, but still failed to reach a decision. Therefore, it is not fault-tolerant. &#8718;
+
+
+
+---
+
+Old content, I think I still want to include it, but we need to rework the above first.
+
+---
+
+To show why, let's going to take a page out of [Eugenia Cheng's book](https://www.hachettebookgroup.com/titles/eugenia-cheng/beyond-infinity/9780465094820/?lens=basic-books), and think of the proof as a game between adversaries. Allow me to present:
 
 ## The Crashing Game
 

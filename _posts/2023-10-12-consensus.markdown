@@ -6,7 +6,6 @@ draft: true
 ---
 
 <div markdown="1" style="width: fit-content; border: 1px solid #eee; padding-left:1em; padding-right: 1em">
-
 **Table of Contents**
 
 1. [Consensus Problems](#part1)
@@ -15,6 +14,14 @@ draft: true
 3. [Paxos](#part4)
 
 </div>
+
+---
+
+TODO: this thing needs a major refactor. The high level idea was to use FLP to demonstrate we needed a non-terminating algorithm, but on closer inspection I realized (1) FLP doesn't actually rely on termination, forcing the algorithm into a non-termination was the goal; and (2) I think FLP applies to Paxos as well: a node in the async model can only generate new proposals if it does a successful receive() call (may return some message or null, but the call has to be made successfully), so to stop Paxos from progressing in Lemma 3 you just repeatedly kill each proposer before it gets the (possibly null) message that allows it to generate a new proposal and start another round of voting. But the real world corrollary of that failure mode is like nodes that crash every time they try to make a proposal, which would be super goofy; it could only really be explained by a software bug that crashes when generating proposals (not a useful fault model) or Byzantine level adversarial faults, which is impractical and not somewhere we want to go.
+
+The flow we have here, without FLP, is correct; I just need to eradicate mentions of FLP and instead make the flow go from "majority voting gets stuck" to "liveness" to "an infinite number of voting rounds" to "gee, couldn't a future round change the result of a previous round?" to "safety" to Paxos. That means we also don't need decision points, and we don't have to temporarily ignore the possibility of having more than two proposals since resolving split votes is the only thing we're trying to do. So we just have to explain why it's okay to do one-shot consensus and call it a day.
+
+---
 
 Ask some rando off the street, "Hey, what are some foundational problems in the field of distributed systems?" and they'll probably say something like, "What? Who are you? Get away from me!" Others might suggest the problem of *distributed consensus* &mdash; the problem you solve with fancy algorithms like Raft and Paxos. 
 

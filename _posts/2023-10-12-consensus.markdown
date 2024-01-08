@@ -15,14 +15,6 @@ draft: true
 
 </div>
 
----
-
-TODO: this thing needs a major refactor. The high level idea was to use FLP to demonstrate we needed a non-terminating algorithm, but on closer inspection I realized (1) FLP doesn't actually rely on termination, forcing the algorithm into a non-termination was the goal; and (2) I think FLP applies to Paxos as well: a node in the async model can only generate new proposals if it does a successful receive() call (may return some message or null, but the call has to be made successfully), so to stop Paxos from progressing in Lemma 3 you just repeatedly kill each proposer before it gets the (possibly null) message that allows it to generate a new proposal and start another round of voting. But the real world corrollary of that failure mode is like nodes that crash every time they try to make a proposal, which would be super goofy; it could only really be explained by a software bug that crashes when generating proposals (not a useful fault model) or Byzantine level adversarial faults, which is impractical and not somewhere we want to go.
-
-The flow we have here, without FLP, is correct; I just need to eradicate mentions of FLP and instead make the flow go from "majority voting gets stuck" to "liveness" to "an infinite number of voting rounds" to "gee, couldn't a future round change the result of a previous round?" to "safety" to Paxos. That means we also don't need decision points, and we don't have to temporarily ignore the possibility of having more than two proposals since resolving split votes is the only thing we're trying to do. So we just have to explain why it's okay to do one-shot consensus and call it a day.
-
----
-
 Ask some rando off the street, "Hey, what are some foundational problems in the field of distributed systems?" and they'll probably say something like, "What? Who are you? Get away from me!" Others might suggest the problem of *distributed consensus* &mdash; the problem you solve with fancy algorithms like Raft and Paxos. 
 
 These algorithms are kind of amazing. For one, they’re the bedrock on which the entire online world is built. If a system is distributed and manages any kind of shared state, there’s a consensus algorithm running in there somewhere. The average dev may not need to interact with consensus algorithms directly, but the databases and cloud services we build the online world on are themselves built on consensus algorithms. Consensus is everywhere!
@@ -436,6 +428,33 @@ Of course, for the curious and the impatient, you can also just read on. With th
     3: FLP
   </h1>
 </center>
+
+---
+
+TODO this chapter is currently structured around a misremembering of how the FLP proof plays out. The decision points discussion is good but I want a slightly different definition - the decision point is always the point where the decision is made. Show that the decision point really comes down to what order the algorithm processes network messages; that’s the indeterminism that can make a deterministic algorithm able to decide either way. 
+
+Prove there must be exactly once execution of the decision point
+
+1. At most one, because otherwise the two decisions could differ and you get split brain
+2. At least once, because otherwise the algorithm does not ever make a decision.
+
+Then FLP lemma 3 can be stated plainly as
+
+1. Pick some step which can be the decision point
+2. By its existence, there must be some configuration where no other step in the algorithm decides (split brain)
+3. Now say the node that executes this step, crashes instead. Because of the crash, no decision is made. And by (2) no other step can make the decision either.
+4. Therefore no decision will be made
+
+Alternately, our definitions make one step, called the decision point, both necessary and sufficient to make a decision. But if it’s necessary, then it cannot be lost to a crash. No fault tolerance.
+
+To finish their proof, they note that even if your algorithm can abandon the failed decision and make a new one instead, the next retry could technically fail the same way. And the next one, and the one after that, forever. So even infinite retries do not guarantee success.
+
+Segue out: okay, sure, but that last part is weaker than it sounds. I need to run, but basically it’s an argument by randomness that eventually the odds of continued failure get to be crazy astronomically low. It’s like the argument that a hash table could just accidentally hash everything to the same bucket forever, technically possible but wint happen once on average in your lifetime 
+
+So the strategy is accept loss of decision point and keep trying with some random element forever. You can’t stay unlucky forever.
+
+---
+
 ## When the Going Gets Tough, the Tough Prove the Going's Pretty Darn Tough ... and Give Up
 
 Before a working consensus algorithm was discovered, people chewed through this problem just as you might have during the intermission above. And they kept running into the same dead end, over and over. They could make an algorithm that provided all the consensus properties, and even still make it *usually* fault tolerant, but there'd always be that one case, one little window of vulnerability where one node crashing brings the entire algorithm to a standstill.

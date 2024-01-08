@@ -431,27 +431,14 @@ Of course, for the curious and the impatient, you can also just read on. With th
 
 ---
 
-TODO this chapter is currently structured around a misremembering of how the FLP proof plays out. The decision points discussion is good but I want a slightly different definition - the decision point is always the point where the decision is made. Show that the decision point really comes down to what order the algorithm processes network messages; that’s the indeterminism that can make a deterministic algorithm able to decide either way. 
+When I started writing this I was misremembering how FLP works. But I think most of what we wrote here is actually on the right track. We can present FLP as a proof that you can have either termination or fault tolerance, not both, as a division into cases:
 
-Prove there must be exactly once execution of the decision point
+1. Algorithm has some message that always decides “the clincher.” An algorithm that has a clincher terminates, but cannot tolerate even one fault, by lemma 3. Essentially, the remaining steps that are  supposed to make the decision can’t, because those steps cannot know whether or not the decision point ran
+2. Algorithms that tolerate no faults therefore have no clincher. But an algorithm with no clincher can run forever without making a decision, by their main proof. Essentially, no step is guaranteed to decide so each step can not decide, leading to no decision ever
 
-1. At most one, because otherwise the two decisions could differ and you get split brain
-2. At least once, because otherwise the algorithm does not ever make a decision.
+A key aspect of the decision point we need to set up is that it is determined by message processing order. That’s how you get nondeterminism from a deterministic algorithm.
 
-Then FLP lemma 3 can be stated plainly as
-
-1. Pick some step which can be the decision point
-2. By its existence, there must be some configuration where no other step in the algorithm decides (split brain)
-3. Now say the node that executes this step, crashes instead. Because of the crash, no decision is made. And by (2) no other step can make the decision either.
-4. Therefore no decision will be made
-
-Alternately, our definitions make one step, called the decision point, both necessary and sufficient to make a decision. But if it’s necessary, then it cannot be lost to a crash. No fault tolerance.
-
-To finish their proof, they note that even if your algorithm can abandon the failed decision and make a new one instead, the next retry could technically fail the same way. And the next one, and the one after that, forever. So even infinite retries do not guarantee success.
-
-Segue out: okay, sure, but that last part is weaker than it sounds. I need to run, but basically it’s an argument by randomness that eventually the odds of continued failure get to be crazy astronomically low. It’s like the argument that a hash table could just accidentally hash everything to the same bucket forever, technically possible but wint happen once on average in your lifetime 
-
-So the strategy is accept loss of decision point and keep trying with some random element forever. You can’t stay unlucky forever.
+And then Paxos will fit into this framework as a non-terminating fault tolerant consensus algorithm. It uses randomization to ensure over time, the probability of non-termination gets steadily lower. In practice an algorithm that terminates with astronomically large probability can be considered terminating in practice.
 
 ---
 

@@ -431,14 +431,23 @@ Of course, for the curious and the impatient, you can also just read on. With th
 
 ---
 
-When I started writing this I was misremembering how FLP works. But I think most of what we wrote here is actually on the right track. We can present FLP as a proof that you can have either termination or fault tolerance, not both, as a division into cases:
+When I started writing this I was misremembering how FLP works. But I think most of what’s already here is salvageable. 
 
-1. Algorithm has some message that always decides “the clincher.” An algorithm that has a clincher terminates, but cannot tolerate even one fault, by lemma 3. Essentially, the remaining steps that are  supposed to make the decision can’t, because those steps cannot know whether or not the decision point ran
-2. Algorithms that tolerate no faults therefore have no clincher. But an algorithm with no clincher can run forever without making a decision, by their main proof. Essentially, no step is guaranteed to decide so each step can not decide, leading to no decision ever
+Basic flow:
 
-A key aspect of the decision point we need to set up is that it is determined by message processing order. That’s how you get nondeterminism from a deterministic algorithm.
+* Intro idea of setting up the system so that, once a specific message has been processed, the system will have decided
+* Maybe at this point preview that the node which receives that message is a SPOF. 
+* Show the FLP lemma 3 mechanics on a simple 3 node majority voting setup. Show how “vote red” and “vote blue” sent to the undecided node always result in a system which has decided. Proceed to show the algorithm deadlocks if that node crashes, and any attempt to recover from this state leads to split brain in the case where the undecided node is alive, but slow
+* Revisit the same mechanics abstractly for any algorithm. 
+* Walk through the FLP main proof, which takes an algorithm that never forces a decision and finds a way keep to delivering the oldest message to each node round robin, forever, without ever making a decision
+* Maybe mention fault detection oracles. 
+* Conclusions: 
+* 1. If we ever can say our algorithm terminates, we should be suspicious
+* 2. If it appears the system has always decided after processing a message sent before the system has decided, we had better look for deadlocks or split brains
+* 3. This loosely suggests  best effort retry loop. 
 
-And then Paxos will fit into this framework as a non-terminating fault tolerant consensus algorithm. It uses randomization to ensure over time, the probability of non-termination gets steadily lower. In practice an algorithm that terminates with astronomically large probability can be considered terminating in practice.
+
+And mention randomization in there somewhere
 
 ---
 

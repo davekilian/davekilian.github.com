@@ -449,6 +449,8 @@ Basic flow:
 
 And mention randomization in there somewhere
 
+Maybe we don’t need to mention decision points at all. The only crux of the proof is “forcing a decision” which is a bit different than the direction I was originally going.
+
 ---
 
 ## When the Going Gets Tough, the Tough Prove the Going's Pretty Darn Tough ... and Give Up

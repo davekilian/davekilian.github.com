@@ -444,12 +444,12 @@ Basic flow:
 * Conclusions: 
 * 1. If we ever can say our algorithm terminates, we should be suspicious
 * 2. If it appears the system has always decided after processing a message sent before the system has decided, we had better look for deadlocks or split brains
-* 3. This loosely suggests  best effort retry loop. 
-
-
-And mention randomization in there somewhere
+* 3. As they mention in the paper’s conclusion, probability of termination might suffice
+* This all loosely suggests  best effort retry loop. Wonder how one does this for majority voting 
 
 Maybe we don’t need to mention decision points at all. The only crux of the proof is “forcing a decision” which is a bit different than the direction I was originally going.
+
+In fact, this may obviate the need to come up with properties above. Or, if we want to still have a set of yardsticks for measuring, FLP suggests a trio of properties, IIRC: termination, agreement, validity. But the coherence/no-decoherence, etc properties above were leading into a direction we’re not going
 
 ---
 

@@ -451,6 +451,10 @@ Maybe we don’t need to mention decision points at all. The only crux of the pr
 
 On a related note, the properties we described before no longer lead into the discussion I want to have next, so we don’t need them per se. And also, if we do want to use properties, the standard ones appear to be agreement, validity and termination (with the care to somehow specify no-decoherence implicitly, eg by a write-once output register)
 
+Maybe we could restructure the previous chapters not to have a set of properties (or have the more basic A/V/T set from literature) and then in this chapter introduce one last example that shows why the sigma can’t recover in the faulted case and also avoid split-brain in the no-faults case. The last example is “majority voting with tiebreak” and you show how it works with exactly 3 nodes in the network.
+
+Also jump off with a discuss about what “a message sent before the system decides, system decided once processed” really means in an intuitive sense, and how it’s related to termination. 
+
 ---
 
 ## When the Going Gets Tough, the Tough Prove the Going's Pretty Darn Tough ... and Give Up

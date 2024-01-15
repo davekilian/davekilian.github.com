@@ -438,7 +438,7 @@ Basic flow:
 * Intro idea of setting up the system so that, once a specific message has been processed, the system will have decided
 * Maybe at this point preview that the node which receives that message is a SPOF. 
 * Show the FLP lemma 3 mechanics on a simple 3 node majority voting setup. Show how “vote red” and “vote blue” sent to the undecided node always result in a system which has decided. Proceed to show the algorithm deadlocks if that node crashes, and any attempt to recover from this state leads to split brain in the case where the undecided node is alive, but slow
-* Revisit the same mechanics abstractly for any algorithm. 
+* Revisit the same mechanics abstractly for any algorithm. A good way to explain the ordering problem and fault detector is to imagine the case where the node fails and sigma must now recover, then imagine an alternate universe where everything happened exactly the same except p didn’t crash, it’s just running slow. (Alternate universe is the key here). There’s no way to tell the difference but sigma must do something different in this case (not decide, yield the decision to p). 
 * Walk through the FLP main proof, which takes an algorithm that never forces a decision and finds a way keep to delivering the oldest message to each node round robin, forever, without ever making a decision
 * Maybe mention fault detection oracles. 
 * Conclusions: 

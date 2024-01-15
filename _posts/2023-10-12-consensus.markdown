@@ -36,6 +36,10 @@ In chapter 1, we'll start by exploring the problem space. We'll nail down exactl
   </h1>
 </center>
 
+TODO one more example we could add is the transaction commit problem, which we could explain using a save-the-date metaphor (save-the-date time block is a metaphor for taking the lock)
+
+---
+
 A lot of computing terms come from real-life metaphors. The real-life metaphor behind consensus algorithms goes something like this:
 
 Imagine you and a group of other people are stuck on a decision. Maybe you all want to go to a restaurant but you can’t decide where to go. The conundrum is: everyone wants to go out to eat, but until you all agree *where* to go, nobody’s going anywhere; so everyone wants the same thing, but nobody’s getting what they want! Imagine some people now throw out some ideas to help get the ball rolling, not with the goal of debating the best possible place to eat, just to find an option everyone can agree to so you can move on and actually, you know, go eat. That agreement, made so the whole group can move on, is what we call *consensus*.

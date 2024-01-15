@@ -449,7 +449,9 @@ Basic flow:
 
 Maybe we don’t need to mention decision points at all. The only crux of the proof is “forcing a decision” which is a bit different than the direction I was originally going.
 
-In fact, this may obviate the need to come up with properties above. Or, if we want to still have a set of yardsticks for measuring, FLP suggests a trio of properties, IIRC: termination, agreement, validity. But the coherence/no-decoherence, etc properties above were leading into a direction we’re not going
+In fact, this may obviate the need to come up with properties above. Or, if we want to still have a set of yardsticks for measuring, FLP suggests a trio of properties, IIRC: termination, agreement, validity. But the coherence/no-decoherence, etc properties above were leading into a direction we’re not going.
+
+At least, I think validity is a better property than conflict resolution. But I think calling out no-decoherence is quite important. In FLP they hide it behind the statement “the output register is write-once” but that’s too subtle. Doesn’t mean it has to be a property though.
 
 ---
 

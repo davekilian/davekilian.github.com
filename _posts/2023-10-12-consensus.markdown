@@ -118,23 +118,23 @@ People have already tackled this question in The Literature&#8482; using Big Wo
 
 ### Agreement
 
-Let's think about the lock service for a minute. What makes a lock useful is the mutual exclusion guarantee: the fact that one server has the lock allows it to assume no other server has the lock. If this guarantee cannot be enforced, the lock is useless! Let's think about a couple ways this could go wrong:
+Let's think about the lock service for a minute. What makes a lock useful is the mutual exclusion guarantee: the fact that one server has the lock allows it to assume no other server has the lock. If this guarantee cannot be enforced, the lock is useless! Let's think about a couple ways this could go wrong in a distributed setting.
 
-What if two servers were allowed to disagree which of the two servers acquired the lock? There are two bad things that could happen: first, you have the situation where both servers each believe it has the lock; then the mutual exclusion guarantee of the lock is violated, as it's no longer correct that one server holding the lock guarantees no other server has it too. Second, you have the situation where both servers believe the other one got the lock; then both servers will wait for each other forever, a situation called **deadlock**. We must not allow either of these to happen: a useful consensus algorithm must guarantee all servers agree which server got the lock.
+What if two servers disagreed which of the two has acquired the lock? There are two very bad things that could happen: first, you have the situation where each server believes it has the lock; then the mutual exclusion guarantee of the lock is violated, as it's no longer correct that one server holding the lock guarantees no other server has it too. Second, you have the situation where both servers believe the other one got the lock; then both servers will wait for each other forever, a situation called **deadlock**. We must not allow either of these to happen: a useful consensus algorithm must guarantee all servers agree which server got the lock.
 
-Another problem: what if a server was allowed to 'change its mind' about who has the lock? Maybe Alpha initially thinks Beta got the lock, but then later changes its mind and decides it does have the lock after all? Then the mutual exclusion guarantee would once again be violated: *initially* Beta was correct in assuming it was the sole owner of the lock, but that assumption was violated the moment Alpha changed its mind. A useful consensus algorithm must not allow changing minds; once a decision is made, it must be committed forever.
+Another problem: what if a server was allowed to 'change its mind' about who has the lock? Maybe Alpha initially thinks Beta got the lock, but then later changes its mind and decides it does have the lock after all. Once again, the mutual exclusion guarantee would be violated: *initially* Beta was correct in assuming it was the sole owner of the lock, but that assumption was violated the moment Alpha changed its mind. A useful consensus algorithm must not allow changing minds; once a decision is made, it must be committed forever.
 
-These ideas are all encompassed in the idea of the **Agreement** property, which roughly means, "the algorithm only ever decides on one value." That statement applies across servers (all servers decide on the same value) and across history (a server never changes its decision). Another way of saying it: a consensus algorithm presented with conflicting updates chooses which update to accept **exactly once**.
+These ideas are all encompassed in the idea of the **Agreement** property, which roughly means, "the algorithm only ever decides on one value." That applies across servers (all servers choose the same value) and across history (a server never changes its decision). Another way to say the same thing: a consensus algorithm presented with conflicting updates chooses which update to accept **at most once**.
 
 ### Validity
 
+There's a very easy, pretty cheater way to implement the Agreement property: hardcode a single answer. For example, 
+
 TODO this might seem obvious, in which case good, but let's belabor the point that a consensus algorithm is discovering concurently with deciding. 
 
-### Termination
+### Termination *
 
-
-
-TODO finish with, I put an asterisk on termination. We'll see why in chapter 3
+TODO hook up with agreement by saying **at least once**. Point out the two together actually mean we need exactly-once decision-making. Preview that's a problem. Say that's why I'm putting an asterisk on termination. We'll revisit this at the end of chapter 3.
 
 ### Fault Tolerance
 

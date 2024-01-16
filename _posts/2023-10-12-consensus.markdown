@@ -62,7 +62,19 @@ Put these together, and you end up needing to resolve conflicting updates quickl
 
 Now, I've never seen Reddit's source code, so I can't tell you how it works; even so, I'm pretty sure they did not solve this problem using a consensus algorithm . . . at least not directly. Consensus problems may be everywhere, but consensus algorithms are implemented rarely; most of the time, you instead use some higher level primitive that itself provides consensus guarantees (internally, these things rely on true consensus algorithms like Raft and Paxos). In Reddit's case, it's much more likely account name conflicts are discovered using a database.
 
-## Distributed Databases
+## Example: Database Replication
+
+Reddit most likely uses a database to track user account information; it's a website, and that's how pretty much all websites do it! Usually you set up a **primary key** constraint in the database, so that if two servers both try to insert a row with the same username, the database accepts one insert and rejects the other. The account signup page might then show success to the user that inserted successfully, or an "account already registered" error to the user whose insert was rejected by the database.
+
+Enforcing primary key uniqueness is relatively easy if there's just one server that serves the entire database; but for uptime reasons, it's usually a good idea to keep multiple **replicas** or copies of a database, in case one of the servers crashes or a disk fails. For a replicated database, each row insertion must happen on all the replicas of the database.
+
+TODO this is better than diving into transaction commit, but it's still tricky. The best algorithm in this case is a single leader multiple follower setup, but that doesn't use a consensus algorithm. There is a consensus algorithm to be found in the case of leader failovers and recovery, but that's again too in the weeds for this discussion. 
+
+
+
+
+
+---
 
 TODO I tried to get into transaction commit here and it got out of hand fast. See if we can't keep to the original example and have the 'conflict' be conflicting primary key inserts on the same account username. The tricky part of that is justifying why a consensus algorithm is necessary without getting into the weeds. Perhaps it's good enough to invoke the need to replicate and show replicas can disagree.
 

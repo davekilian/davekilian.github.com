@@ -169,7 +169,7 @@ By the way, throughout this book, when we evaluate an algorithm’s fault tolera
 >
 > **Validity**: The algorithm decides on a value some node proposed
 >
-> **Termination**: The algorithm eventually decides on a value
+> **Termination (*)**: The algorithm eventually decides on a value
 >
 > **Fault Tolerance**: The above are upheld even if the underlying platform faults
 >
@@ -187,19 +187,23 @@ Just as the best way to understand a piece of code is to change it, the best way
 
 ## A Couple Restrictions
 
-To keep things from getting too complicated too fast, let’s start out by placing a couple of limitations on our design. The goal is to make it easier to get to a working consensus algorithm to begin with, while ensuring there’s still a path from the more basic thing we start with to the more advanced thing we want to end up with.
+This discussion will get complicated fast. To keep things under control, we'll start by placing a few limitations on our design. The goal is to make it easier to get a basic working design to begin with, while leaving the door open to extending the basic design to support all the features we wanted. 
 
-First, we’ll start by making a **binary decision**: our algorithm will be designed to handle exactly two conflicting updates, and the algorithm needs to get all nodes to agree on one of the two. In real life, we’d probably want an algorithm to handle arbitrary many conflicts, but if we start by handling two, it’s very likely we’ll find a way to extend the algorithm from two conflicts to N conflicts. 
+### Binary Decisions
 
-To make it easier to talk about the two conflicting options, we’ll also give them names: the <span style=“color:red”>red</span> option and the <span style=“color:blue”>blue</span> blue option:
+For now, our algorithm will only allow two values to be proposed. To make those two options easier to talk about, we’ll give them names: the <span style="color:red">red</span> option and the <span style="color:blue">blue</span> blue option.
 
 [diagram introducing the two colored circles we’ll use throughout the book]
 
 Remember, these options can stand in for anything else: 0 and 1, yes and no, apples and oranges, etc. 
 
-Furthermore, we’re going to restrict ourselves to building **one-shot** consensus. The algorithm will be able to resolve conflicts one time, and never change it. This is too simplistic for real-world use; for example, it would mean the lock server would be able to grant a lock to one thread one time, and never release it. But if we can build a one-shot primitive, we can find ways to implement a sequence of updates by using a stream of one-shot decisions.
+In real lilfe, it'd be useful to support any number of different candidate values. If we only support two candidates, then e.g. the lock service can only be implemented for two nodes, which isn't very useful. However, in most of computing, you end always being able to have exactly zero of something, exactly one of something, or $N$ of something; so if we can figure out how to have exactly two candidate values, there's probably an easy enough way to extend it from 2 to $N$ candidates.
 
-So, in conclusion: we’ll design a consensus algorithm that picks one of two options, one time, and sticks with it forever. And we think we’ll be able to extend that into an algorithm that works with any number of conflicts, any number of times.
+### One-Shot Decisions
+
+For now, let's have an algorithm that can only reach one decision and never change it. In terms of the lock service, this would mean one node acquires the lock and can never release it, which again is probably unrealistic. However, in most of computing, instantiating things is easy; so if we can figure out how to do a one-shot decision, maybe we can implement a stream of decisions by chaining a sequence of one-shot decisions. 
+
+So, in conclusion: we'll start in this chapter designing a consensus algorithm for one-shot binary decisions: up to two candidate values (<span style="color:red">red</span> and <span style="color:blue">blue</span>) can be proposed, and the algorithm will decide on either value and then exit. 
 
 ## A Programming Interface
 

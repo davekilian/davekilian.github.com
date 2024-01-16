@@ -27,7 +27,7 @@ Today, the struggle to develop and understand consensus algorithms continues. On
 
 The truth is, neither Raft nor Paxos will eever be all that easy to understand: the train of thought that leads you there is too long and too winding to be covered quickly. But people come away thinking these algorithms are things normal people will never be able to grasp, and that's a problem we can fix!
 
-We're going to retrace the original line of thought that led to the discovery of Paxos, the first consensus algorithm discovered. Our discussion will be self-contained and complete: if you can write the backend for a modestly large online service, you have enough background to get through this thing. I won't use big words or mathematical notation when I don't have to, but I'm not going to go easy on you either &mdash; no handwaving, stretching metaphors or oversimplifying. At the end, you're going to understand the core Paxos algorithm, and you'll have a clear picture how somebody could have come up with it.
+We're going to retrace the original line of thought that led to the discovery of Paxos, the first consensus algorithm discovered. Our discussion will be self-contained and complete: if you can write the backend for a modestly large web service, you have enough background to get through this thing. I won't use big words or mathematical notation when I don't have to, but I'm not going to go easy on you either &mdash; no handwaving, stretching metaphors or oversimplifying. At the end, you're going to understand the core Paxos algorithm, and you'll have a clear picture how somebody could have come up with it.
 
 In chapter 1, we'll start by exploring the problem space. We'll nail down exactly what a consensus algorithm does, and when you’d want to use one. In chapter 2, we’ll start trying to design a consensus algorithm &mdash; only to run into a dead end! In chapter 3 we'll talk about FLP, a major discovery that makes it clear why the things we were doing in chapter 2 didn't work and points to a potential path forward. Finally, in chapter 4, we'll use what FLP taught us to fix our broken designs, and end up with Paxos &mdash; the first working consensus algorithm. It'll be a long, but rewarding journey. Buckle up!
 
@@ -70,39 +70,25 @@ Now, you may have implemented an account signup page before, and if so I'm guess
 
 So let's keep digging. How did Reddit (probably) solve the problem of two people registering the same account name at the same time? Probably with the help of a database. Databases have consensus problems too.
 
+## Example 2: Database Replication
+
+Most people interested in consensus algorithms are basically familiar with relational databases with tables, rows columns and primary keys, so I won't belabor the point here. What matters to our discussion is that, even though we've never seen Reddit's source code, we can be pretty sure the accounts are stored in a database, using some kind of uniqueness constraint (such as choice of primary key) to prevent two users from registering the same username.
+
+At the scale of something like Reddit, even the database of accounts is probably too much data and too much load for any one server to handle; so it's likely the database is broken up into pieces (sometimes called **partitions** or **shards**) which each served separately. And, to ensure that a single server crash or disk failure doesn't bring down the account database, most likely there are backup copies (called **replicas**) of each database partition. Figuring out how to accept database updates that affect multiple partitions and apply the updates to all replicas is a difficult problem, core to modern database design, and there's a whole zoo of solutions used in practical systems today. Many of those problems are consensus problems.
+
+For example, one strategy sometimes used to ensure greater uptime and provide more write throughput is to allow every replica of a database or database partition to accept updates locally, and lazily synchronize the updates between the different replicas. This technique is called **multi-leader replication**. Say for the sake of discussion that Reddit stores accounts in a database that uses multi-leader replication.
+
+So, Alice and Bob both show up and both try to register the username `paxos_expert`. That itself is a consensus problem, but the web servers don't resolve that problem amongst each other; instead, each forwards a database request to insert a row with the username column set to `paxos_expert`, and let the database figure out. If the database uses a multi-leader strategy, and those two servers happen to connect to different replica servers, then the database now has two replica servers with conflicting row insert operations; another consensus problem:
+
+[[ diagram showing the two web servers delegating to two replica servers ]]
+
+In this diagram, you can also see how the consensus problem has been delegated from the web servers down to the database, by transforming the duplicate usernames problem at the web tier to a conflicting row insert problem at the database tier. This is why consensus algorithms are very important to people who build foundational primitives, services and databases for the cloud, but are largely invisible to people who encounter consensus problems on a day-to-day basis.
+
+### Example 3: Lock Service
+
+As a final example, let's consider a cache of accounts. 
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-## Example: Database Replication
-
-Reddit is a website, and most websites use a database to track user account information; so let’s assume that’s what it does.
-
-In classic relational databases, each entry in the database is called a **row**, and each row is uniquely identified by a **primary key**. You can either look at a database row as a set of related values, or as a key-value pair where the primary key is the key and the rest of the row is the value. In the latter sense, the database is like a map data structure. Usually, to implement a database of user accounts, you set up the accounts database so that the primary key is a username, and the rest of a row is other data about the account, perhaps the day it was created, password information, user preferences, etc. Because the user name is the primary key, and only one row can have a given primary key, two users can insert two accounts with the same user name: the temporary keys would conflict.
-
-Resolving this conflict is relatively easy if there’s only one database server; that one server sees all row insert requests, and if it gets two at a time, it can make a local decision about which insert to accept. However, a single-server setup isn’t great for uptime: if the server crashes or a disk fails, you lose the whole database. Instead, it’s common to set up **replicas**, or copies of the database that are always in sync. That way, if the server serving one replica crashes, another replica can immediately take its place, and users don’t see anytime as a result of the crash.
-
-There are a whole zoo of different strategies for keeping replicas in sync. Let’s consider **multi-leader** replication, which simply means each replica can accept updates. Say you have a multi-leader database which stores accounts, with a uniqueness constraint in the username field, and say Alice and Bob each connect to different replicas and try to create the same account:
-
-[ diagram ]
-
-Once again we have a consensus problem: the two replica servers now need to decide which row insert to accept and which to reject, before either server can move on and tell anybody who registers the account. And once again, it doesn’t really matter whether it’s Alice or Bib that gets the username, so long as one of them does and the system doesn’t get stuck.
-
-TODO you can also see how the consensus problem can be delegated from high level code to low level code. What originally seemed like two web servers deciding which user can register a username, was transformed into two database replica servers deciding which request can insert the given primary key.
-
-### Lock Service
 
 ---
 

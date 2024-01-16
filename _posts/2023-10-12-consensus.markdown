@@ -433,7 +433,7 @@ Right now, all we know is the undecided node is currently unreachable; we actual
 
 [diagram with 3 red, 3 blue, one thought bubble with a question mark inside]
 
-It could be that the undecided node has actually crashed and not coming back. In this case, "3 votes for red, 3 votes for blue" is the final state of the system, so having a tiebreak rule like "in the event of a tie, assume red has won" is perfectly sensible:
+It could be that the undecided node has actually crashed and not coming back. In this case, "3 votes for red, 3 votes for blue" is the final state of the system, so having a tiebreak rule like "in the event of a tie, assume red has won" is a great idea and allows us to decide in spite of the split vote and inopportune crash:
 
 [diagram with 3 red, 3 blue, one empty node crossed out to indicate its gone. Scribble in "interpretation: red wins"]
 
@@ -445,7 +445,7 @@ to:
 
 [diagram with undecided node now decided blue, with "interpretation: blue wins"]
 
-... the algorithm changed its mind! We absolutely cannot allow that. So we can't have a tiebreak. But if we can't have a tiebreak, then we can't fix the split vote situation. So the whole majority voting thing looks like a dead end.
+Whoops, the algorithm changed its mind! We absolutely cannot allow that. So we can't have a tiebreak. But if we can't have a tiebreak, then we can't fix the split vote situation. So we can't make the majority algorithm decide in spite of even one crash. This whole majority voting thing was so promising at the beginning, and now it's starting to look like a dead end.
 
 Dang.
 

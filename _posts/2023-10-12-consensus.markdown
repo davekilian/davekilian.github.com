@@ -64,87 +64,27 @@ Now, I've never seen Reddit's source code, so I can't tell you how it works; eve
 
 ## Example: Database Replication
 
-Reddit most likely uses a database to track user account information; it's a website, and that's how pretty much all websites do it! Usually you set up a **primary key** constraint in the database, so that if two servers both try to insert a row with the same username, the database accepts one insert and rejects the other. The account signup page might then show success to the user that inserted successfully, or an "account already registered" error to the user whose insert was rejected by the database.
+Reddit is a website, and most websites use a database to track user account information; so let’s assume that’s what it does.
 
-Enforcing primary key uniqueness is relatively easy if there's just one server that serves the entire database: it just uses a lock internally to make sure only one request can insert a row with a given primary key at a time. However, for uptime reasons, it's usually a good idea to keep multiple **replicas** or copies of a database, in case one of the servers crashes or a disk fails. For a replicated database, each row insertion must happen on all the replicas of the database. 
+In classic relational databases, each entry in the database is called a **row**, and each row is uniquely identified by a **primary key**. You can either look at a database row as a set of related values, or as a key-value pair where the primary key is the key and the rest of the row is the value. In the latter sense, the database is like a map data structure. Usually, to implement a database of user accounts, you set up the accounts database so that the primary key is a username, and the rest of a row is other data about the account, perhaps the day it was created, password information, user preferences, etc. Because the user name is the primary key, and only one row can have a given primary key, two users can insert two accounts with the same user name: the temporary keys would conflict.
 
-TODO this is better than diving into transaction commit, but it's still tricky. The best algorithm in this case is a single leader multiple follower setup, but that doesn't use a consensus algorithm. There is a consensus algorithm to be found in the case of leader failovers and recovery, but that's again too in the weeds for this discussion. 
+Resolving this conflict is relatively easy if there’s only one database server; that one server sees all row insert requests, and if it gets two at a time, it can make a local decision about which insert to accept. However, a single-server setup isn’t great for uptime: if the server crashes or a disk fails, you lose the whole database. Instead, it’s common to set up **replicas**, or copies of the database that are always in sync. That way, if the server serving one replica crashes, another replica can immediately take its place, and users don’t see anytime as a result of the crash.
 
-A kind of sneaky way out of the problem is to say the database is geo-replicated, so that it makes sense to say the database is locally writable in every geo and enforces primary key constraints across geos. But this is a spanner-like problem which again is not a good fit for consensus. 
-
-But, maybe multi-master is the way to go. Maybe wave hands a little and say, there’s a zoo of strategies for keeping the replicas in sync, one way is to accept updates at all the replicas, then you have conflicting updates between replicas, and a requirement to resolve it. It’s also very clear how the conflict at the account signup page level has been effectively offloaded as an equivalent conflict within the database itself, thereby freeing the programmer from having to deal with problems of conflicts.
-
-
-
-
-
----
-
-TODO I tried to get into transaction commit here and it got out of hand fast. See if we can't keep to the original example and have the 'conflict' be conflicting primary key inserts on the same account username. The tricky part of that is justifying why a consensus algorithm is necessary without getting into the weeds. Perhaps it's good enough to invoke the need to replicate and show replicas can disagree.
-
----
-
-Reddit has a lot of user accounts! Most likely, even the account information alone is too much data and too much load for any one server to handle; so the database for accounts is likely distributed across multiple servers, each of which stores a piece of the database. Which database is Reddit using for accounts? Who knows! But all distributed databases have one problem in common: how do you do one update that affects data on multiple servers? This is called the **transaction commit** problem, and it was one of the reasons people got so interested in consensus algorithms back in the pre-Internet days.
-
-Say we have two servers, each of which stores a piece of a database, and we want to do a single update that spans both servers:
+There are a whole zoo of different strategies for keeping replicas in sync. Let’s consider **multi-leader** replication, which simply means each replica can accept updates. Say you have a multi-leader database which stores accounts, with a uniqueness constraint in the username field, and say Alice and Bob each connect to different replicas and try to create the same account:
 
 [ diagram ]
 
-Each server validates its piece of the update before applying it; what if one server decides the update is invalid, but the other accepts it as valid?
+Once again we have a consensus problem: the two replica servers now need to decide which row insert to accept and which to reject, before either server can move on and tell anybody who registers the account. And once again, it doesn’t really matter whether it’s Alice or Bib that gets the username, so long as one of them does and the system doesn’t get stuck.
 
-[ diagram ]
-
-Leaving an update half-applied like this can be disastrous! Instead, we want a protocol that safely applies an update only if it is valid on both servers. The classic **two-phase commit** (**2PC**) protocol accomplishes this. The idea is to do an update in two phases. In the first phae, you contact each server and ask it to validate the update you want to do, but not actually apply it yet. Each server holds some kind of lock, so that once it told you the update was valid, it rejects any concurrent change that would make your update invalid:
-
-[ diagram ]
-
-In phase two, you either **commit** the update if all servers reported the update was valid, or you **roll back** the update (cancel it) if any server reported the update was not valid.
-
-But there's a problem; what if you crash after phase 1, but before you do phase 2? Now a bunch of servers are just sitting there, waiting for you to start phase 2, but since you crashed, phase two will never start:
-
-[ diagram ]
-
-If you disappear, the servers will now need to decide among themselves whether to commit or roll back the transaction. This decision is an example of a consensus problem: the servers don't care whether a valid update is committed or rolled back, but they do care
-
-TODO this isn't compelling unless you mention the possibility that the coordinator committed on some nodes but not all, but this explanation is already long as it is. Maybe we should shift strategies. Abandon transaction commit for this section, and instead keep to the 
-
-
-
-
-
-
-
-
-
----
-
-TODO continue the rewrite from here. Try to build all examples in the context of the user-facing consensus problem we started before; maybe, the transaction commit problem is on a database of user accounts, and the lock service is used to assign accounts to cache servers.
-
-* Transaction commit is a consensus problem
-* Many distributed databases do have a Raft or a Paxos inside
-* Databases that provide distributed transactions are consensus primitives
-* Move to a lock service section
-* Introduce a load balancing problem for an account cache
-* Lock service to track who has the account
-* Lock services also usually do have a Raft or a Paxos inside
-
----
-
-
-
-### Key-Value Store
-
-A key-value store is a type of database, basically an implementation of the ‘map’ data structure stored on servers and made accessible over the network. For large enough datasets, one server might not be big enough to store the whole map, so it’s common to support splitting a key-value store across multiple servers.
-
----
-
-TODO let's turn this into the transaction commit problem. There's one update across both servers and it needs to happen on both servers or neither. Once again, it's no huge problem if the entire change is backed out due to a server problem, but it's a huge problem if one server applies the changes and another doesn't.
-
----
-
-Say Alice and Bob are again connected to different servers. They both change a system config setting, causing both servers to try to update the same key in the same key-value store at the same time. Now we again have a disagreement: the two servers want to update the same key to different values. Once again, it doesn’t really matter whether Alice’s config update is accepted or Bob’s: whichever update is rejected, that user can look at the new setting value and make a decision from there whether to leave it or change it. But it is important that all servers are using the same config! We can’t have some servers using Alice’s config and others using Bob’s at the same time, so we have to pick one key-value update to apply and make every server agrees which one was applied. Another consensus problem.
+TODO you can also see how the consensus problem can be delegated from high level code to low level code. What originally seemed like two web servers deciding which user can register a username, was transformed into two database replica servers deciding which request can insert the given primary key.
 
 ### Lock Service
+
+---
+
+TODO continue rewriting from here. I redid the framing problem to be more approachable, it’d be nice to do a better tie in in this section. For example, maybe the lock server is assigning accounts to cache servers ephemerally
+
+---
 
 A distributed lock service implements the networked version of the mutex locks you may have encountered in multithreaded code. A thread which obtains a distributed lock can be certain no other thread on any server in the network also holds the lock at the same time. Locks in a distributed lock service often come with a timeout, so that the lock can be released automatically if a server crashes before releasing its lock. A lock service like this can be useful for a variety of things; for example, the key-value store from the previous example might use this service to lock keys for update, or assign a group of keys to a single server so that server can manage all the keys using plain (non-distributed) locks. 
 

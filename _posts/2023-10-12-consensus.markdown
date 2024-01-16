@@ -102,19 +102,21 @@ Finally, we also saw how easy it was to delegate consensus problems to lower-lev
 
 ## Fault-Tolerant Consensus
 
-So far, consensus algorithms don’t sound very hard to design. There are lots of simple heuristics for resolving conflicts in a consistent way: for example, all nodes could pick the update that has the earliest timestamp, or have some way to sort the nodes and pick the update that came from the node with the lowest ID. Sadly, the only reason consensus sounds simple so far is because we’re missing an entire dimension of the problem. Let's talk about reliability for a second.
+So far, consensus algorithms might not sound very hard to design. There are lots of simple heuristics for resolving conflicts in a consistent way: for example, all nodes could pick the update that has the earliest timestamp, or have some way to sort the nodes and pick the update that came from the node with the lowest ID. Sadly, the only reason consensus sounds simple so far is because we’re missing an entire dimension of the problem. Let's talk about reliability for a second.
 
 Think about the device you're using to read this book; have you ever had weird little problems with it? Freezes, or crashing apps, weird glitches, system-wide slowdowns, overheating, unexplained network disconnects, blue screens, anything like that? I’m guessing these things have happened to you, even if they don't happen often enough to be a major disruption day to day.
 
-But now imagine you were using not just one device, but a thousand of them. Or imagine you’re a cloud provider, running hundreds of thousands of these things across the world, connected by thousands of miles of network cables. How often do you think you'd be dealing with these kinds of little problems? Heck, you'd probably never be able to fully rid yourself of them, no matter how hard you tried! Rare problems, multiplied by thousands of machines, become common. If you serve a million requests every minute, you should expect every possible one-in-a-million problem to happen roughly once every minute (over 1,400 times a day). There’s no way to squash all of these problems, so code running on this environment &mdash; and, by extension, you &mdash; will have to live with them. These little problems are called **faults**, and software that works despite these faults is said to be **fault-tolerant**.
+But now imagine you were using not just one your device, but a thousand of them. Or imagine you’re a cloud provider, running hundreds of thousands of these things across the world, connected by thousands of miles of network cables. How often do you think you'd be dealing with these kinds of little problems? Heck, you'd probably never be able to fully rid yourself of them, no matter how hard you tried! Rare problems, multiplied by thousands of machines, become common. If you serve a million requests every minute, you should expect every possible "one-in-a-million" problem to happen once every minute! (That's over 1,400 times a day). There’s no way to squash all of these problems, so code running on this environment &mdash; and, by extension, you &mdash; will have to live with them. These little problems are called **faults**, and software that works despite these faults is said to be **fault-tolerant**.
 
-Consensus algorithms that can be deployed in practical, real-world settings need to be fault-tolerant. Designing fault-tolerant consensus algorithms turns out to be hellishly difficult. These algorithms need to provide perfect, exact guarantees, but run on an imperfect platform that routinely fails to provide its stated guarantees. How does one do that? It’s something we’ll have to tackle later on.
+Consensus algorithms that can be deployed in practical, real-world settings need to be fault-tolerant. Designing fault-tolerant consensus algorithms turns out to be *hellishly* difficult. These algorithms need to provide exacting guarantees, but run on an imperfect platform that itself fails to provide its stated guarantees routinely. How does one do that? It’s something we’ll have to tackle soon.
 
 ## Properties of a Fault-Tolerant Consensus Algorithm
 
 ---
 
 TODO I *think* I can turn this into Agreement, Validity and Fault-Tolerance, which is nice because those are standard terms. The only tricky thing is to capture the no-decoherence property, e.g. by saying agreement has temporal component too: agreement means not only do all nodes reach the same decision, but also that the decision never changes for any node. Else the node is not agreeing with its past self.
+
+Also, a small pedagogy problem is that so far we don't have a crisp definition of a consensus problem. So this should start with a crisp problem statement and then expand it into the properties we want a solution to have.
 
 ---
 

@@ -299,11 +299,11 @@ Is this a valid consensus algorithm? Let's check:
 
 It would seem the leader is a **single point of failure** &mdash; if it crashes, or loses power, or gets disconnected from the network, or any number of other bad things happen to the leader, nobody else is going to be able propose or query the consensus variable. Even one fault halts the entire algorithm; so the algorithm is not fault-tolerant.
 
-But maybe we can rescue this design? What if we maintain backups of the leader’s state, and promote one of the backup nodes to leader when the leader fails? It’s a good idea, save for one major problem:
+But maybe we can rescue this design? What if we maintain replicas of the leader’s state, and promote one of the replicas to leader when the leader fails? It’s a good idea, save for one major problem: that only helps if you already have a working consensus algorithm to begin with.
 
-## Appointing Leaders is a Consensus Problem
+## Failover is a Consensus Problem
 
-You see, promoting a backup node to leader only works if all nodes in the network agree that backup node is now the leader. If some nodes think one node is the leader and other nodes think another node is the leader, there are two leaders in the system. If the two leaders get out of sync, then the two sets of nodes listening to the two leaders start returning different values from their **query()** method, and the coherence property is violated. 
+Promoting a backup node to leader only works if all nodes in the network agree that backup node is now the leader. If some nodes think one node is the leader and other nodes think another node is the leader, there are two leaders in the system. If the two leaders get out of sync, then the two sets of nodes listening to the two leaders start returning different values from their **query()** method, and Agreement is violated. 
 
 Consider the following network. Node 1 is currently the leader; nodes 2-5 are following. Nobody has made a proposal yet, so the current consensus `value` on the leader is `null`:
 
@@ -313,7 +313,7 @@ Now let's say the network faults, splitting the network: now nodes 1-2 can talk 
 
 [diagram]
 
-This situation, where groups of nodes can talk to other nodes within a group but not the rest of the network, is called a **network partition**. It can happen in practice, for example, if a network box which connects the two groups of nodes gets unplugged or something.
+This situation, where groups of nodes can talk to other nodes within a group but not the rest of the network, is called a **network partition**. It can happen in practice, for example, if a network switch which connected the two groups of nodes got unplugged or something.
 
 Well, here's the problem: node 1 was the leader, and nodes 3-5 cannot talk to it; for all they know node 1 might have crashed. So they fail over to a new leader. Let's say they pick node 3:
 
@@ -323,15 +323,13 @@ Uh oh, now there are two leaders! And now that there are two leaders, they can d
 
 [diagram]
 
-Now a client that queries the system can either receive <span style="color:blue">blue</span> or <span style="color:red">red</span>; clearly the coherence property is not upheld.
+Now a client that queries the system can either receive <span style="color:blue">blue</span> or <span style="color:red">red</span>; clearly the Agreement property is violated. This situation, where a system expects to have one leader but actually ends up with two or more, is called **split-brain**. To prevent split-brain, we need a way to get all nodes to agree which node is currently the leader node.
 
-This situation, where a system expects to have one leader but actually ends up with two or more, is called **split-brain**. To prevent split-brain, we need a way to get all nodes to agree which node is currently the leader node.
+Alas, getting all nodes to agree which node is currently the leader is itself a consensus problem. If some nodes believe that leader is still reachable, they believe the leader should not be changed; if other nodes can't contact the leader, they believe the system needs to fail over to a new leader. That's a conflict between nodes. We must resolve that conflict &mdash; get every node to agree on a leader &mdash; before we can proceed with the rest of our consensus algorithm. But resolving the conflict requires use of a consensus algorithm we have not yet built. So we can't rely on leader failovers at all until we have a working consensus algorithm first.
 
-Alas, getting all nodes to agree which node is currently the leader is a consensus problem. If you’re trying to solve the consensus problem in the first place, you can’t rely on having the problem already solved! So if we don’t know how to make a consensus algorithm, we don’t know how to safely promote a backup node to leader either. We can’t use this approach to design our algorithm.
+We did learn an important lesson: consensus problems are very good at hiding in plain sight. Maybe it has something to do with how easy it is to delegate a consensus problem to some other subsystem. Plenty of ideas which look like potential solutions to consensus turn out to themselves rely on a solution to the consensus problem. So if we ever find an easy answer, we should first check if the solution is easy only because it assumes an existing solution of the very consensus problem we’re trying to solve.
 
-But we did learn an important lesson: a lot of ideas which look like potential solutions to the consensus problem, themselves rely on a solution to the consensus problem. So if we ever find an easy answer, we should first check if the solution is easy only because it assumes an existing solution of the very consensus problem we’re trying to solve.
-
-So where does that leave us? The starting example I chose didn't work out, but we did learn something important in the process: we need to design a **peer-to-peer** algorithm. Instead of putting one node in charge, we need to set things up so nodes cooperate as equals, haggling out which proposal should be accepted.
+So where does that leave us? The starting example I chose didn't work out, but it does suggest a new direction: we need to design a **peer-to-peer** algorithm. Instead of putting one node in charge, we need to set things up so nodes cooperate as equals, haggling out which proposal should be accepted.
 
 Do you know of any way to do that?
 
@@ -339,30 +337,24 @@ Do you know of any way to do that?
 
 I'll bet you’ve used peer-to-peer consensus algorithms in real life:
 
-Imagine the restaurant example once again. What exactly happens once you realize you need to decide on a place to go? Maybe someone throws out an idea, someone else throws out a different one, someone agrees, someone disagrees. Before you know it, a group opinion has formed. Book, consensus reached!
+Imagine the restaurant example once again. What exactly happens once you as a group realize you all need to decide on a place to go? Maybe someone throws out an idea, someone else throws out a different one, someone agrees, someone disagrees. Before you know it, a group opinion has formed. Boom, consensus reached!
 
-Kinda sounds like voting to me ... do you think we could make an algorithm out of that?
+Kinda sounds like voting to me ... do you think we could make an algorithm out of voting?
 
 ## The Majority-Rules Voting Algorithm
 
-We can totally code up something that throws out proposals and votes on them, just like in the restaurant example above. But unlike real life, where people have preferences among options, we’ll code an algorithm where each node votes for whichever option it heard about first.
+We can totally code up something that throws out proposals and votes on them, just like in the restaurant example above. But unlike real life, where people have preferences, we’ll code an algorithm where each node has zero preference and just votes for whichever option it heard about first, and never changes its mind. Here's a sketch:
 
-Here's a sketch:
+Every node will have its own local accepted `value`, which is the value it heard about first and voted for. At the start of the algorithm, every `value` is null. Each time a client of our system calls **propose()**, proposing red or blue, we send that proposal to all nodes, including ourselves. When a node receives its very first proposal, it updates its `value` variable to the porposed value, thereby "voting" for it, and then sends out its own round of message to all its peers. After that, whenever a node receives a proposal, it ignores it because it has already voted.
 
-Every node in the network will have its own local accepted proposal variable, which will keep calling `value`. Initially, `value` is null. When client code calls our **propose()** method, proposing red or blue, we send that proposal to all nodes, including ourselves. When a node receives a proposal, it checks its local `value` variable; if it’s still null, then this is the first proposal this node has received, so it sets its local `value` variable to that proposal, “voting” for it.
+Then we implement **query()** by tallying votes: ask every node what it voted for (what its current `value` variable holds), and see if any proposal has been voted in by a majority (more than half of the nodes). If so, that is the consensus decision; otherwise, the system is considered to still be deciding; the client gets an error saying to wait a little bit and retry.
 
-A node can only vote for one value, and can never change its vote once set &mdash; so if a node votes for someone else's value, and gets a local **propose()** method call, nothing should happen, because this node already voted for something else and cannot change its vote.
-
-Finally, we implement **query()** by tallying votes: ask every node what it voted for (what its current `value` variable holds), and see if any proposal has been voted in by a majority, more than half of the nodes. If so, that is the consensus decision; otherwise, consensus is considered to be not yet reached.
-
-One problem we’ll need to deal with is split votes: what if every node votes, but no proposal reaches a majority? For now we’re only letting clients propose red or blue, so there are only two possible proposals; if we have an even number of nodes, it could be that each proposal ends up with exactly half the votes. At that point, our consensus algorithm is stuck: there is no majority proposal, and there are no more votes, so there’s no way to make further progress. But we can fix this by requiring the algorithm to run on an odd number of nodes; that way when all the votes are in, no matter how the votes work out, either red or blue must have gotten more than half the votes.
-
-Here's the algorithm again, as pseudocode:
+Here's the same design sketch again, as pseudocode:
 
 ```
 consensus {
   value: Proposal; // the accepted proposal
-  peers: Node[]; // all nodes in the network
+  nodes: Node[]; // all nodes in the network
   
   init {
     value := null // no accepted proposal yet
@@ -370,8 +362,8 @@ consensus {
   
   // this is the propose() API
   propose(proposal) {
-    // peers.all includes this node as well
-    peers.all.send(proposal)
+    // nodes.all includes this node as well
+    nodes.all.send(proposal)
   }
   
   // received a proposal from a peer
@@ -384,10 +376,9 @@ consensus {
   
   // the query() API
   query() {
-    counts: map<proposal, int>
-    counts.add(this.value)
-    foreach peer {
-      counts.add(peer.request_value())
+    counts: map{ from proposal to int }
+    foreach node in nodes {
+      counts.add(node.get_current_value())
     }
     
     return get_majority_proposal(counts) 
@@ -399,18 +390,26 @@ consensus {
 }
 ```
 
-So ... does *this* design work?
+The sketch is almost complete. One problem we still need to deal with is split votes.
 
-* **coherence**: ✅ &mdash; only one proposal can reach a majority, and that's the proposal **query()** always returns
-* **conflict resolution**: ✅ &mdash; the voting system allows for multiple proposals and decides which will be accepted
-* **no-decoherence**: ✅ &mdash; nodes cannot change their votes, so once a proposal reaches majority, it cannot lose its majority. Vote counts are like stonks, they always go up
+What if every node votes, but no proposal reaches a majority. For right now we only allow the proposal to be one of two values, red or blue, but even so, if we have an even number of nodes we can end up with a perfect tie: half of the nodes vote red and half vote blue. If that happens, we run out of votes and exit, but have not yet made a decision; that violates the Termination rule ("at least one decision is made").
+
+It's okay though, we can work around that problem relatively easily: just require that the algorithm run on an odd number of nodes. That way, if every node has voted, the two vote counts cannot be equal, so one of either red or blue must have gotten more votes. That's the value we decide on.
+
+Okay, so ... does *this* design work?
+
+* **agreement**: ✅ &mdash; only one proposal can reach a majority, and that's the proposal **query()** always returns; so at most one value can be returned by **query()**
+* **validity**: ✅ &mdash; nodes only vote for a value someone proposed; so the value that got the most votes was proposed by somebody
+* **termination**: ✅ &mdash; a decision is reached after all votes are in
 * **fault-tolerance**: . . . 😀 I told you this would be tricky, didn't I? 
 
 No, this algorithm isn't fault-tolerant either! But we're getting better at this &mdash; this time, the problem is much more subtle.
 
-This design is pretty resilient, but depending on how things play out, it sometimes has a **window of vulnerability** where one extremely poorly timed crash could bring the entire system to a halt, preventing a majority from being reached until that computer is brought back online. This case might be rare, but it still happens as a result of just one crash, so by worst-case analysis we technically have to admit this algorithm cannot withstand just one crash &mdash; hence, it's not fault-tolerant.
+## Faults and Split Votes
 
-More specifically, the problem is that one crash leaves us once again with an even number of nodes, so split votes become a problem again. Let's watch this in action:
+This design is pretty resilient, but depending on how things play out, it sometimes has a **window of vulnerability** where one *very* poorly timed crash could deadlock the algorithm This case might be rare, but it still happens as a result of just one crash, so by worst-case analysis we technically have to admit this algorithm cannot withstand just one crash &mdash; hence, it's not fault-tolerant.
+
+More specifically, the problem is that split vote again. We can fix split votes by having an odd number of nodes, but if just one node crashes, we're back to having an even number of nodes, reintroducing the possibility of a tie. Let's watch this in action:
 
 Say we have a cluster of 7 nodes. One proposes <span style="color:blue">blue</span>, the other <span style="color:red">red</span>:
 
@@ -424,9 +423,15 @@ What happens if that undecided node crashes right now?
 
 [diagram]
 
-Now we're in trouble. A proposal needs 4 votes to be accepted; but the voting is over, and no proposal has 4 votes! Seems like we're stuck.
+Now we're in trouble. A proposal needs 4 votes to reach majority and be accepted; but the voting is over, and no proposal has 4 votes! Seems like we're stuck.
 
-Can we get the algorithm un-stuck from this point? Maybe, but the no-decoherence property makes this very tricky. For now, all we know is the state of the network is this:
+---
+
+TODO: this is a really good opportunity to set up for FLP with a little tweaking. Instead of "we don't know if the node decided before it died" which is an argument that technically works, we could say "we don't know if the node is going to come back and decide," i.e. we can't tell if it's dead or just slow.
+
+---
+
+Can we get the algorithm un-stuck from this point? Maybe, but the precise definition of the Agreement property makes this very tricky. For now, all we know is the state of the network is this:
 
 [diagram with 3 red, 3 blue, one dead]
 
@@ -447,6 +452,10 @@ If we want to move on without the node that crashed and still uphold the no-deco
 We're good and stuck now, up until we manage to get the node back up and running from where it left off. Which may not be possible. Because of fires.
 
 To conclude, the loss of a single node with this algorithm is usually just fine, but in cases like the above it can lead to a split vote, and then we’re good and stuck. So sadly, this algorithm also is not fault tolerant.
+
+## Recap
+
+TODO halfway through the book, we sorely need a recap of all the things we've done so far and 
 
 ---
 

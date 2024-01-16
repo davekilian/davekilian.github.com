@@ -64,7 +64,33 @@ Now, I've never seen Reddit's source code, so I can't tell you how it works; eve
 
 ## Distributed Databases
 
-Reddit has a lot of user accounts; most likely, even the account information alone for the service is too much data and too much load for any one server to handle; so, probably, this database is distributed across multiple servers, each of which stores a piece of the database. What database is Reddit using? Who knows! But all distributed databases have one problem in common: how do one update that affects data on multiple servers?
+TODO I tried to get into transaction commit here and it got out of hand fast. See if we can't keep to the original example and have the 'conflict' be conflicting primary key inserts on the same account username. The tricky part of that is justifying why a consensus algorithm is necessary without getting into the weeds. Perhaps it's good enough to invoke the need to replicate and show replicas can disagree.
+
+---
+
+Reddit has a lot of user accounts! Most likely, even the account information alone is too much data and too much load for any one server to handle; so the database for accounts is likely distributed across multiple servers, each of which stores a piece of the database. Which database is Reddit using for accounts? Who knows! But all distributed databases have one problem in common: how do you do one update that affects data on multiple servers? This is called the **transaction commit** problem, and it was one of the reasons people got so interested in consensus algorithms back in the pre-Internet days.
+
+Say we have two servers, each of which stores a piece of a database, and we want to do a single update that spans both servers:
+
+[ diagram ]
+
+Each server validates its piece of the update before applying it; what if one server decides the update is invalid, but the other accepts it as valid?
+
+[ diagram ]
+
+Leaving an update half-applied like this can be disastrous! Instead, we want a protocol that safely applies an update only if it is valid on both servers. The classic **two-phase commit** (**2PC**) protocol accomplishes this. The idea is to do an update in two phases. In the first phae, you contact each server and ask it to validate the update you want to do, but not actually apply it yet. Each server holds some kind of lock, so that once it told you the update was valid, it rejects any concurrent change that would make your update invalid:
+
+[ diagram ]
+
+In phase two, you either **commit** the update if all servers reported the update was valid, or you **roll back** the update (cancel it) if any server reported the update was not valid.
+
+But there's a problem; what if you crash after phase 1, but before you do phase 2? Now a bunch of servers are just sitting there, waiting for you to start phase 2, but since you crashed, phase two will never start:
+
+[ diagram ]
+
+If you disappear, the servers will now need to decide among themselves whether to commit or roll back the transaction. This decision is an example of a consensus problem: the servers don't care whether a valid update is committed or rolled back, but they do care
+
+TODO this isn't compelling unless you mention the possibility that the coordinator committed on some nodes but not all, but this explanation is already long as it is. Maybe we should shift strategies. Abandon transaction commit for this section, and instead keep to the 
 
 
 
@@ -80,6 +106,7 @@ TODO continue the rewrite from here. Try to build all examples in the context of
 
 * Transaction commit is a consensus problem
 * Many distributed databases do have a Raft or a Paxos inside
+* Databases that provide distributed transactions are consensus primitives
 * Move to a lock service section
 * Introduce a load balancing problem for an account cache
 * Lock service to track who has the account

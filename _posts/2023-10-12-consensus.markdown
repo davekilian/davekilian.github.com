@@ -425,41 +425,35 @@ What happens if that undecided node crashes right now?
 
 Now we're in trouble. A proposal needs 4 votes to reach majority and be accepted; but the voting is over, and no proposal has 4 votes! Seems like we're stuck.
 
----
+Can we get the algorithm un-stuck from this point? Maybe! Earlier on we said we couldn't use simple deterministic "tiebreaking" rules as a consensus algorithm because a consensus algorithm must discover new candidate values concurrently with making a decision, and must ensure a decision once made never gets changed even if a 'better' candidate is discovered later. But in this case, all the voting is done, so all the discovering is done. So maybe we can include some kind of tiebreak rule? For example, we could say, "in the event of a tie vote, red always wins" (chosen fairly by asking my 4 year old what his favorite color is).
 
-TODO: this is a really good opportunity to set up for FLP with a little tweaking. Instead of "we don't know if the node decided before it died" which is an argument that technically works, we could say "we don't know if the node is going to come back and decide," i.e. we can't tell if it's dead or just slow.
+It's alluring, because it *almost* works. *Almost*!
 
----
+Right now, all we know is the undecided node is currently unreachable; we actually don't know whether it's offline or just running slowly:
 
-Can we get the algorithm un-stuck from this point? Maybe, but the precise definition of the Agreement property makes this very tricky. For now, all we know is the state of the network is this:
+[diagram with 3 red, 3 blue, one thought bubble with a question mark inside]
 
-[diagram with 3 red, 3 blue, one dead]
+It could be that the undecided node has actually crashed and not coming back. In this case, "3 votes for red, 3 votes for blue" is the final state of the system, so having a tiebreak rule like "in the event of a tie, assume red has won" is perfectly sensible:
 
-Did the node actually decide red, and tell anybody about this before it went offline?
+[diagram with 3 red, 3 blue, one empty node crossed out to indicate its gone. Scribble in "interpretation: red wins"]
 
-[diagram with 3 red, 3 blue, one red in a thought bubble]
+But, it's just as possible the undecided node is simply running slowly. In that case, the 3v3 split is *not* the final state of the system, and having a tiebreak rule would be a disaster: you would be able to transition directly from:
 
-Or blue?
+[copy and paste the diagram above, which still says "interpretation: red wins"]
 
-[diagram with 3 red, 3 blue, one blue instead of red]
+to:
 
-Or maybe it actually hadn't made a decision yet, and it's safe to tiebreak some other way?
+[diagram with undecided node now decided blue, with "interpretation: blue wins"]
 
-[diagram with 3 red, 3 blue, one blank in a thought bubble]
+... the algorithm changed its mind! We absolutely cannot allow that. So we can't have a tiebreak. But if we can't have a tiebreak, then we can't fix the split vote situation. So the whole majority voting thing looks like a dead end.
 
-If we want to move on without the node that crashed and still uphold the no-decoherence guarantee, we really need to know whether the crashed node voted, and if so what it voted for. But the node is gone; it can't tell us what it already did. In fact, it might even be gone for good; what if it went offline because it caught on fire. Things happen in data centers, you know?
-
-We're good and stuck now, up until we manage to get the node back up and running from where it left off. Which may not be possible. Because of fires.
-
-To conclude, the loss of a single node with this algorithm is usually just fine, but in cases like the above it can lead to a split vote, and then we’re good and stuck. So sadly, this algorithm also is not fault tolerant.
-
-## Recap
-
-TODO halfway through the book, we sorely need a recap of all the things we've done so far and 
+Dang.
 
 ---
 
-## Intermission
+## Recap & Intermission
+
+TODO recap
 
 If you have the time, this would be a good point to step away from your computer and think over the above. What went wrong with our two approaches above? Can you think of a way to fix either one? Or a different strategy entirely?
 

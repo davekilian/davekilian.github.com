@@ -112,6 +112,42 @@ Consensus algorithms that can be deployed in practical, real-world settings need
 
 ## Properties of a Fault-Tolerant Consensus Algorithm
 
+So far, we know that a consensus problem is an update conflict (or the potential for a conflict) between two servers which each want to update the same state. While we're still exploring the problem, let's get crisper on the problem statement: what guarantees exactly does a consensus algorithm need to provide to be useful in practice?
+
+People have already tackled this question in The Literature&#8482; using Big Words&#8482;. Those big words are **agreement**, **validity**, **termination** and **fault tolerance**. To make sure we're on the same page as the rest of the field, we'll use those words too.
+
+### Agreement
+
+Let's think about the lock service for a minute. What makes a lock useful is the mutual exclusion guarantee: the fact that one server has the lock allows it to assume no other server has the lock. If this guarantee cannot be enforced, the lock is useless! Let's think about a couple ways this could go wrong:
+
+What if two servers were allowed to disagree which of the two servers acquired the lock? There are two bad things that could happen: first, you have the situation where both servers each believe it has the lock; then the mutual exclusion guarantee of the lock is violated, as it's no longer correct that one server holding the lock guarantees no other server has it too. Second, you have the situation where both servers believe the other one got the lock; then both servers will wait for each other forever, a situation called **deadlock**. We must not allow either of these to happen: a useful consensus algorithm must guarantee all servers agree which server got the lock.
+
+Another problem: what if a server was allowed to 'change its mind' about who has the lock? Maybe Alpha initially thinks Beta got the lock, but then later changes its mind and decides it does have the lock after all? Then the mutual exclusion guarantee would once again be violated: *initially* Beta was correct in assuming it was the sole owner of the lock, but that assumption was violated the moment Alpha changed its mind. A useful consensus algorithm must not allow changing minds; once a decision is made, it must be committed forever.
+
+These ideas are all encompassed in the idea of the **Agreement** property, which roughly means, "the algorithm only ever decides on one value." That statement applies across servers (all servers decide on the same value) and across history (a server never changes its decision). Another way of saying it: a consensus algorithm presented with conflicting updates chooses which update to accept **exactly once**.
+
+### Validity
+
+TODO this might seem obvious, in which case good, but let's belabor the point that a consensus algorithm is discovering concurently with deciding. 
+
+### Termination
+
+
+
+TODO finish with, I put an asterisk on termination. We'll see why in chapter 3
+
+### Fault Tolerance
+
+
+
+
+
+
+
+
+
+
+
 ---
 
 TODO I *think* I can turn this into Agreement, Validity and Fault-Tolerance, which is nice because those are standard terms. The only tricky thing is to capture the no-decoherence property, e.g. by saying agreement has temporal component too: agreement means not only do all nodes reach the same decision, but also that the decision never changes for any node. Else the node is not agreeing with its past self.

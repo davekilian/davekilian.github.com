@@ -72,6 +72,8 @@ TODO this is better than diving into transaction commit, but it's still tricky. 
 
 A kind of sneaky way out of the problem is to say the database is geo-replicated, so that it makes sense to say the database is locally writable in every geo and enforces primary key constraints across geos. But this is a spanner-like problem which again is not a good fit for consensus. 
 
+But, maybe multi-master is the way to go. Maybe wave hands a little and say, there’s a zoo of strategies for keeping the replicas in sync, one way is to accept updates at all the replicas, then you have conflicting updates between replicas, and a requirement to resolve it. It’s also very clear how the conflict at the account signup page level has been effectively offloaded as an equivalent conflict within the database itself, thereby freeing the programmer from having to deal with problems of conflicts.
+
 
 
 

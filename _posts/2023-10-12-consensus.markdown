@@ -37,6 +37,12 @@ In chapter 1, we'll start by exploring the problem space. We'll nail down exactl
     1: Consensus Problems
   </h1>
 </center>
+---
+
+TODO one big problem with this draft is we never really nail down what "shared state" means. We should probably change up the model a little bit to start with "multiple nodes with replicas of the same state" plus "the ability for multiple threads to update it." Or something like that. The point is in needing for the update to happen on all replicas or none so they stay in sync. Only once you've done that, can you start building other invariants, like an account only being created once, or primary key uniqueness.
+
+---
+
 In the dictionary, the word "consensus" roughly means "agreement." In the world of distributed algorithms, the word consensus has a bit more connotation. Consensus algorithms resolve conflicts that would otherwise leave the system in an ambiguous, indeterminate state. Let's see what that means:
 
 ## A Real-Life Metaphor

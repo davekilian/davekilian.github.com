@@ -39,38 +39,51 @@ A lot of computing terms come from real-life metaphors. The real-life metaphor b
 
 Imagine you and a group of other people are stuck on a decision. Maybe you all want to go to a restaurant but you haven't decided where to go. As a group, you're not going to debate the platonic best possible place to get eat tonight; you just need an option everyone feels good about. That's because nobody really cares so much which restaurant is picked; what everyone wants is to make a quick decision and move on, to go have some fun. That kind of agreement is the "consensus" we're thinking of when we talk about consensus algorithms.
 
-The dictionary definition of “consensus” is basically “agreement,” but in our context we’ll use the word to mean “agreement that lets a group move forward.” It implies making a decision for the purpose of resolving ambiguity and making progress, rather than optimizing for the best outcome. And, for that reason, it also implies sticking to a decision once made: reopening a closed discussion would prevent the group from moving on.
+The dictionary definition of “consensus” is basically “agreement,” but in our context we’ll use the word to mean “agreement that lets a group move forward.” It implies making a decision for the purpose of resolving ambiguity and making progress, rather than optimizing for the best outcome. And, for that reason, it also implies sticking to a decision once made: reopening a previously closed discussion would prevent the group from doing what everyone wants most: to move on.
 
 That’s a pretty good metaphor for how consensus problems work in distributed systems programming. Groups of programs can get similarly stuck on decisions. Let’s see how that happens:
 
 ## Examples of Consensus Problems
 
+### Account Signups
+
+Given you're reading a book about consensus algorithms, most likely you have accounts on some websites, maybe some for work things like banks and credit cards, maybe some for fun things like Instagram and Reddit. We need to pick one of these for the sake of discussion, so I'll pretend you have a Reddit account; but feel free to substitute something else.
+
+Now, Reddit is a pretty big service. A lot of people read and write a lot of posts on Reddit every day. It's too much data and too much load for any one server to handle, so we can be pretty sure Reddit is a distributed service running across a whole bunch of servers. I don't know about you, but I personally have never needed to worry about which of these servers I'm connected to or how Reddit's network is structured; I just point my browser to their website and look at pictures of cats. I can do that because Reddit presents itself as a single cohesive service, abstracting away from me the details of what servers they run code on or how their network is laid out. Services like these are rife with potential for conflicts. 
+
+For example, say we have two people, Alice and Bob, who both want to register the same username at the same time. Obviously, two people can't have the same username: one will get it, the other will receive a "username already registered" error instead. But say Alice and Bob are connected to different servers; how will those servers discover Alice and Bob are both trying to register the same username, decide who gets it, and present a consistent answer to both Alice and Bob? This situation is a lot like people picking a restaurant earlier: to make progress, the servers must first decide who gets the username. It doesn't really matter who gets the username; we just need all servers to be clear who registered that username.
+
+Deciding who of Alice and Bob manages to register that username is an example of a consensus problem. It has all the hallmarks of one:
+
+* Shared state  (like the user account, in this example)
+* Multiple servers acting on that state (Alice and Bob creating the account)
+* A conflict between updates (two people can't both create the same account)
+* The need for a consistent answer (everyone should be clear who got the account)
+
+Put these together, and you end up needing to resolve conflicting updates quickly, arbitrarily and universally, so that concurrent programs acting on the state can figure out what happened and build on that. Problems like this are incredibly common in the online world.
+
+Now, I've never seen Reddit's source code, so I can't tell you how it works; even so, I'm pretty sure they did not solve this problem using a consensus algorithm ... at least not directly. Consensus problems may be anywhere, but consensus algorithms are used sparingly, and usually at the bottom of the stack. It's much more likely account name conflicts are discovered using a database.
+
+### Distributed Databases
+
+
+
 ---
 
-TODO this section is a little weak, and also in the weeds. We could make it more compelling by choosing an example that's more readily accessible, like username conflicts signing up for any online service. Then it could be a walk down from "two users try to register the same username" to "maybe it's stored in a database" to "databases are sharded and yadda yadda transaction commit problem" to "maybe we have a lock service to track which data is where" and show yeah, there are consensus problems all over the place, but there are lots of primitives that can wrap a consensus algorithm and be arbitrarily nested, so usually you don't have to worry much about these things, even if they're definitely in there somewhere.
+TODO continue the rewrite from here
+
+* Big databases are partitioned across servers
+* An update can cross multiple servers
+* Transaction commit is a consensus problem
+* Many distributed databases do have a Raft or a Paxos inside
+* Move to a lock service section
+* Introduce a load balancing problem for an account cache
+* Lock service to track who has the account
+* Lock services also usually do have a Raft or a Paxos inside
 
 ---
 
 
-
-### Pushing to GitHub Repos
-
-GitHub stores a lot of code, and a lot of people push and pull from Git repos on GitHub every day. It’s too much data and too much load for any one server to handle, so we can be pretty sure GitHub is a distributed service running across a whole bunch of servers. I don’t know about you, but I personally have never needed to worry about any of GitHub’s servers or how their network is structured. I just point my browser or my git client to their URL and go manage some repos. I can do that because GitHub presents itself as a single cohesive service, abstracting away from me the details of what servers they run code on or how their network is laid out. Services like these are rife with potential for conflicts. 
-
-Say we have two users, Alice and Bob, who both want to push some commits to the same repo. If you’ve used Git, you may know that only the first person to push their commits will succeed; the other person will have to rebase on the first person’s commits and then try again. So if Alice and Bob both try to push their commits at the same time, GitHub has to decide who goes first (their commits will be accepted as-is) and who goes second (and must rebase). Alice and Bob might be connected to different servers, though. How are those two servers going to discover Alice and Bob’s conflict, resolve it amongst themselves, and present a single consistent timeline of events that is the same for Alice, Bob, and everyone else using the repo?
-
-This situation is a little like the restaurant example from earlier. We have a group (of servers this time, rather than people) with a disagreement: one thinks Alice’s commits should be merged next, the other thinks Bob’s commits should be merged next. But they can't both go next. GitHub doesn't really care which commits go in first; whoever goes second is mildly inconvenienced, but they can fix the problem easily enough by rebasing then pushing again. However, it is very important for everyone to see the same order of commits, so the servers do need to decide which commits are going first before anybody's commits can be accepted. So these servers are stuck until they make a decision, just like the people picking restaurants before. That's why we call these situations *consensus problems*.
-
-In distributed systems programming, the hallmarks of a consensus algorithm are:
-
-* Shared state of some kind (like the Git branch, in this example)
-* Multiple servers acting on that state in parallel (Alice and Bob pushing commits)
-* A conflict between the two updates (they can't both go first, one has to rebase)
-* The need to show all users the same consistent, explainable order of events (everyone either sees that Alice went first or Bob did, but nobody sees something different)
-
-When you have all of these ingredients together, you have a need to resolve conflicting updates quickly, arbitrarily, and globally, so that all the concurrent programs acting on the state can figure out between them which thing happened, and then all do someting based on that. In the world of online services, these situations are the norm; certainly tough to avoid.
-
-Even though determining the order of pushes to a Git branch on GitHub is certainly a consensus problem, most likely it is not solved using a consensus algorithm directly. To find places where people interact directly with consensus algorithms, we'll have to go lower in the stack.
 
 ### Key-Value Store
 

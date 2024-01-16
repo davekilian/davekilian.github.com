@@ -94,7 +94,7 @@ In this diagram, you can also see how the consensus problem has been delegated f
 
 As a final example, let's consider a distributed lock service. These things implement the networked version of the mutex locks you may have encountered in multithreaded code. A thread which obtains a distributed lock can be certain no other thread on any server also holds the lock at the same time. Locks are a pretty low-level primitive with quite a few applications. For example, say we implement an in-memory account for recently accessed Reddit accounts; we might use a distributed lock service to decide which nodes cache which accounts. That way, if a node crashes, it loses its lock; later, some other cache server takes the lock and begins caching those accounts, thereby allowing the caching system to recover from the server crash.
 
-Say we have two account cache servers, Alpha and Beta, which both see an account is not yet cached and both try to take a lock on the account and cache it. By definition of a lock, they can't both take the lock at the same time, so the lock service needs to guarantee one server gets the lock, one doesn't, and both agree who has the lock. As with all our examples, it doesn't really matter whether Alpha or Beta gets the lock; it's only important that both servers are crystal clear which server got the lock.
+Say we have two account cache servers, Alpha and Bravo, which both see an account is not yet cached and both try to take a lock on the account and cache it. By definition of a lock, they can't both take the lock at the same time, so the lock service needs to guarantee one server gets the lock, one doesn't, and both agree who has the lock. As with all our examples, it doesn't really matter whether Alpha or Bravo gets the lock; it's only important that both servers are crystal clear which server got the lock.
 
 ## Consensus Problems: Recap
 
@@ -128,63 +128,25 @@ Let's think about the lock service for a minute. What makes a lock useful is the
 
 What if two servers disagreed which of the two has acquired the lock? There are two very bad things that could happen: first, you have the situation where each server believes it has the lock; then the mutual exclusion guarantee of the lock is violated, as it's no longer correct that one server holding the lock guarantees no other server has it too. Second, you have the situation where both servers believe the other one got the lock; then both servers will wait for each other forever, a situation called **deadlock**. We must not allow either of these to happen: a useful consensus algorithm must guarantee all servers agree which server got the lock.
 
-Another problem: what if a server was allowed to 'change its mind' about who has the lock? Maybe Alpha initially thinks Beta got the lock, but then later changes its mind and decides it does have the lock after all. Once again, the mutual exclusion guarantee would be violated: *initially* Beta was correct in assuming it was the sole owner of the lock, but that assumption was violated the moment Alpha changed its mind. A useful consensus algorithm must not allow changing minds; once a decision is made, it must be committed forever.
+Another problem: what if a server was allowed to 'change its mind' about who has the lock? Maybe Alpha initially thinks Bravo got the lock, but then later changes its mind and decides it does have the lock after all. Once again, the mutual exclusion guarantee would be violated: *initially* Bravo was correct in assuming it was the sole owner of the lock, but that assumption was violated the moment Alpha changed its mind. A useful consensus algorithm must not allow changing minds; once a decision is made, it must be committed forever.
 
 These ideas are all encompassed in the idea of the **Agreement** property, which roughly means, "the algorithm only ever decides on one value." That applies across servers (all servers choose the same value) and across history (a server never changes its decision). Another way to say the same thing: a consensus algorithm presented with conflicting updates chooses which update to accept **at most once**.
 
 ### Validity
 
-There's a very easy, pretty cheater way to implement the Agreement property: hardcode a single answer. For example, 
+There's a very easy, pretty cheater way to implement the Agreement property: hardcode a single answer. For example, if you make a "distributed lock service" which does nothing except hardcode the return value, "Node Alpha has the lock," technically that algorithm provides agreement &mdash; even though it's completely useless a lock service. A real lock service should always grant the lock to some node currently requesting it. Similarly, a consensus algorithm should always one pick one of the updates somebody actually proposed; we'll call this the **Validity** property.
 
-TODO this might seem obvious, in which case good, but let's belabor the point that a consensus algorithm is discovering concurently with deciding. 
+This might seem obvious, but it pairs with the Agreement requirement in an interesting way. It's easy to pick a deterministic 'decision rule' for selecting a value; for example, "hash all the values and pick the one whose hash has the lowest numerical value." But by Validity, a consensus algorithm doesn't start knowing what the candidates are, which means the process of discovering candidates runs concurrently with making a decision. According to the Agreement rule, the system must not change its mind if it already chose one value and later discovered a value which is 'better' according to the decision rule.
 
 ### Termination *
 
-TODO hook up with agreement by saying **at least once**. Point out the two together actually mean we need exactly-once decision-making. Preview that's a problem. Say that's why I'm putting an asterisk on termination. We'll revisit this at the end of chapter 3.
+Before you had a consensus algorithm, you had a conflict that needed resolving. What good would a consensus algorithm be if it runs forever, without resolving the conflict? Whether or not you used that algorithm, you'd still have a conflict and it'd still not be resolved. We should probably require that the algorithm stops and produces a decision at that point; we require **Termination**.
+
+Another way of defining Termination is to say the algorithm produces a decision **at least once**. Recall the Agreement property can be defined as defining a decision at most once; so Agreement and Validity together imply the need to make a decision **exactly once** per run of the algorithm. (However, this will prove to be problematic later on; hence the asterisk in the title heading. More on this at the end of chapter 3.)
 
 ### Fault Tolerance
 
-
-
-
-
-
-
-
-
-
-
----
-
-TODO I *think* I can turn this into Agreement, Validity and Fault-Tolerance, which is nice because those are standard terms. The only tricky thing is to capture the no-decoherence property, e.g. by saying agreement has temporal component too: agreement means not only do all nodes reach the same decision, but also that the decision never changes for any node. Else the node is not agreeing with its past self.
-
-Also, a small pedagogy problem is that so far we don't have a crisp definition of a consensus problem. So this should start with a crisp problem statement and then expand it into the properties we want a solution to have.
-
----
-
-To finish our discussion about the problem space, let’s nail down a set of properties any useful consensus algorithm should have. Unfortunately for us, there isn't a well-accepted set of consensus properties we can rattle off here: database people have ACID (*atomic, consistent, isolated, durable*), but there's no similarly catchy acronym for consensus algorithms. We'll have to wing it.
-
-This is one of those rare cases where I think it’s a good idea to use big fancy words to describe our ideas. Each of these properties will mean something specific, and we’ll be referring back to these a lot as we try to design a working consensus algorithm, so it’d be useful to have some nice short 1-2 word names for our consensus properties, even if that means we end up having to use big words for little ideas.
-
-### The Consensus Properties
-
-Remember that our definition of consensus was “agreement that lets a group move forward.” Fundamentally, consensus algorithms take a set of conflicting options, decide on one, and guarantee that decision cannot be undone. This allows the decision to be treated as final, which in turn allows calling code using the consensus algorithm to move on and act on that decision. For example, deciding Alice’s commits will be merged first allows GitHub to tell Alice her commits were merged and Bob that he needs to rebase.
-
-Lets unpack that. I see three separate properties that together should cover what we just said:
-
-**Conflict resolution**: The algorithm gracefully handles conflicts when they arise; for example, it’s not an error for multiple servers to try to obtain the same distributed lock at the same time, even though the lock can’t be granted to all the servers simultaneously. The algorithm does something to resolve the conflict (in this example, choosing which server gets the lock).
-
-**Coherence**: Every server can eventually find out what decision the algorithm made. In other words, all servers get the same return value when the local copy of the consensus algorithm finishes. Continuing with the lock service example, coherence would mean every server agrees which server got the lock; no server erroneously believes some other server got the lock.
-
-**No-Decoherence**: Once consensus is reached, the decision is final. No matter what new information becomes available in the future, it won’t change a decision the consensus algorithm has already made. This is what makes it safe for calling code to act on the decision. If we didn’t have this, consensus would not be useful for our lock server, because the consensus algorithm could change its mind and decide a server no longer holds the lock *after* that server has already started running the lock-protected code!
-
-To safely treat decisions as final, we need to be pretty strict about the no-decoherence property. A consensus algorithm must ensure no server *ever* sees the wrong result, even while the algorithm is still running and hasn’t completed yet. Equivalently: the instant *any* server can see a decision has been made, it must be impossible for the decision to change. The step that first makes a decision visible must also lock that decision in forever, as one atomic operation.
-
-I’ll call the three properties together the **consensus properties**, since they fall directly out of the definition of a consensus algorithm. But there’s still one more property we need:
-
-### Fault Tolerance
-
-A consensus algorithm that can actually be used in a real production environment must tolerate real production faults, because it’s just not feasible to get the entire network running perfectly and keep it that way. A consensus algorithm should be resilient to things like:
+As we discussed before, in a real distributed systems, there are little hardware and software problems happening all the time; things like:
 
 * Hardware failures
 * Server crashes
@@ -193,24 +155,26 @@ A consensus algorithm that can actually be used in a real production environment
 * Network disconnects
 * Slow networks
 * Lost network messages
+* Network messages delivered multiple times
 
-No matter how many of these things are going on, the algorithm must never violate any of the consensus properties (conflict resolution, coherence, no-decoherence) mentioned above; however, it’s acceptable for the algorithm to proceed slowly or even halt if the system is in bad shape and the fault rate is really high. At the limit, this is unavoidable anyway; if every server loses power, your code ain’t running, so good luck coding a workaround! To recap, it’s okay if the algorithm eventually stops working due to faults in the underlying system, as long as it never starts doing the wrong thing.
+These things are called **faults**; being able to work despite faults is called **Fault Tolerance**. A consensus algorithm that runs in the presence of faults must be fault tolerant, or it simply is not useful at all; in a large enough network, the odds of none of these things ever happening is astronomically low.
 
-Throughout this book, when evaluating an algorithm’s fault tolerance capabilities, we always consider the absolute worst possible case. For example, if we want to claim an algorithm can tolerate one server crashing, then it must be true that *any* node can crash without halting the algorithm. If, for example, most servers were allowed to crash but there was one ‘special’ server that the algorithm cannot allow to crash, then we’d technically say the algorithm does not tolerate a single crash, because in the worst case, that special server could be the one crashed. This might seem harsh, but keep in mind that even rare situations &mdash; like that one special server crashing &mdash; become common at high scale.
+What exactly does it mean for a consensus algorithm to be Fault Tolerant? At a basic level, Agreement and Validity are non-negotiable; no matter what bad things happen in the platform the algorithm runs on, we must never allow servers to disagree or decide something nobody asked for; an algorithm that *can* do that is useless. However, the relationship between Fault Tolerance and Termination is a little wishy-washy. Even though you're the star coder I know you are, you cannot write code that is guaranteed to make a decision despite a "fault" where the power is cut to every server simultaneously. If all the computers are off, they ain't running your code. But we can ask for guaranteed termination in spite of a "reasonable" number of faults, even if the exact number is negotiable.
 
-### Recap
+By the way, throughout this book, when we evaluate an algorithm’s fault tolerance, we always consider the absolute worst possible case. For example, if we want to claim an algorithm can tolerate one server crash, then it must be true that *any* server can crash without halting the algorithm. If, for example, most servers were allowed to crash but there was one ‘special’ server that the algorithm cannot allow to crash, then we’d technically say the algorithm does not even tolerate a single crash, because in the worst case, that special server could be the one crashed. This might seem harsh, but keep in mind that even rare situations &mdash; like that one special server crashing &mdash; become common at high scale.
 
-As we move into the design phase of this book, keep these properties handy; we’ll be referring back to them a lot:
-
-> **Conflict Resolution**: When conflicting updates are proposed, the algorithm picks one and rejects the others
+> ### Consensus Properties: Recap
 >
-> **Coherence**: At the end of the algorithm, every server agrees which update was picked
+> **Agreement**: The algorithm only ever decides on one value
 >
-> **No-Decoherence**: The instant a decision is made, it is final. New information cannot change committed decisions.
-> 
-> The three properties above are referred together as the **consensus properties**
-> 
-> **Fault Tolerance**: The system degrades gracefully when there are faults in the underlying system. Faults do not ever cause the algorithm to violate a consensus property.
+> **Validity**: The algorithm decides on a value some node proposed
+>
+> **Termination**: The algorithm eventually decides on a value
+>
+> **Fault Tolerance**: The above are upheld even if the underlying platform faults
+>
+> * Agreement and Validity are upheld despite *any* number of faults
+> * Termination is upheld despite *some* number of faults
 
 <center>
   <a name="part2"></a>

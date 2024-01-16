@@ -41,6 +41,10 @@ In chapter 1, we'll start by exploring the problem space. We'll nail down exactl
 
 TODO one big problem with this draft is we never really nail down what "shared state" means. We should probably change up the model a little bit to start with "multiple nodes with replicas of the same state" plus "the ability for multiple threads to update it." Or something like that. The point is in needing for the update to happen on all replicas or none so they stay in sync. Only once you've done that, can you start building other invariants, like an account only being created once, or primary key uniqueness.
 
+Also, right at the beginning of chapter 2 I say the word "consensus variable," so either explicitly define that as a term of find a better term.
+
+However, one difficulty here is the definition involving replication precludes the ability to explore the leader algorithm, which is an interesting discussion to have. We can "forget and then remember" the replication factor argument we set up in this chapter, but that's poor form
+
 ---
 
 In the dictionary, the word "consensus" roughly means "agreement." In the world of distributed algorithms, the word consensus has a bit more connotation. Consensus algorithms resolve conflicts that would otherwise leave the system in an ambiguous, indeterminate state. Let's see what that means:
@@ -199,6 +203,8 @@ Remember, these options can stand in for anything else: 0 and 1, yes and no, app
 
 In real lilfe, it'd be useful to support any number of different candidate values. If we only support two candidates, then e.g. the lock service can only be implemented for two nodes, which isn't very useful. However, in most of computing, you end always being able to have exactly zero of something, exactly one of something, or $N$ of something; so if we can figure out how to have exactly two candidate values, there's probably an easy enough way to extend it from 2 to $N$ candidates.
 
+Note that having two *values* doesn't restrict us to having only two *nodes*. We can have any number of nodes proposing values to the system, as long as each of those nodes always either proposes <span style="color:red">red</span> or <span style="color:blue">blue</span>.
+
 ### One-Shot Decisions
 
 For now, let's have an algorithm that can only reach one decision and never change it. In terms of the lock service, this would mean one node acquires the lock and can never release it, which again is probably unrealistic. However, in most of computing, instantiating things is easy; so if we can figure out how to do a one-shot decision, maybe we can implement a stream of decisions by chaining a sequence of one-shot decisions. 
@@ -207,21 +213,19 @@ So, in conclusion: we'll start in this chapter designing a consensus algorithm f
 
 ## A Programming Interface
 
-To nail down the design further, let's think about what kind of API we want give to clients using our consensus algorithm.
-
-If we want the conflict-resolution property to really make sense, we need to collect proposals separately from deciding on which proposal to accept. So we probably want to split our interface into two methods:
+To nail down the design further, let's think about what kind of API we want give to clients using our consensus algorithm. The way I see it, we need two methods: one which inputs a candidate value into the system (for Validity) and one which outputs the decided-upon value (for Agreement). Let's go with these:
 
 * **propose()**: offers the consensus system a value you'd like to change the state to, which can either be “red” or “blue”
 * **query()**: ask the consensus system what value the state actually was changed to
 
-Code that wants to update the shared state first calls **propose** with the value it prefers, followed by **query** to see what value was chosen. Code that just wants to read the shared state can skip **propose** and just call **query**. The consensus system guarantees every **query** call returns the same value, as required by the coherence and no-decoherence rules.
+Code that wants to update the shared state first calls **propose** with the value it prefers, followed by **query** to see what value was chosen. Code that just wants to read the shared state can skip **propose** and just call **query**. The consensus system guarantees every **query** call returns the same value, per the Agreement rule, and that the value returned is the value some node proposed, per the Validity rule.
 
-For example, we could make the lock server example work by defining a shared consensus variable called `owner`, which is defined as:
+If this is a good interface, we should be able to use it to solve consensus problems we already know of. We could make the lock service work by defining a shared consensus variable called `owner`, which is defined as:
 
 * the ID of the node which currently holds the lock
 * `null` if nobody has the lock yet
 
-Initially, `owner` is null. When a node wants to acquire the lock, it proposes its own ID as the value of `owner`, and then calls query to see whether it got the lock, like this:
+Initially, `owner` is null on every node. When a node wants to acquire the lock, it proposes its own ID for `owner`, and then queries `owner` to see whether it got the lock, like this:
 
 ```
 // returns true if this node got the lock, false otherwise
@@ -231,15 +235,13 @@ try acquire lock() {
 }
 ```
 
-If many nodes call this simultaneously, only one node's proposal will be selected, and every node's **query** call will return that node's ID. The node with that ID will then return true, and do whatever it needs to do under the lock; all other nodes will see they don't have the lock, and do someting else.
+If two nodes call this simultaneously, only one node's proposal will be selected, and both nodes' **query** calls will return that node's ID. The node with that ID will then return true to the calling thread, and do whatever it needs to do under the lock; the other node returns false to the caller, indicating it does not have the lock and should do something else.
 
 Make sense? Then let’s take our first stab at a design:
 
 ## A Leader-Based Algorithm
 
-Let me propose a basic design:
-
-Given a network of computers, we pick one of the nodes in the network and designate it the **leader**. Maybe a human sets a config option on all nodes in the network so they all know which node is the leader. We then make the leader the center of all activity: it receives all proposals, decides which one to accept, and returns the accepted proposal on queries.
+Given a network of computers, we pick one of the nodes in the network and designate it the **leader**. Maybe a human sets a config option on all nodes in the network so they all know the network address of the leader. We then make the leader the center of all activity: it receives all proposals, decides which one to accept, and returns the accepted proposal on queries.
 
 The network looks kind of like this:
 
@@ -261,11 +263,11 @@ consensus {
 }
 ```
 
-The leader isn't very complex either. It just remembers the first proposal received by any client, and returns that proposal upon client request:
+The leader isn't very complex either. It just remembers the first proposal received by any client, and returns that proposal upon request:
 
 ```
 leader {
-  value: Proposal; // the accepted proposal
+  value: Proposal; // the accepted proposal, red or blue
   
   init {
     value := null // no accepted proposal yet
@@ -289,12 +291,13 @@ In short, the whole network is reading and writing a single variable stored in t
 
 Is this a valid consensus algorithm? Let's check:
 
-* **coherence**: ✅ &mdash; once the leader's `value` has been set, every query method call returns that value.
-* **conflict resolution**: ✅ &mdash; if multiple clients make proposals, the leader only picks one of them (namely, the first one it received)
-* **no-decoherence**: ✅ &mdash; the leader never changes the accepted proposal once it has been initialized the first time
+* **agreement**: ✅ &mdash; every node always returns whatever value the leader stores, and the leader never changes what it stores after the first proposal
+* **validity**: ✅ &mdash; the leader only stores a proposal that somebody sent it
+* **termination**: ✅ &mdash; a decision is reached after only one message is sent
+
 * **fault-tolerance**: hmm ... we have a problem here.
 
-At least the way we've designed the algorithm so far, it would seem the leader is a **single point of failure** &mdash; if it crashes, or loses power, or gets disconnected from the network, or any number of other bad things happen to the leader, nobody else is going to be able propose or query the consensus variable. Even one fault halts the entire algorithm; so the algorithm is not fault-tolerant.
+It would seem the leader is a **single point of failure** &mdash; if it crashes, or loses power, or gets disconnected from the network, or any number of other bad things happen to the leader, nobody else is going to be able propose or query the consensus variable. Even one fault halts the entire algorithm; so the algorithm is not fault-tolerant.
 
 But maybe we can rescue this design? What if we maintain backups of the leader’s state, and promote one of the backup nodes to leader when the leader fails? It’s a good idea, save for one major problem:
 

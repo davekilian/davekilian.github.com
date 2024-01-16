@@ -43,37 +43,41 @@ The dictionary definition of “consensus” is basically “agreement,” but i
 
 That’s a pretty good metaphor for how consensus problems work in distributed systems programming. Groups of programs can get similarly stuck on decisions. Let’s see how that happens:
 
-## Examples of Consensus Problems
-
-### Account Signups
+## Example: Account Signups
 
 Given you're reading a book about consensus algorithms, most likely you have accounts on some websites, maybe some for work things like banks and credit cards, maybe some for fun things like Instagram and Reddit. We need to pick one of these for the sake of discussion, so I'll pretend you have a Reddit account; but feel free to substitute something else.
 
 Now, Reddit is a pretty big service. A lot of people read and write a lot of posts on Reddit every day. It's too much data and too much load for any one server to handle, so we can be pretty sure Reddit is a distributed service running across a whole bunch of servers. I don't know about you, but I personally have never needed to worry about which of these servers I'm connected to or how Reddit's network is structured; I just point my browser to their website and look at pictures of cats. I can do that because Reddit presents itself as a single cohesive service, abstracting away from me the details of what servers they run code on or how their network is laid out. Services like these are rife with potential for conflicts. 
 
-For example, say we have two people, Alice and Bob, who both want to register the same username at the same time. Obviously, two people can't have the same username: one will get it, the other will receive a "username already registered" error instead. But say Alice and Bob are connected to different servers; how will those servers discover Alice and Bob are both trying to register the same username, decide who gets it, and present a consistent answer to both Alice and Bob? This situation is a lot like people picking a restaurant earlier: to make progress, the servers must first decide who gets the username. It doesn't really matter who gets the username; we just need all servers to be clear who registered that username.
+For example, say we have two people, Alice and Bob, who both want to register the same username at the same time. Obviously, two people can't have the same username: one will get it, the other will receive a "username already registered" error instead. But say Alice and Bob are connected to different servers; how will those servers discover Alice and Bob are both trying to register the same username, decide who gets it, and present a consistent result to both Alice and Bob? This situation is a lot like people picking a restaurant earlier: to make progress, the servers must first decide who gets the username. It doesn't really matter who gets the username; we just need all servers to be clear who registered that username.
 
 Deciding who of Alice and Bob manages to register that username is an example of a consensus problem. It has all the hallmarks of one:
 
-* Shared state  (like the user account, in this example)
+* Shared state (like the user account, in this example)
 * Multiple servers acting on that state (Alice and Bob creating the account)
 * A conflict between updates (two people can't both create the same account)
 * The need for a consistent answer (everyone should be clear who got the account)
 
-Put these together, and you end up needing to resolve conflicting updates quickly, arbitrarily and universally, so that concurrent programs acting on the state can figure out what happened and build on that. Problems like this are incredibly common in the online world.
+Put these together, and you end up needing to resolve conflicting updates quickly, arbitrarily and universally, so that concurrent threads acting on the state can figure out what happened and act on the outcome. Problems like this are incredibly common in the online world.
 
-Now, I've never seen Reddit's source code, so I can't tell you how it works; even so, I'm pretty sure they did not solve this problem using a consensus algorithm ... at least not directly. Consensus problems may be anywhere, but consensus algorithms are used sparingly, and usually at the bottom of the stack. It's much more likely account name conflicts are discovered using a database.
+Now, I've never seen Reddit's source code, so I can't tell you how it works; even so, I'm pretty sure they did not solve this problem using a consensus algorithm . . . at least not directly. Consensus problems may be everywhere, but consensus algorithms are implemented rarely; most of the time, you instead use some higher level primitive that itself provides consensus guarantees (internally, these things rely on true consensus algorithms like Raft and Paxos). In Reddit's case, it's much more likely account name conflicts are discovered using a database.
 
-### Distributed Databases
+## Distributed Databases
+
+Reddit has a lot of user accounts; most likely, even the account information alone for the service is too much data and too much load for any one server to handle; so, probably, this database is distributed across multiple servers, each of which stores a piece of the database. What database is Reddit using? Who knows! But all distributed databases have one problem in common: how do one update that affects data on multiple servers?
+
+
+
+
+
+
 
 
 
 ---
 
-TODO continue the rewrite from here
+TODO continue the rewrite from here. Try to build all examples in the context of the user-facing consensus problem we started before; maybe, the transaction commit problem is on a database of user accounts, and the lock service is used to assign accounts to cache servers.
 
-* Big databases are partitioned across servers
-* An update can cross multiple servers
 * Transaction commit is a consensus problem
 * Many distributed databases do have a Raft or a Paxos inside
 * Move to a lock service section
@@ -124,6 +128,12 @@ But now imagine you were using not just one device, but a thousand of them. Or i
 Consensus algorithms that can be deployed in practical, real-world settings need to be fault-tolerant. Designing fault-tolerant consensus algorithms turns out to be hellishly difficult. These algorithms need to provide perfect, exact guarantees, but run on an imperfect platform that routinely fails to provide its stated guarantees. How does one do that? It’s something we’ll have to tackle later on.
 
 ## Properties of a Fault-Tolerant Consensus Algorithm
+
+---
+
+TODO I *think* I can turn this into Agreement, Validity and Fault-Tolerance, which is nice because those are standard terms. The only tricky thing is to capture the no-decoherence property, e.g. by saying agreement has temporal component too: agreement means not only do all nodes reach the same decision, but also that the decision never changes for any node. Else the node is not agreeing with its past self.
+
+---
 
 To finish our discussion about the problem space, let’s nail down a set of properties any useful consensus algorithm should have. Unfortunately for us, there isn't a well-accepted set of consensus properties we can rattle off here: database people have ACID (*atomic, consistent, isolated, durable*), but there's no similarly catchy acronym for consensus algorithms. We'll have to wing it.
 

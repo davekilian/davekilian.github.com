@@ -494,15 +494,15 @@ This is the point in the thought process where the field as a whole got stuck fo
   * Or an entirely different approach that works?
 * What's up with the same dead end appearing two different ways?
 
-If you take me up on this exercise, two things to keep in mind:
+If you take me up on this exercise, three things to keep in mind:
 
 1. If you think you have the solution, remember to do an absolute-worst case analysis: like with the voting example above, if there's one specific execution where the loss of one specific node at the exact wrong time deadlocks the algorithm, it's not fault tolerant. Sometimes, finding that one situation is tricky!
 2. Be wary of solutions which appear to work, but actually rely on some other form of consensus. For example, in our single-leader algorithm, we found that getting all nodes to agree on a leader is itself a consensus problem, and thus we couldn't rely on safe leader election to design a consensus algorithm in the first place.
 3. If you find an algorithm that deadlocks, but you find a way to "fix" it so a decision is made despite the deadlock, double-check there's no way that decision can be made in the case where no node crashes and there is no deadlock; otherwise you might be permitting more than one decision, like with leader failover or vote tie-breaking
 
-And most important, have a little fun! Mess around, try things, be interested by setbacks instead of getting frustrated. This is a game, not a test. Nobody's watching. Richard Feynman famously liked to "play" with physics; now I'm asking you to play with consensus algorithms.
+And most importantly, have a little fun! Mess around, try things, be interested by setbacks instead of getting frustrated. This is a game, not a test. Nobody's watching. Richard Feynman famously liked to "play" with physics; now I'm asking you to play with consensus algorithms.
 
-Of course, for the curious and the impatient, you can also just read on. With that, it's adieu for now, perhaps!
+And if that really isn't your thing, you can just read on.
 
 <center>
   <a name="part3"></a>
@@ -510,41 +510,61 @@ Of course, for the curious and the impatient, you can also just read on. With th
     3: FLP
   </h1>
 </center>
+## When the Going Gets Tough, the Tough ... Prove the Going Really is Pretty Tough ... and Give Up
 
----
+Before a working consensus algorithm was discovered, people chewed through this problem just as you might have during the intermission. And they kept running into the same dead end. They could make an algorithm the provided Agreement, Validity and Termination in the case where no node crashes, but Fault Tolerance was elusive. There was always an annoying little window of vulnerability, a case where a single crash would be enough to deadlock the system. Attempts to deal with deadlock directly were futile; they would always end up violating Agreement one way or another. A choice between Agreement and Fault Tolerance is no choice at all; we must have both.
 
-When I started writing this I was misremembering how FLP works. But I think most of what’s already here is salvageable. 
+Some advice: when you're trying to solve a problem, and you keep hitting the same dead end no matter what you do, the next thing you should try is to prove impossibility: maybe you can show the dead end will *always* come up because of some aspect of the problem space, and thus prove the problem actually isn't solvable. Not trying to solve the unsolvable would certainly save you some time!
 
-Basic flow:
+Well, that's exactly what three researchers did in the mid-1980s. In their paper *Impossibility of Distributed Consensus with One Faulty Process*, Fischer, Lynch and Paterson (the "FLP" in "FLP result") explained exactly why nobody could come up with an always-fault-tolerant consensus algorithm. Their paper uses the language of formal mathematics to explain their ideas in the form of a proof, but tied up in all the notation and state machines and network models is a set of simple and insightful idea. In this chapter, we'll see what they saw.
 
-* Intro idea of setting up the system so that, once a specific message has been processed, the system will have decided
-* Maybe at this point preview that the node which receives that message is a SPOF. 
-* Show the FLP lemma 3 mechanics on a simple 3 node majority voting setup. Show how “vote red” and “vote blue” sent to the undecided node always result in a system which has decided. Proceed to show the algorithm deadlocks if that node crashes, and any attempt to recover from this state leads to split brain in the case where the undecided node is alive, but slow
-* Revisit the same mechanics abstractly for any algorithm. A good way to explain the ordering problem and fault detector is to imagine the case where the node fails and sigma must now recover, then imagine an alternate universe where everything happened exactly the same except p didn’t crash, it’s just running slow. (Alternate universe is the key here). There’s no way to tell the difference but sigma must do something different in this case (not decide, yield the decision to p). 
-* Walk through the FLP main proof, which takes an algorithm that never forces a decision and finds a way keep to delivering the oldest message to each node round robin, forever, without ever making a decision
-* Maybe mention fault detection oracles. 
-* Conclusions: 
-* 1. If we ever can say our algorithm terminates, we should be suspicious
-* 2. If it appears the system has always decided after processing a message sent before the system has decided, we had better look for deadlocks or split brains
-* 3. As they mention in the paper’s conclusion, probability of termination might suffice
-* This all loosely suggests  best effort retry loop. Wonder how one does this for majority voting 
+We're going to do this thing *in medias res* style. First we'll see *exactly* what you can't do in a fault-tolerant consensus algorithm, then we'll catch up to how they ever thought of such a weird thing, and finally we'll figure out how it means we need to change our strategy. Without further ado, here it is:
 
-Maybe we don’t need to mention decision points at all. The only crux of the proof is “forcing a decision” which is a bit different than the direction I was originally going.
+## The Weird Thing You Cannot Do (Doctors Hate It!)
 
-On a related note, the properties we described before no longer lead into the discussion I want to have next, so we don’t need them per se. And also, if we do want to use properties, the standard ones appear to be agreement, validity and termination (with the care to somehow specify no-decoherence implicitly, eg by a write-once output register)
+The FLP result essentially says: you must never design a consensus algorithm which can get into the following situation:
 
-Maybe we could restructure the previous chapters not to have a set of properties (or have the more basic A/V/T set from literature) and then in this chapter introduce one last example that shows why the sigma can’t recover in the faulted case and also avoid split-brain in the no-faults case. The last example is “majority voting with tiebreak” and you show how it works with exactly 3 nodes in the network.
+> There is some network message $m$, which can be delivered *before* a decision has been reached. In all cases, *after* $m$ has been delivered and fully processed by its recipient node, the system is guaranteed to have reached a decision.
 
-Also jump off with a discuss about what “a message sent before the system decides, system decided once processed” really means in an intuitive sense, and how it’s related to termination. 
+I know it looks like legalese, but I'm saving you from pages of technical definitions and mathematical notation here, so bear with me. Read the above *carefully* and make sure you understand what's being stated before moving on.
+
+Ready? Alright, now if you're like me, after reading this you might have questions . . .
+
+* Do both of our example algorithms actually do that? (They do.)
+* Why does something so specific keep ending up in our algorithms by accident? (It has to do with Termination.)
+* What exactly goes wrong? (It's the same dead end we've seen twice now.)
+* How did they come up with this? (I assume it took them a long time.)
+
+Let's explore each of these questions in depth.
+
+## Do both our algorithms really do that?
+
+
+
+## How do we keep accidentally creating this situation?
+
+
+
+## What exactly goes wrong?
+
+
+
+
+
+
+
+
+
+
+
 
 ---
 
 Let’s try a flow like this:
 
-1. Current first section as is, introducing the idea of proving something doesn’t work because we keep running into the same old dead end
-2. What doesn’t work is (message from lemma 3, stated in the paper’s precise yet somewhat obtuse manner)
-3. What the heck does that even mean? Do a majority voting 3-node example and point out the votes that do that
-4. Why does this case show up? Preview the idea of an algorithm that terminates has a finite number of messages. If you’re going to stop sending messages, one of those messages had better be guaranteed to make the decision, or you exit with no decision 
+1. What doesn’t work is (message from lemma 3, stated in the paper’s precise yet somewhat obtuse manner)
+2. What the heck does that even mean? Do a majority voting 3-node example and point out the votes that do that
+3. Why does this case show up? Preview the idea of an algorithm that terminates has a finite number of messages. If you’re going to stop sending messages, one of those messages had better be guaranteed to make the decision, or you exit with no decision 
 4. What’s wrong with having such a message? The system cannot tolerate even one crash fault: sending the message is a point of no return, it is now the recipient’s job to decide based on its local message delivery order. But if the recipient chooses that moment to crash, the decision will never happen
 5. Back into the example, show the algorithm deadlocks if the undecided node crashes and the algorithm does nothing else
 6. But maybe we can do something else; propose a tiebreak where red always wins (chosen fairly by asking my toddler what his favorite color is)
@@ -560,198 +580,7 @@ Let’s try a flow like this:
 
 ---
 
-## When the Going Gets Tough, the Tough Prove the Going's Pretty Darn Tough ... and Give Up
 
-Before a working consensus algorithm was discovered, people chewed through this problem just as you might have during the intermission above. And they kept running into the same dead end, over and over. They could make an algorithm that provided all the consensus properties, and even still make it *usually* fault tolerant, but there'd always be that one case, one little window of vulnerability where one node crashing brings the entire algorithm to a standstill.
-
-Some advice: when you're trying to solve a problem, and no matter what you do, you keep running into the same dead end, the next thing you should try is to prove impossibility: show that dead end will always come up no matter what you do, due to something about the problem space. That proves the problem is actually not solvable, which will save you the time of trying to solve the unsolvable!
-
-Well, that's exactly what three researchers did in the mid-1980s. In their paper *Impossibility of Distributed Consensus with One Faulty Process*, Fischer, Lynch and Paterson (the "FLP" in "FLP result") explained exactly why nobody could come up with an always-fault-tolerant consensus algorithm. Their paper uses the language of formal mathematics to explain their ideas in the form of a proof, but tied up in all the state machines and network models and whatnot is a simple and insightful idea. In this chapter, we'll see what they saw.
-
-## The Goal
-
-A note for people who don't eat math for breakfast: we're about to build is an *impossibility proof*; we want to make the argument that there is no such thing as a fault-tolerant consensus algorithm.
-
-To do that, we're going to talk about all possible consensus algorithms at the same time, using abstraction. Just as you can take objects like "Car" and "Boat" and "Airplane" and unite them under some abstract "Vehicle" interface so we can make code that works for all possible vehicles, so too are we now going to abstract away the details of actual consensus algorithms so we can make a statement about all consensus algorithms abstractly. And the statement we're going to try to make is, all consensus algorithms have a way of getting stuck: there's at least one execution where a single node crashing is enough to bring the algorithm to a standstill and prevent the system from ever reaching consensus.
-
-Working this way makes it easy to get lost in abstraction, so along the way if you find yourself lost, try to map what we're talking about abstractly to a real consensus algorithm you already know, such as the leader-based replication and majority voting algorithms we talked about in chapter 2. With that, let's get cracking!
-
-## Decisions, Decisions
-
-To understand the FLP result, first we need to adopt Fischer, Lynch and Paterson's unique way of looking at all possible consensus algorithms abstractly. Take another look at what we've been calling the consensus properties:
-
-> **Conflict Resolution**: When conflicting updates are proposed, the algorithm picks one and rejects the others
->
-> **Coherence**: At the end of the algorithm, every server agrees which update was picked
->
-> **No-Decoherence**: The instant a decision is made, it is final. New information cannot change committed decisions.
-
-Together, these tell a kind of story about how consensus algorithms work. Conflict resolution says, at the start of the algorithm, there are two options (we've been calling them "red" and "blue"), and either could be the one the algorithm ends up choosing. Coherence says, at the end, there is only one chosen option: red or blue. And no-decoherence says the decision is made in some way that also instantaneously locks it in, ensuring it can never be undone.
-
-If you think about it, this means the story has a climax: there must be a single step of the algorithm that makes a decision once and for all. Before that step runs, the system could still choose either red or blue; after that step, all fates are sealed, and either red or blue has been chosen. We'll call this step the **decision point**.
-
-Since every step of a distributed algorithm runs on a single node, and a decision point is just a special name for a step of the distributed algorithm, we know the decision point is a single instruction &mdash; a single line of code, basically &mdash; running on a single node. In the leader-based replication algorithm, that line is easy to find: it's the point when the leader receives the first proposal and assigns it to its local `value` variable, here:
-
-```
-  on client proposal {
-    // accept the first proposal, ignore others
-    if (value == null) {
-      value := proposal   <-- decision point
-    }
-  }
-```
-
-For majority voting, it's a little trickier to find. The decision point for majority voting is when one proposal receives a majority of the nodes' votes. That line of code was here:
-
-```
-  // received a proposal from a peer
-  on peer proposal(proposal) {
-    // accept the first proposal, ignore others
-    if (value == null) {
-      value := proposal  <-- vote registered
-    }
-  }
-```
-
-Except that line of code is only *sometimes* the decision point!
-
-* Sometimes a node votes, but even after doing so, no proposal has a majority yet. So the vote is insufficient for making a decision
-* Other times a node votes after a proposal already has a majority. So the vote is redundant
-* Only one vote causes a proposal to cross the critical boundary sub-majority to majority. This vote locks in the majority, preventing other proposals from ever reaching a majority. So that vote is the algorithm's decision point.
-
-So maybe we should amend our definitions so that registering a vote counts as a decision point too. Let's say this:
-
-> A **decision point** *potentially* makes a system wide-decision. However, it may be **insufficient** (executing it does not cause the system to reach a decision), or **redundant** (the system had already made a decision before it executed).
-
-That's compatible with the way the FLP paper analyzes consensus algorithms: as a set of potential decision points glued together by code that transmits messages on the network, disseminates results, and so on. Every consensus algorithm has at least one decision point, and the decision points are the interesting parts of the algorithm.
-
-At first glance, it might seem like one could make a consensus algorithm fault tolerant by setting up many decision points running on many nodes; that way, if a node crashes without executing its own decision point, other decision points executing on healthy nodes still have a chance to make the final decision. But we tried this in the majority voting example and it didn't work: there was still a way losing just one node could leave us with a split vote, unable to make progress. Through the FLP looking glass, we'd say the loss of just one potential decision point 
-
-But is that a problem with majority voting, or more generally a problem with having a limited number of decision points? According to the FLP result, it's the latter: any algorithm that has a finite number of decision points can terminate without making a decision if just one node crashes. Let's see how . . .
-
-## The FLP Result
-
-FLP gives us a procedure we can use on any consensus algorithm to get it stuck, unable to make a decision, as long as it has a fixed number of decision points. Here's all you need to do:
-
-
-
-
-
----
-
-TODO: wait ... not only did we fail to justify the sequentializing aspect before, but also throwing away the superfluous ones is also nonsense if not justified! People might add redundant decision points specifically to handle faults, so it doesn't make sense to just ignore them on the basis of them not needing to do anything, right?
-
-Maybe it's time to reread the paper.
-
----
-
-
-
-
-
-First, analyze the algorithm and find its decision points. If present, throw away any 'superfluous' ones that are always redundant &mdash; ones that are guaranteed to execute after the 
-
-
-
- list its decision points. If there are any 'superfluous' ones that are always redundant (they never decide anything), remove them. We should be left with a subset of the algorithm's decision points that can actually 
-
-
-
-
-
-
-
-
-
-
-
----
-
-First, take the algorithm's set of potential decision points. If there are any superfluous ones that cannot decide anything because they are always redundant, remove them. We are left with the set of potential decision points that can actually make decisions.
-
-Next, find an execution of the algorithm which uses every potential decision point, not making a decision until the very last one. In other words, find a way the algorithm can play out where no potential decision point is redundant: all but the last one run without making a final decision, and then the last one makes the decision. We know such an execution of the algorithm exists, because none of the potential decision points is superfluous.
-
-For this execution consider the case where every potential decision point except the last one executes. By construction, we know the algorithm has not decided yet. Now assume the node which runs the final potential decision point crashes. The system has not decided, and now there are no potential decision points remaining. The algorithm now has no choice but to terminate without deciding. Since the algorithm failed, but there was only one fault (one node crash), we conclude the algorithm was not fault-tolerant.
-
----
-
-
-
-
-
-
-
-
-
-
-
-
-
----
-
-TODO reformulate the below, not as "adding a termination guarantee messes everything up," but rather as "any consensus algorithm with a finite number of decision points can fail this way"
-
-Also, I reformulated above so we can say "decision point" instead of potential decision point, because that's a mouthful and because I don't want to break out the TLAs.
-
----
-
-
-
-
-
-
-
-
-
-
-
-
-
-We'll show that any consensus algorithm that provides *Conflict-Resolution*, *Coherence*, *No-Decoherence* and *Termination* is not *Fault-Tolerant*: it can fail by exiting without making a decision in the event just one node crashes. We'll show this happens by virtue of the properties themselves, not any detail of how the algorithm implements the properties, thus showing *any* algorithm which correctly implements termination-guaranteed consensus cannot be fault tolerant:
-
-First, as we discussed earlier, we know from the algorithm's *Conflict-Resolution*, *Coherence* and *No-Decoherence* properties that it must have a "decision point," which is a step running on a single node that decides once and for all what value the system will decide on.
-
-If the algorithm has just one decision point, we know it is not *Fault-Tolerant* because the node that runs the decision point can crash. However, it's possible the algorithm provides many *potential* decision points so that, if one potential decision point never executes due to a crash, other ones running on healthy nodes can potentially compenstate for the failure.
-
-However, due to the *Termination* guarantee, we know there is a finite supply of potential decision points. Knowing this, we can use the following procedure to find at least one way the algorithm can exit without deciding, while only being asked to tolerate a single node crash:
-
-First, take the algorithm's set of potential decision points. If there are any superfluous ones that cannot decide anything because they are always redundant, remove them. We are left with the set of potential decision points that can actually make decisions.
-
-Next, find an execution of the algorithm which uses every potential decision point, not making a decision until the very last one. In other words, find a way the algorithm can play out where no potential decision point is redundant: all but the last one run without making a final decision, and then the last one makes the decision. We know such an execution of the algorithm exists, because none of the potential decision points is superfluous.
-
----
-
-TODO: why is the last sentence of the above paragraph true?
-
-Like you can do silly degenerate things like say if nodes 1 and 3 vote red, that counts as two extra votes for red. 
-
----
-
-For this execution consider the case where every potential decision point except the last one executes. By construction, we know the algorithm has not decided yet. Now assume the node which runs the final potential decision point crashes. The system has not decided, and now there are no potential decision points remaining. The algorithm now has no choice but to terminate without deciding. Since the algorithm failed, but there was only one fault (one node crash), we conclude the algorithm was not fault-tolerant.
-
-None of this was specific to any one algorithm; the procedure above works for any algorithm that provides *Conflict-Resolution*, *Coherence*, *No-Decoherence* and *Termination* properties, just by virtue of providing them. That means, *any* algorithm that provides these properties is not *Fault-Tolerant*. &#8718;
-
-That's the complete FLP result; but if you're like me, thinking abstract about all possible consensus algorithms simultaneously hurts your brain; it certainly hurts mine. So let's take a page out of [Eugenia Cheng's book](https://www.hachettebookgroup.com/titles/eugenia-cheng/beyond-infinity/9780465094820/?lens=basic-books), and recap the proof as a strategy game. Allow me to present . . .
-
-## The Crashing Game
-
-Here are the rules:
-
-* I will present you with a consensus algorithm. I won't tell you what it is in advance, but I'll claim it provides 
-* Your goal is to crash the algorithm, so that it gets stuck and never makes a decision
-* You are not allowed to change the rules of my algorithm or edit any of its steps
-* You do have complete control over all the indeterminate stuff, like the order network messages are delivered to nodes or the relative order of concurrent instructions running on different nodes in parallel
-* You get to crash one node exactly one time. That node, once crashed, stays offline forever
-
-You will always win this game if you play the FLP strategy. Here's all you need to do:
-
-TODO finish this
-
-TODO new heading or two to apply the FLP proof to each of leader-based replication and majority voting. We could make these examples of the crashing games as sub-heading: I present the algorithm, and then say your FLP strategy is to do this: yadda yadda
-
-## Doing the Impossible
-
-TODO segue out. Start by being a little distressed like, oh no, this is a book about fault-tolerant consensus algorithms and we just proved fault-tolerant consensus algorithms don't exist? Well, don't worry. Actually, we proved "fault-tolerant consensus algorithms that terminate" don't exist. We didn't say anything about consensus algorithms that don't terminate. I mean, it's far-fetched, but maybe we can make a consensus algorithm that doesn't terminate? Then hard cut to the "4: Paxos" heading below.
 
 <center>
   <a name="part4"></a>

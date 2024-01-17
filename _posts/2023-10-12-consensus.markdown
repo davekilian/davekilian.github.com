@@ -528,7 +528,7 @@ The FLP result essentially says: you must never design a consensus algorithm whi
 
 I know it looks like legalese, but I'm saving you from pages of technical definitions and mathematical notation here, so bear with me. Read the above *carefully* and make sure you understand what's being stated before moving on.
 
-Ready? Alright, now if you're like me, after reading this you might have questions . . .
+Ready? Alright, now if you're like me, after reading this you might have questions, like:
 
 * Do both of our example algorithms actually do that? (They do.)
 * Why does something so specific keep ending up in our algorithms by accident? (It has to do with Termination.)

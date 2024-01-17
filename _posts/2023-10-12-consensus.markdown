@@ -449,26 +449,60 @@ Whoops, the algorithm changed its mind! We absolutely cannot allow that. So we c
 
 Dang.
 
----
+<center>
+  <h1 style="margin-top: 3em; margin-bottom: 2em">
+    Recap &amp; Intermission
+  </h1>
+</center>
 
-## Recap & Intermission
+We've covered a lot of ground. Let's reflect on where we've been before we move forward.
 
-TODO recap
+We started our journey by examining consensus problems: situations where multiple nodes want to update the same state at the same time. If these updates conflict, the nodes must find a way to resolve the conflict with one another, or else neither node has a way to make progress.
 
-If you have the time, this would be a good point to step away from your computer and think over the above. What went wrong with our two approaches above? Can you think of a way to fix either one? Or a different strategy entirely?
+We came up with four basic requirements any consensus algorithm should have:
 
-This is the point in the thought process where the field as a whole got stuck, for years. People kepts trying to find ways around this problem, or different solutions that don't have this problem, and failed to find a way through, repeatedly. Based on that, I'm guessing you won't copme up with a working solution in an afternoon walk through the woods. But think through a variety of approaches and seeing them not play out might help build your understanding of the problem space, and what we'd have to figure out how to do if we wanted to make a fault-tolerant consensus algorithm.
+* **Agreement**: The algorithm only ever decides on one value
+
+* **Validity**: The algorithm decides on a value some node proposed
+
+* **Termination (*)**: The algorithm eventually decides on a value
+
+* **Fault Tolerance**: The above are upheld even if the underlying platform faults
+
+  * Agreement and Validity are upheld despite *any* number of faults
+
+  * Termination is upheld despite *some* number of faults
+
+We saw that consensus problems are everywhere, and we saw how consensus problems can be delegated from component to component, allowing us to rely on a few foundational consensus algorithms to provide these four guarantees in a wide variety of different primitives, freeing us from having to deal with consensus algorithms ourselves.
+
+And, we also saw that coming up with a working consensus algorithm is surprisingly tricky.
+
+We started with a leader-based algorithm, but realized the leader is a single point of failure, leading to an algorithm which is not fault tolerant. We tried to come up with some kind of failover system where a follower node which is up-to-date can be promoted to leader, but then we realized to do this while avoiding split brain, we'd need an external solution to the very consensus problem we were trying to solve in the first place. A dead end.
+
+Then we examined majority voting, which was a pretty good analogy to how this problem is actually solved by people in the real world. But we ran into a problem with split votes: we could avoid them by having an odd number of nodes, but even one node crashing can lead to an even number of nodes, resurrecting the possibility of a split vote. We also looked at tiebreaking schemes, but realized running the tiebreak prematurely could cause the algorithm to change its mind in the case no node crashes, which is unacceptable. Another dead end.
+
+Something interesting I'd like to point out right now: we have now hit two dead ends, and the stories are strangely similar. Each time, we first came up with an algorithm that works when no node crashes, but found the algorithm can deadlock if even one node crashes. And each time, we then tried to find something we could do to 'fix' the deadlock once we were stuck (like failing over to a new leader, or coming up with a tie-break), only to find the fix could violate Agreement in the case *no* nodes crash. Isn't it weird how that happened twice?
+
+We're now at the low point of the story; we started with high hopes, but we ran into many setbacks, and now we have nothing to show for all our hard work. In the next chapter, we will begin our ascent: we'll figure out exactly what's wrong, move past the problem and ultimately end up with a working solution.
+
+But first, I have homework for you. This is just a book; I can't make you do it. But if you take me up on this right now, you'll end up with a much better feel for what comes next.
+
+This is the point in the thought process where the field as a whole got stuck for many years. I'd like to invite you to get stuck for a while too. Your assignment is to step away from your computer and think over everything we've talked about.
+
+* What went wrong with our two approaches?
+* Can you think of a way to fix either one?
+  * Or an entirely different approach that works?
+* What's up with the same dead end appearing two different ways?
 
 If you take me up on this exercise, two things to keep in mind:
 
-1. If you think you have the solution, remember to do an absolute-worst case analysis: like with the voting example above, if there's one specific execution where the loss of one specific node at the exact wrong time blocks the algorithm from making progress, it's not fault tolerant. Sometimes, finding that one situation is tricky!
+1. If you think you have the solution, remember to do an absolute-worst case analysis: like with the voting example above, if there's one specific execution where the loss of one specific node at the exact wrong time deadlocks the algorithm, it's not fault tolerant. Sometimes, finding that one situation is tricky!
 2. Be wary of solutions which appear to work, but actually rely on some other form of consensus. For example, in our single-leader algorithm, we found that getting all nodes to agree on a leader is itself a consensus problem, and thus we couldn't rely on safe leader election to design a consensus algorithm in the first place.
+3. If you find an algorithm that deadlocks, but you find a way to "fix" it so a decision is made despite the deadlock, double-check there's no way that decision can be made in the case where no node crashes and there is no deadlock; otherwise you might be permitting more than one decision, like with leader failover or vote tie-breaking
+
+And most important, have a little fun! Mess around, try things, be interested by setbacks instead of getting frustrated. This is a game, not a test. Nobody's watching. Richard Feynman famously liked to "play" with physics; now I'm asking you to play with consensus algorithms.
 
 Of course, for the curious and the impatient, you can also just read on. With that, it's adieu for now, perhaps!
-
----
-
-
 
 <center>
   <a name="part3"></a>

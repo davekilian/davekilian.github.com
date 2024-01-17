@@ -291,11 +291,10 @@ In short, the whole network is reading and writing a single variable stored in t
 
 Is this a valid consensus algorithm? Let's check:
 
-* **agreement**: ✅ &mdash; every node always returns whatever value the leader stores, and the leader never changes what it stores after the first proposal
-* **validity**: ✅ &mdash; the leader only stores a proposal that somebody sent it
-* **termination**: ✅ &mdash; a decision is reached after only one message is sent
-
-* **fault-tolerance**: hmm ... we have a problem here.
+* **Agreement**: ✅ &mdash; every node always returns whatever value the leader stores, and the leader never changes what it stores after the first proposal
+* **Validity**: ✅ &mdash; the leader only stores a proposal that somebody sent it
+* **Termination**: ✅ &mdash; a decision is reached after only one message is sent
+* **Fault Tolerance**: hmm ... we have a problem here.
 
 It would seem the leader is a **single point of failure** &mdash; if it crashes, or loses power, or gets disconnected from the network, or any number of other bad things happen to the leader, nobody else is going to be able propose or query the consensus variable. Even one fault halts the entire algorithm; so the algorithm is not fault-tolerant.
 
@@ -398,10 +397,10 @@ It's okay though, we can work around that problem relatively easily: just requir
 
 Okay, so ... does *this* design work?
 
-* **agreement**: ✅ &mdash; only one proposal can reach a majority, and that's the proposal **query()** always returns; so at most one value can be returned by **query()**
-* **validity**: ✅ &mdash; nodes only vote for a value someone proposed; so the value that got the most votes was proposed by somebody
-* **termination**: ✅ &mdash; a decision is reached after all votes are in
-* **fault-tolerance**: . . . 😀 I told you this would be tricky, didn't I? 
+* **Agreement**: ✅ &mdash; only one proposal can reach a majority, and that's the proposal **query()** always returns; so at most one value can be returned by **query()**
+* **Validity**: ✅ &mdash; nodes only vote for a value someone proposed; so the value that got the most votes was proposed by somebody
+* **Termination**: ✅ &mdash; a decision is reached after all votes are in
+* **Fault Tolerance**: . . . 😀 I told you this would be tricky, didn't I? 
 
 No, this algorithm isn't fault-tolerant either! But we're getting better at this &mdash; this time, the problem is much more subtle.
 
@@ -510,7 +509,8 @@ And if that really isn't your thing, you can just read on.
     3: FLP
   </h1>
 </center>
-## When the Going Gets Tough, the Tough ... Prove the Going Really is Pretty Tough ... and Give Up
+
+## When the Going Gets Tough, the Tough Prove the Going is Tough ... and Give Up
 
 Before a working consensus algorithm was discovered, people chewed through this problem just as you might have during the intermission. And they kept running into the same dead end. They could make an algorithm the provided Agreement, Validity and Termination in the case where no node crashes, but Fault Tolerance was elusive. There was always an annoying little window of vulnerability, a case where a single crash would be enough to deadlock the system. Attempts to deal with deadlock directly were futile; they would always end up violating Agreement one way or another. A choice between Agreement and Fault Tolerance is no choice at all; we must have both.
 
@@ -522,35 +522,45 @@ We're going to do this thing *in medias res* style. First we'll see *exactly* wh
 
 ## The Weird Thing You Cannot Do (Doctors Hate It!)
 
-The FLP result essentially says: you must never design a consensus algorithm which can get into the following situation:
+The FLP result gives us a piece of extremely valuable advice: we must never design a consensus algorithm which can get into the following situation:
 
-> There is some network message $m$, which can be delivered *before* a decision has been reached. In all cases, *after* $m$ has been delivered and fully processed by its recipient node, the system is guaranteed to have reached a decision.
+> There is some network message $m$ with the following properties:
+> 
+> * $m$ can be delivered *before* a decision has been reached
+> * In all cases, *after* $m$ has been delivered and processed, the system is guaranteed to have reached a decision
+
+If such a message can appear at any point in your algorithm, you won’t be able to make the algorithm tolerate a single fault.
 
 I know it looks like legalese, but I'm saving you from pages of technical definitions and mathematical notation here, so bear with me. Read the above *carefully* and make sure you understand what's being stated before moving on.
 
-Ready? Alright, now if you're like me, after reading this you might have questions, like:
+Ready? Alright, if you're like me, this might raise a handful of questions, like:
 
 * Do both of our example algorithms actually do that? (They do.)
-* Why does something so specific keep ending up in our algorithms by accident? (It has to do with Termination.)
-* What exactly goes wrong? (It's the same dead end we've seen twice now.)
+* Why does something so specific consistently make it into our designs without us noticing? (It has to do with Termination.)
+* What exactly goes wrong? (It's the same ‘dead end’ we've seen twice already.)
 * How did they come up with this? (I assume it took them a long time.)
 
 Let's explore each of these questions in depth.
 
 ## Do both our algorithms really do that?
 
+They do.
+
 
 
 ## How do we keep accidentally creating this situation?
+
+It has to do with Termination.
 
 
 
 ## What exactly goes wrong?
 
+It’s the same dead end we’ve seen twice now.
 
+## How did they come up with this?
 
-
-
+TODO the idea of a decision point which is driven by the relative order of two message deliveries. That the “has always decided once processed” thing is a concise and neutral way to say, either this message makes the decision or find a the decision was already made and backs off (the atomic decide-if-not-decided). That a message sent after the decision is made doesn’t affect the ability to remain bivalent.
 
 
 

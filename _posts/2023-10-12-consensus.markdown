@@ -89,6 +89,26 @@ What should we try next? Oftentimes the solution to problems of fault tolerance 
 
 ## Leader Replication with Failover
 
+Okay, so putting a variable on the network using RPCs isn't fault tolerant; we want fault tolerance, and our idea to add fault tolerance to the design (and thereby 'rescue' it) is to fail over to a new leader.
+
+Of course, when a failover occurs, we don't want to lose whatever was in the variable before. But we also don't know if or when a failover will be needed. That seems to mean we need to eagerly store backups of the leader's variable on other nodes, so that we're ready to fail over to another node at any time.
+
+To start, let's put a copy of our distributed variable on every node in the system:
+
+DIAGRAM
+
+We'll still send get and set RPCs to the leader as before:
+
+DIAGRAM
+
+Now, however, any time the leader sets the variable, it also sends an updated copy to all followers, telling each of the followers to update its backup copy of the variable:
+
+DIAGRAM
+
+This way, when we need to fail over, the followers all have their own copies of the variable. Sounds good?
+
+
+
 
 
 

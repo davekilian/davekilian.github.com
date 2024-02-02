@@ -11,13 +11,11 @@ draft: true
 
 </div>
 
-How can you make a "distributed" variable?
-
-By that I mean: say I have a bunch of computers connected together by a network. Call each of these computers a "node." How can you make a variable that any of those computers can get or set? 
+How can you make a "distributed" variable? By that I mean: say I have a bunch of computers connected together by a network. Call each of these computers a "node." How can you make a variable that any of those computers can get or set? How do you share a single variable across a group of nodes?
 
 DIAGRAM: nodes a network, thought bubble question mark in the middle for a variable
 
-Idea: let's pick one of the nodes and declare a regular old variable on that node. Call that node the "leader."  The leader can get or set the variable normally, since for the leader, it's just a regular old local variable. Let's also run an RPC server on the leader, and provide RPCs to get or set the variable. That way, other nodes can read and write the variable by sending get and set RPCs to the leader, respectively.
+Well, we all know how to make regular, single-node variables. Let's pick one of the nodes and declare a regular old variable on that node. Call that node the "leader."  The leader can get or set the variable normally, since for the leader, it's just a regular old local variable. Let's also run an RPC server on the leader, and provide RPCs to get or set the variable. That way, other nodes can read and write the variable by sending get and set RPCs to the leader, respectively.
 
 DIAGRAM: one node is highlighted as the leader; all others and sending get/set RPCs.
 
@@ -105,7 +103,37 @@ Now, however, any time the leader sets the variable, it also sends an updated co
 
 DIAGRAM
 
-This way, when we need to fail over, the followers all have their own copies of the variable. Sounds good?
+This way, when we need to fail over, the followers all have their own copies of the variable. Sound good? Sadly, there are problems with this approach.
+
+### The Little Problem
+
+One problem is that a leader failover can occur before an update has been disseminated to all followers. This creates a problem where a new leader needs to be selected, but not all nodes have the latest update:
+
+DIAGRAM
+
+We really want the new leader to be up-to-date. Luckily, this problem is fairly easy to fix: we just tweak the algorithm a bit so that the leader and each of the followers each track a version number in addition to the value itself:
+
+DIAGRAM
+
+Whenever the leader gets an RPC to set the variable, it not only changes the variable, but also increments the sequence number, and sends the (new value, new version number) tuple to all followers:
+
+DIAGRAM
+
+Now if the leader fails before all the followers are updated, 
+
+### The Big Problem
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 

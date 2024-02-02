@@ -83,13 +83,11 @@ Looks like we have a cascading failure on our hands. The leader failed, which is
 
 What should we try next? Oftentimes the solution to problems of fault tolerance and resiliency is **redundancy**: if the leader becomes unreachable, let's just fail over to a new leader.
 
-## Leader Replication with Failover
+Of course, when a failover occurs, we don't want to lose whatever was in the variable before. But we also don't know if or when a failover will be needed. That seems to mean we need to eagerly store backups of the leader's variable on other nodes, so that we're ready to fail over to another node at any time. So let's do that. 
 
-Okay, so putting a variable on the network using RPCs isn't fault tolerant; we want fault tolerance, and our idea to add fault tolerance to our existing design (and thereby 'rescue' it) is to fail over to a new leader.
+## Leader Replication
 
-Of course, when a failover occurs, we don't want to lose whatever was in the variable before. But we also don't know if or when a failover will be needed. That seems to mean we need to eagerly store backups of the leader's variable on other nodes, so that we're ready to fail over to another node at any time.
-
-So let's do that. To start, let's put a copy of our distributed variable on every node:
+To start, let's put a copy of our distributed variable on every node:
 
 DIAGRAM
 
@@ -103,21 +101,81 @@ DIAGRAM
 
 TODO introduce the terms replica and replication
 
+## Leader Failover
+
 Now we have a tentative scheme for replication. Let's come up with a scheme for failing over.
 
-(If you've worked on a distributed system before, you might have alarm bells going off in your head right now! Failovers are fraught with peril. A fully completed failover is a great thing, but a failover in progress is a rather sticky situation.)
+Before our algorithm supported failover, the answer to the question "which node is the leader?" was a compile-time constant. It could have been hardcoded, or provided via a config file. Now that we support failover, "which is node the leader" can change at runtime. We need a scheme for a node to figure out who the current leader is, at runtime. Whatever scheme we choose cannot itself rely on a leader to tell us who is leader &mdash; after all, the leader might have crashed, lost power, or gotten disconnected from the network because Ted was in a rush to go home and watch his extensive collection of ["Thundercats" cartoons](https://scholar.harvard.edu/files/mickens/files/thesaddestmoment.pdf). Since we can't rely on a leader to tell each node who is leader, let's come up with a scheme where each node independently figures out who the leader is, using its own local information.
 
-To start, let's assign every node a numerical ID. It doesn't really matter how node IDs are assigned to nodes, as long as every node has a unique ID; say for example we require the operator to assign IDs to nodes via a config file or something:
+To begin, we'll have each node periodically send out "heartbeat" messages to one another over the network. A heartbeat is a tiny network protocol you use to test whether a remote node is still reachable. A heartbeat consists of a request ("Hey (peer), are you still online?") followed by an immediate response ("Yup, I am!"). If you send a heartbeat request to another node and that other node never responds, that's pretty good evidence the node is unreachable. If a node crashes, it won't respond to any of its heartbeat requests, causing all other nodes to eventually decide that the node is unreachable.
 
-DIAGRAM
-
-Before our algorithm supported failover, the answer to the question "which node is the leader?" was a compile-time constant. It could have been hardcoded, or provided via a config file. Now that we support failover, "which node is the leader?" is answered by a runtime variable. We need a scheme for nodes to figure out who the leader is, at runtime. Also, whatever scheme we choose cannot itself rely on a leader &mdash; after all, the leader might have crashed, or gotten unplugged, or gotten disconnected from the network because Ted was in a rush to go home and watch his [extensive home collection of "Thundercats" cartoons](https://scholar.harvard.edu/files/mickens/files/thesaddestmoment.pdf).
-
-Let's try to make a scheme where each node independently figures out who the leader is, using only information it already has. To begin, we'll have each node periodically send out "heartbeat" messages to one another over the network. A heartbeat message is a network message you use to figure out whether a remote node is still reachable; a heartbeat consists of a request ("Are you still online?") and an immediate response ("Yes, I am!"). By periodically sending heartbeat requests to all its peers and tracking which peers have not responded in a long while, a node can get a pretty good idea of which nodes are online and which aren't:
+Next we need a deterministic rule for deciding who is leader: one that can run on every node simultaneously and always produce the same result. To support such a rule, let's assign every node a numerical ID. It doesn't really matter how node IDs are assigned to nodes, as long as every node has a unique ID; say for example we require the operator to assign IDs to nodes via a config file or something:
 
 DIAGRAM
 
-Next, we have each node
+Now that we have static node IDs, a simple rule that determines the rule might be:
+
+<center><i>The leader is the node with the smallest node ID.</i>
+
+Combine this with the heartbeating scheme, and our leader selection algorithm becomes:
+
+1. Take the set of node IDs of all peer nodes
+2. Eliminate the node ID of any peer which isn't responding to heartbeat requests
+3. Pick the lowest remaining node ID. That node is the leader
+
+Does this work? Let's check. 
+
+### Checking our Work
+
+Say, initially, all the nodes boot up and nobody has figured out who the leader is yet:
+
+DIAGRAM
+
+All nodes start exchanging heartbeats with one another. Say at this point nobody has faulted, so all heartbeat requests get a timely response. Each node now executes the steps of the leader selection rule above:
+
+1. First, every node starts with the full set of node IDs: $(1, 2, 3, 4, 5)$
+2. Next, every node eliminates any peers that aren't responding to heartbeats; since all nodes are online and responding to heartbeats, no IDs are eliminated. Every node finishes step 2 with the full set of node IDs: $(1,2, 3, 4, 5)$
+3. Pick the lowet remaining node ID: every node picks $1$
+
+So now node $1$ is the leader, and the RPC algorithm runs as it did previously:
+
+DIAGRAM
+
+Now, let's try the case that broke our algorithm before. Say the leader crashes; node $1$ goes offline:
+
+DIAGRAM
+
+Soon afterward, other peers start to see that node $1$ is missing its heartbeats. A new leader is needed. Each node now runs the same algorithm as before to select a leader. 
+
+1. First, every node starts with the full set of node IDs: $(1, 2, 3, 4, 5)$
+2. Eliminate nodes missing heartbeats. That's node $1$, so the remaining node IDs are: $(2, 3, 4, 5)$
+3. Pick the lowet remaining node ID: every node picks $2$
+
+And voila, the system has failed over from node 1 to node 2!
+
+DIAGRAM
+
+Seems to work! Now let's try a different kind of fault.
+
+Wind back the clock to the point where every node was healthy and node $1$ was the leader:
+
+DIAGRAM copied from before
+
+We've been looking at this network rather abstractly. In a real network, nodes aren't usually wired directly together; they're usually interconnected through neworking devices called switches:
+
+DIAGRAM
+
+Let's consider the case where two switches connecting portions of our network get disconnected:
+
+DIAGRAM
+
+Now our network has been split into two **partitions**: two different sub-networks. Nodes within the same partition (i.e. connected to the same switch) can communicate with one another, but nodes cannot communicate across partitions (because the two switches are disconnected)
+
+DIAGRAM
+
+What is our leader selection algorithm going to do in this case?
+
+TODO spell it out, should lead us straight into split brain
 
 ## Split-Brain
 

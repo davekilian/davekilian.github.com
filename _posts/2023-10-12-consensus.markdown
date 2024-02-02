@@ -71,8 +71,6 @@ This makes distributed systems a kind of funny environment to work in. It's cert
 
 The kinds of hardware failures, software glitches and network problems we've been talking about are collectively known as **faults**. Software that continues to work in spite of faults in the underlying platform is said to be **fault tolerant**. Since there is no feasible way to eradicate faults in a large enough network, your choices as a distributed systems engineer are to make your code fault tolerant, or suffer frequent downtime and outages. That's no decision at all! Everything we code in a distributed setting must be fault tolerant; it's non-negotiable.
 
-## The Leader Faults
-
 In that light, let's double-check our algorithm for making a distributed variable:
 
 DIAGRAM: another copy of the RPC diagram, last one in the previous section
@@ -106,6 +104,32 @@ DIAGRAM
 TODO introduce the terms replica and replication
 
 Now we have a tentative scheme for replication. Let's come up with a scheme for failing over.
+
+(If you've worked on a distributed system before, you might have alarm bells going off in your head right now! Failovers are fraught with peril. A fully completed failover is a great thing, but a failover in progress is a rather sticky situation.)
+
+To start, let's assign every node a numerical ID. It doesn't really matter how node IDs are assigned to nodes, as long as every node has a unique ID; say for example we require the operator to assign IDs to nodes via a config file or something:
+
+DIAGRAM
+
+Before our algorithm supported failover, the answer to the question "which node is the leader?" was a compile-time constant. It could have been hardcoded, or provided via a config file. Now that we support failover, "which node is the leader?" is answered by a runtime variable. We need a scheme for nodes to figure out who the leader is, at runtime. Also, whatever scheme we choose cannot itself rely on a leader &mdash; after all, the leader might have crashed, or gotten unplugged, or gotten disconnected from the network because Ted was in a rush to go home and watch his [extensive home collection of "Thundercats" cartoons](https://scholar.harvard.edu/files/mickens/files/thesaddestmoment.pdf).
+
+Let's try to make a scheme where each node independently figures out who the leader is, using only information it already has. To begin, we'll have each node periodically send out "heartbeat" messages to one another over the network. A heartbeat message is a network message you use to figure out whether a remote node is still reachable; a heartbeat consists of a request ("Are you still online?") and an immediate response ("Yes, I am!"). By periodically sending heartbeat requests to all its peers and tracking which peers have not responded in a long while, a node can get a pretty good idea of which nodes are online and which aren't:
+
+DIAGRAM
+
+Next, we have each node
+
+## Split-Brain
+
+## A Temporary Setback
+
+## Consensus
+
+## Peer-to-Peer, Fault Tolerant Consensus
+
+## Majority-Rules Voting
+
+
 
 
 

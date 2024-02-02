@@ -1,8 +1,118 @@
 ---
 layout: post
-title: Consensus Algorithms
+title: Consensus, FLP and Paxos
 author: Dave
 draft: true
+---
+
+<div style="padding-left: 1em; border-left: .3em solid #eee;" markdown="1">
+
+*"How can you make a reliable computer service? It may be difficult if you can’t trust anything and the entire concept of happiness is a lie designed by unseen overlords of endless [deceptive power](https://scholar.harvard.edu/files/mickens/files/thesaddestmoment.pdf)."*
+
+</div>
+
+How can you make a "distributed" variable?
+
+By that I mean: say I have a bunch of computers connected together by a network. Call each of these computers a "node." How can you make a variable that any of those computers can get or set? 
+
+DIAGRAM: nodes a network, thought bubble question mark in the middle for a variable
+
+Idea: let's pick one of the nodes and declare a regular old variable on that node. Call that node the "leader."  The leader can get or set the variable normally, since for the leader, it's just a regular old local variable. Let's also run an RPC server on the leader, and provide RPCs to get or set the variable. That way, other nodes can read and write the variable by sending get and set RPCs to the leader, respectively.
+
+DIAGRAM: one node is highlighted as the leader; all others and sending get/set RPCs.
+
+In the words, the leader allocates a variable and runs an RPC server like this:
+
+```
+leader {
+  variable := null;
+  
+  get {
+    return variable;
+  }
+  
+  set(value) {
+    variable := value;
+  }
+  
+  on client get(request) {
+    request.respond(variable);
+  }
+  
+  on client set(request) {
+    variable := request.value;
+  }
+}
+```
+
+All other nodes use a client that sends RPCs to the server, like this:
+
+```
+client {
+  get {
+    return leader.send_rpc(get);
+  }
+  
+  set(value) {
+    leader.send_rpc(set, value);
+  }
+}
+```
+
+So, did we do it? Do we have distributed variables now?
+
+## Fault Tolerance
+
+Think for a second about the device you used to open and read this webpage. Have you ever had weird little problems with it?  Freezes, or crashing apps, system-wide slowdowns, overheating, unexplained network disconnects, blue screens, anything like that? Hopefully these things don't pop up enough to be a signfiicant daily disruption, but even so I'm guessing you've run into these from time to time. How often would you say these kinds of things have happened to you? Would you ballpark the number in hours, days, weeks?
+
+Now imagine instead of having to keep just your one device up and running, you had to manage a network of hundreds of them; or maybe you're a cloud provider managing tens of thousands of them. How often do you think at least one of your computers will have one of these problems? Heck, do you think you'll ever get to a point where *all* of them are working at the same time?
+
+Welcome to the world of distributed systems! At scale, you'll find yourself dealing with rare problems all the time &mdash; even if a problem rarely affects any one computer, if you have a lot of computers, the odds any one computer is having that problem right now are pretty good. And since you're going to be deluged with these little glitches, freezes, disconnects, and so on, you have no hope of fixing them all and making them all stay fixed; and if you can't fix them, then the code running in that environment will have to live with them.
+
+This makes distributed systems a kind of funny environment to work in. It's certainly unforgiving: the platform provides few guarantees &mdash; fewer than you'd expect &mdash; and even the guarantees you get on paper don't always hold up in practice. It’s a world where anything that can go wrong will go wrong, is going wrong, and has been going wrong for weeks unnoticed. Working on distributed systems is like playing a perverse game of Simon Says, where you make assumptions you think are already very conservative, only to find out that &ndash; Simon didn’t say! &ndash; that assumption can break too. As much as you'd like say the platform isn't supposed to do something, the fact always remains that it does, and the fact that it does is now your problem. In the end, it's always your job to make the system work, even though the platform you're running on frequently doesn't.
+
+The kinds of hardware failures, software glitches and network problems we've been talking about are collectively known as **faults**. Software that continues to work in spite of faults in the underlying platform is said to be **fault tolerant**. Since there is no feasible way to eradicate faults in a large enough network, your choices as a distributed systems engineer are to make your code fault tolerant, or suffer frequent downtime and outages. That's no decision at all! Everything we code in a distributed setting must be fault tolerant; it's non-negotiable.
+
+## The Leader Faults
+
+In that light, let's double-check our algorithm for making a distributed variable:
+
+DIAGRAM: another copy of the RPC diagram, last one in the previous section
+
+What happens if the leader node goes offline? Maybe it had an operating system crash, or someone tripped over its power cable, or [Ted the Poorly Paid Datacenter Operator](https://scholar.harvard.edu/files/mickens/files/thesaddestmoment.pdf) pulled the wrong network cable while trying to fix a different problem. What happens to the rest of the system if RPCs aren't reaching the leader node?
+
+DIAGRAM: same diagram, but with the leader Xed out
+
+Looks like we have a cascading failure on our hands. The leader failed, which is a problem, in and of itself, but on top of that, none of the *working* nodes can gets or set the variable either, because they rely on RPCs to the leader and the leader isn't responding right now. So whatever fault brought down the leader, the system is not tolerating. We need fault tolerance.
+
+What should we try next? Oftentimes the solution to problems of fault tolerance and resiliency is **redundancy**: if the leader becomes unreachable, let's just fail over to a new leader.
+
+## Leader Replication with Failover
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+---
+
+
+
+
+
+
+
+
+
 ---
 
 <div markdown="1" style="width: fit-content; border: 1px solid #eee; padding-left:1em; padding-right: 1em">

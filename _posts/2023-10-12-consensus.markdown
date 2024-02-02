@@ -91,19 +91,50 @@ Okay, so putting a variable on the network using RPCs isn't fault tolerant; we w
 
 Of course, when a failover occurs, we don't want to lose whatever was in the variable before. But we also don't know if or when a failover will be needed. That seems to mean we need to eagerly store backups of the leader's variable on other nodes, so that we're ready to fail over to another node at any time.
 
-To start, let's put a copy of our distributed variable on every node in the system:
+So let's do that. To start, let's put a copy of our distributed variable on every node:
 
 DIAGRAM
 
-We'll still send get and set RPCs to the leader as before:
+We'll still send get and set RPCs to the leader as before . . .
 
 DIAGRAM
 
-Now, however, any time the leader sets the variable, it also sends an updated copy to all followers, telling each of the followers to update its backup copy of the variable:
+. . . Now, however, any time the leader sets the variable, it also sends an updated copy to all followers, telling each of the followers to update its backup copy of the variable:
 
 DIAGRAM
 
-Now that we have backups of the variable, all we need to do is fine a good way to fail over when the leader is offline.
+TODO introduce the terms replica and replication
+
+Now we have a tentative scheme for replication. Let's come up with a scheme for failing over.
+
+
+
+
+
+
+
+
+
+
+
+
+
+---
+
+TODO
+
+* Get to the point of showing split brain
+* A section called "A Temporary Setback" in which we realize we were solving the wrong problem
+* The new problem is getting a bunch of nodes to agree on something. 
+* Solving this problem allows us to rescue single-leader-with-replication approach
+* Solving this new problem would also solve the distributed variable problem without the single leader approach at all; we won't need a leader at all any more, we just allocate a copy of the variable on every node and run this algorithm to make the nodes agree what the latest value is.
+* Now we're ready to define this as the consensus problem and list its properties
+* We can consider revisiting single leader with failover as a broken consensus algorithm that's broken because it's not fault tolerant
+* Segue into the idea of voting, that puts us back on the track we were on in the old draft with like half the word count
+
+---
+
+
 
 
 

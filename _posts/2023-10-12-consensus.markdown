@@ -115,7 +115,7 @@ DIAGRAM
 
 Now that we have static node IDs, a simple rule that determines the rule might be:
 
-<center><i>The leader is the node with the smallest node ID.</i>
+<center><i>The leader is the node with the smallest node ID.</i></center>
 
 Combine this with the heartbeating scheme, and our leader selection algorithm becomes:
 
@@ -123,11 +123,7 @@ Combine this with the heartbeating scheme, and our leader selection algorithm be
 2. Eliminate the node ID of any peer which isn't responding to heartbeat requests
 3. Pick the lowest remaining node ID. That node is the leader
 
-Does this work? Let's check. 
-
-### Checking our Work
-
-Say, initially, all the nodes boot up and nobody has figured out who the leader is yet:
+Does this work? Let's check. Say, initially, all the nodes boot up and nobody has figured out who the leader is yet:
 
 DIAGRAM
 
@@ -155,9 +151,13 @@ And voila, the system has failed over from node 1 to node 2!
 
 DIAGRAM
 
-Seems to work! Now let's try a different kind of fault.
+Ah, a beautiful sight to behold. So, we're good, right?
 
-Wind back the clock to the point where every node was healthy and node $1$ was the leader:
+Right?
+
+## Split-Brain
+
+Let's try a different kind of fault. Wind back the clock to the point where every node was healthy and node $1$ was the leader:
 
 DIAGRAM copied from before
 
@@ -175,15 +175,33 @@ DIAGRAM
 
 What is our leader selection algorithm going to do in this case?
 
-TODO spell it out, should lead us straight into split brain
+On the left hand partition, nodes 1-3 can still heartbeat with each other, but not nodes 4-5. So when they select a leader, they pick from the node ID set $(1, 2, 3)$, and decide that node $1$ is still the leader.
 
-## Split-Brain
+On the right hand partition, however, nodes 4-5 can heartbeat with each other but not nodes 1-3. So when *these* nodes select a leader, they pick from the set $(4, 5)$ and choose $4$. 
+
+That's right &mdash; our system has two leaders!
+
+DIAGRAM
+
+This is a disaster! Our single distributed variable has forked into two distributed variables, and nobody can detect that anything is wrong. If anyone has written code that calls set() on the variable and assumes all other nodes will see the result of that set() going forward, well, we didn't manage to provide that guarantee, and that code is now broken. But a distributed variable that doesn't provide this guarantee is a useless tool indeed.
+
+This situation, where the system is only supposed to have one leader but has accidentally split into two, is called **split-brain**. Split-brain is the bane of every distributed systems engineer.
 
 ## A Temporary Setback
 
-## Consensus
+It's a story as old as <s>time</s> distributed computing itself: we accidentally created an algorithm that wasn't fault tolerant &mdash; a single-leader algorithm that can end up with no leaders &mdash; and in trying to fix that, we ended up with split-brain &mdash; a single-leader algorithm that can end up with too many leaders. Neither is acceptable. We must keep working.
 
-## Peer-to-Peer, Fault Tolerant Consensus
+Where do we go next?
+
+If we want to continue down the line of thought we're already on, we need to find a failover protocol that is not prone to split-brain. Every node independently tracks who is leader; we're looking for a way to keep each node's copy of the "who is leader?" variable in sync. We want to have one well-defined cutover point, at which point all nodes switch from the old leader to the new one. That way nobody can get left behind on the old leader, preventing split-brain.
+
+In more general terms, we have a bunch of nodes, each of which stores a copy of some variable; we want an algorithm that can update the variable, keeping all copies of that variable in sync. The problem of keeping copies of a variable in sync is called **consensus**.
+
+An algorithm that solves consensus would certainly be useful for implementing safe failover; but beyond that, a consensus algorithm might also be a solution to the original problem! To make a distributed variable, maybe we could make an instance of that variable on each node, and then use a consensus algorithm to keep all the copies of that variable in sync.
+
+Sounds like consensus is a good direction to go next.
+
+## Consensus
 
 ## Majority-Rules Voting
 
@@ -198,23 +216,6 @@ TODO spell it out, should lead us straight into split brain
 
 
 
-
-
-
----
-
-TODO
-
-* Get to the point of showing split brain
-* A section called "A Temporary Setback" in which we realize we were solving the wrong problem
-* The new problem is getting a bunch of nodes to agree on something. 
-* Solving this problem allows us to rescue single-leader-with-replication approach
-* Solving this new problem would also solve the distributed variable problem without the single leader approach at all; we won't need a leader at all any more, we just allocate a copy of the variable on every node and run this algorithm to make the nodes agree what the latest value is.
-* Now we're ready to define this as the consensus problem and list its properties
-* We can consider revisiting single leader with failover as a broken consensus algorithm that's broken because it's not fault tolerant
-* Segue into the idea of voting, that puts us back on the track we were on in the old draft with like half the word count
-
----
 
 
 

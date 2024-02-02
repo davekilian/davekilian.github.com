@@ -87,7 +87,7 @@ What should we try next? Oftentimes the solution to problems of fault tolerance 
 
 ## Leader Replication with Failover
 
-Okay, so putting a variable on the network using RPCs isn't fault tolerant; we want fault tolerance, and our idea to add fault tolerance to the design (and thereby 'rescue' it) is to fail over to a new leader.
+Okay, so putting a variable on the network using RPCs isn't fault tolerant; we want fault tolerance, and our idea to add fault tolerance to our existing design (and thereby 'rescue' it) is to fail over to a new leader.
 
 Of course, when a failover occurs, we don't want to lose whatever was in the variable before. But we also don't know if or when a failover will be needed. That seems to mean we need to eagerly store backups of the leader's variable on other nodes, so that we're ready to fail over to another node at any time.
 
@@ -103,25 +103,9 @@ Now, however, any time the leader sets the variable, it also sends an updated co
 
 DIAGRAM
 
-This way, when we need to fail over, the followers all have their own copies of the variable. Sound good? Sadly, there are problems with this approach.
+Now that we have backups of the variable, all we need to do is fine a good way to fail over when the leader is offline.
 
-### The Little Problem
 
-One problem is that a leader failover can occur before an update has been disseminated to all followers. This creates a problem where a new leader needs to be selected, but not all nodes have the latest update:
-
-DIAGRAM
-
-We really want the new leader to be up-to-date. Luckily, this problem is fairly easy to fix: we just tweak the algorithm a bit so that the leader and each of the followers each track a version number in addition to the value itself:
-
-DIAGRAM
-
-Whenever the leader gets an RPC to set the variable, it not only changes the variable, but also increments the sequence number, and sends the (new value, new version number) tuple to all followers:
-
-DIAGRAM
-
-Now if the leader fails before all the followers are updated, 
-
-### The Big Problem
 
 
 

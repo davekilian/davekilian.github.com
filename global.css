@@ -1,4 +1,69 @@
-@import url('https://fonts.googleapis.com/css?family=Source+Sans+Pro:400,400i,700&display=swap');
+/* <link rel="stylesheet" href="{{ '/assets/bootstrap.min.css' | relative_url }}" /> */
+@font-face {
+  font-family: 'Source Sans Pro';
+  font-style: normal;
+  font-weight: 400;
+  src: url('./assets/fonts/source-sans-pro-v13-latin-regular.eot'); /* IE9 Compat Modes */
+  src: local('Source Sans Pro Regular'), local('SourceSansPro-Regular'),
+       url('./assets/fonts/source-sans-pro-v13-latin-regular.eot?#iefix') format('embedded-opentype'), /* IE6-IE8 */
+       url('./assets/fonts/source-sans-pro-v13-latin-regular.woff2') format('woff2'), /* Super Modern Browsers */
+       url('./assets/fonts/source-sans-pro-v13-latin-regular.woff') format('woff'), /* Modern Browsers */
+       url('./assets/fonts/source-sans-pro-v13-latin-regular.ttf') format('truetype'), /* Safari, Android, iOS */
+       url('./assets/fonts/source-sans-pro-v13-latin-regular.svg#SourceSansPro') format('svg'); /* Legacy iOS */
+}
+/* source-sans-pro-700 - latin */
+@font-face {
+  font-family: 'Source Sans Pro';
+  font-style: normal;
+  font-weight: 700;
+  src: url('./assets/fonts/source-sans-pro-v13-latin-700.eot'); /* IE9 Compat Modes */
+  src: local('Source Sans Pro Bold'), local('SourceSansPro-Bold'),
+       url('./assets/fonts/source-sans-pro-v13-latin-700.eot?#iefix') format('embedded-opentype'), /* IE6-IE8 */
+       url('./assets/fonts/source-sans-pro-v13-latin-700.woff2') format('woff2'), /* Super Modern Browsers */
+       url('./assets/fonts/source-sans-pro-v13-latin-700.woff') format('woff'), /* Modern Browsers */
+       url('./assets/fonts/source-sans-pro-v13-latin-700.ttf') format('truetype'), /* Safari, Android, iOS */
+       url('./assets/fonts/source-sans-pro-v13-latin-700.svg#SourceSansPro') format('svg'); /* Legacy iOS */
+}
+
+/* libre-baskerville-regular - latin */
+@font-face {
+  font-family: 'Libre Baskerville';
+  font-style: normal;
+  font-weight: 400;
+  src: url('./assets/fonts/libre-baskerville-v14-latin-regular.eot'); /* IE9 Compat Modes */
+  src: local(''),
+       url('./assets/fonts/libre-baskerville-v14-latin-regular.eot?#iefix') format('embedded-opentype'), /* IE6-IE8 */
+       url('./assets/fonts/libre-baskerville-v14-latin-regular.woff2') format('woff2'), /* Super Modern Browsers */
+       url('./assets/fonts/libre-baskerville-v14-latin-regular.woff') format('woff'), /* Modern Browsers */
+       url('./assets/fonts/libre-baskerville-v14-latin-regular.ttf') format('truetype'), /* Safari, Android, iOS */
+       url('./assets/fonts/libre-baskerville-v14-latin-regular.svg#LibreBaskerville') format('svg'); /* Legacy iOS */
+}
+/* libre-baskerville-italic - latin */
+@font-face {
+  font-family: 'Libre Baskerville';
+  font-style: italic;
+  font-weight: 400;
+  src: url('./assets/fonts/libre-baskerville-v14-latin-italic.eot'); /* IE9 Compat Modes */
+  src: local(''),
+       url('./assets/fonts/libre-baskerville-v14-latin-italic.eot?#iefix') format('embedded-opentype'), /* IE6-IE8 */
+       url('./assets/fonts/libre-baskerville-v14-latin-italic.woff2') format('woff2'), /* Super Modern Browsers */
+       url('./assets/fonts/libre-baskerville-v14-latin-italic.woff') format('woff'), /* Modern Browsers */
+       url('./assets/fonts/libre-baskerville-v14-latin-italic.ttf') format('truetype'), /* Safari, Android, iOS */
+       url('./assets/fonts/libre-baskerville-v14-latin-italic.svg#LibreBaskerville') format('svg'); /* Legacy iOS */
+}
+/* libre-baskerville-700 - latin */
+@font-face {
+  font-family: 'Libre Baskerville';
+  font-style: normal;
+  font-weight: 700;
+  src: url('./assets/fonts/libre-baskerville-v14-latin-700.eot'); /* IE9 Compat Modes */
+  src: local(''),
+       url('./assets/fonts/libre-baskerville-v14-latin-700.eot?#iefix') format('embedded-opentype'), /* IE6-IE8 */
+       url('./assets/fonts/libre-baskerville-v14-latin-700.woff2') format('woff2'), /* Super Modern Browsers */
+       url('./assets/fonts/libre-baskerville-v14-latin-700.woff') format('woff'), /* Modern Browsers */
+       url('./assets/fonts/libre-baskerville-v14-latin-700.ttf') format('truetype'), /* Safari, Android, iOS */
+       url('./assets/fonts/libre-baskerville-v14-latin-700.svg#LibreBaskerville') format('svg'); /* Legacy iOS */
+}
 
 html
 {
@@ -7,91 +72,63 @@ html
 
 body
 {
-    font-family: "Source Sans Pro", sans-serif;
-    font-size: 17px;
+    /* font-size: 100%; */
+    -webkit-font-smoothing: antialiased;
+    font-family: "Libre Baskerville", serif;
+    font-size: 15.25px;
     font-weight: 400;
     line-height: 1.618;
     color: black;
 }
 
-ul.nav
+p
 {
-    list-style-type: none;
-    position:relative;
-    margin:0;
-    padding:0;
-    margin-top:30px
+    margin-top: 1em;
+    margin-bottom: 1em;
+    text-align: left;
 }
 
-ul.nav li
+li p
 {
-    border:none;
-    padding:0;
-    margin:0;
-    margin-bottom:10px
+    text-indent: 0;
 }
 
-ul.nav h4
+blockquote
 {
-    font-weight: bold;
+    border: 1px solid #888;
+    border-radius: 5px;
+    box-shadow: 0 .3em 0 #eee;
+    padding: 2em;
+    font-size: 100%;
 }
 
-div.sidebar
+blockquote p
 {
-    background-color:#f8f8f8;
-    padding: 2em; 
-    position: fixed; 
-    right: 0px; 
-    height: 100%;
+    text-align: left;
+    text-indent: 0;
 }
 
-div.sidebar h1,h5
+blockquote p:first-child,
+blockquote h2:first-child,
+blockquote h3:first-child
 {
-    font-weight: bold;
+    margin-top: 0;
 }
 
-h2
+blockquote li
 {
-    padding-top: .5em;
+    margin-bottom: 1em;
 }
 
-div.post-blurb
+ul, ol
 {
-    display: block;
-    color: #888;
-    margin: 0;
-    padding: 0;
+    margin-top: 1em;
+    margin-bottom: 1em;
 }
 
-div.post-blurb:hover
+dd
 {
-    color: black;
-}
-
-div.post-container
-{
-    max-width: 48em;
-    margin-left: auto;
-    margin-right: auto;
-    padding-left: 10px;
-    padding-right: 10px;
-}
-
-div.post-content img,
-div.post-content blockquote
-{
-    display: block;
-    max-width: min(100%, 36em);
-    margin-left: auto;
-    margin-right: auto;
-    border: 1px solid #eee;
-}
-
-.embedded-figure
-{
-    max-width: min(100%, 36em);
-    margin-left: auto;
-    margin-right: auto;
+    margin-bottom: 1em;
 }
 
 pre
@@ -113,83 +150,111 @@ pre code
     white-space: pre;
 }
 
-div.post-date
+h2
 {
-    font-size: 13.5pt;
+    padding-top: .5em;
 }
 
-div.post-content h1,
-div.post-content h2,
-div.post-content h3,
-div.post-content h4,
-div.post-content h5,
-div.post-content h6,
-h1.post-title
+h1, h2, h3, h4, h5, h6
 {
     font-family: "Source Sans Pro", sans-serif;
-    font-weight: 400;
+    font-weight: 700;
+    letter-spacing: -0.03em;
+    color: rgb(30, 30, 30);
+    margin-top: .5em;
+    margin-bottom: .25em;
 }
 
-div.post-content h1,
-h1.post-title
-{
-    font-size: 40px;
-}
+h6        { font-size: 1.00em; }
+h5        { font-size: 1.20em; }
+h4        { font-size: 1.44em; }
+h3        { font-size: 1.73em; }
+h2        { font-size: 2.07em; }
+h1, title { font-size: 2.49em; }
 
 div.post-content table
 {
-    max-width: 90%;
     margin: auto;
+    margin-bottom: 1.5em;
+    border-radius: 10px;
+    white-space: nowrap;
+}
+
+div.overflows
+{
+    overflow-x: auto;
+    margin: auto;
+    max-width: 90vw;
+}
+
+div.overflows-inset
+{
+    overflow-x: auto;
+    margin: auto;
+    max-width: 70vw;
 }
 
 div.post-content th,
 div.post-content td
 {
-    border: 1px solid #777;
-    padding: .15em .4em .15em .4em;
-}
-
-div.post-content h2
-{
-    padding-bottom: .1em;
-    border-bottom: 1px solid #eee;
-}
-
-p
-{
-    margin-top: 0.85em;
-    margin-bottom: 0.85em;
-    text-align: left;
-}
-
-li p
-{
-    text-indent: 0;
-}
-
-blockquote
-{
     border: 1px solid #ccc;
-    border-radius: 5px;
-    box-shadow: 0 .3em 0 #eee;
+    padding-left: .7em;
+    padding-right: .7em;
+    padding-top: .2em;
+    padding-bottom: .2em;
 }
 
-blockquote p
+div.post-content tr:nth-child(odd)
 {
-    color: #454545;
-    text-align: left;
-    text-indent: 0;
+    background-color: #f7f7f7;
 }
 
-blockquote p:first-child
+div.post-content th
 {
-    margin-top: 0;
+    background-color: white;
+    border-bottom: 2px solid #ccc;
 }
 
-ul, ol
+div.post-content img,
+div.post-content blockquote
 {
-    margin-top: 1em;
-    margin-bottom: 1em;
+    display: block;
+    margin-left: auto;
+    margin-right: auto;
+    border: 1px solid #eee;
+}
+
+div.post-content img
+{
+    max-width: min(100%, 36em);
+}
+
+.embedded-figure
+{
+    max-width: min(100%, 36em);
+    margin-left: auto;
+    margin-right: auto;
+}
+
+div.post-container
+{
+    max-width: 48em;
+    margin-left: auto;
+    margin-right: auto;
+    padding-left: 10px;
+    padding-right: 10px;
+}
+
+.embedded-figure
+{
+    max-width: min(100%, 36em);
+    margin-left: auto;
+    margin-right: auto;
+}
+
+div.post-date
+{
+    font-size: 13.5pt;
 }
 
 dd
@@ -197,7 +262,13 @@ dd
     margin-bottom: 1em;
 }
 
-blockquote
+div.titlebar h1,
+div.titlebar h2,
+div.titlebar h3,
+div.titlebar h4,
+div.titlebar h5,
+div.titlebar h6,
+div.post-blurb h2
 {
-    font-size: 100%;
+    font-weight: 400;
 }

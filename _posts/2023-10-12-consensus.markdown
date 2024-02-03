@@ -5,20 +5,23 @@ author: Dave
 draft: true
 ---
 
-<div style="padding-left: 1em; padding-top: .1em; padding-bottom: .1em; border-left: .3em solid #eee; color: #333" markdown="1">
-*"How can you make a reliable computer service? It may be difficult if you can’t trust anything and the entire concept of happiness is a lie designed by unseen overlords of endless [deceptive power](https://scholar.harvard.edu/files/mickens/files/thesaddestmoment.pdf)."*
+Say I have a bunch of computers connected by a network. Call each of the computers a **node**. We might picture the network something like this:
 
-</div>
+DIAGRAM
 
-How can you make a "distributed" variable? By that I mean: say I have a bunch of computers connected together by a network. Call each of these computers a "node." How can you make a variable that any of those computers can get or set? How do you share a single variable across a group of nodes?
+It's easy enough to make a variable on any one of these nodes. How can we make a "distributed" variable &mdash; one any of these nodes can get and set?
 
 DIAGRAM: nodes a network, thought bubble question mark in the middle for a variable
 
-Well, we all know how to make regular, single-node variables. Let's pick one of the nodes and declare a regular old variable on that node. Call that node the "leader."  The leader can get or set the variable normally, since for the leader, it's just a regular old local variable. Let's also run an RPC server on the leader, and provide RPCs to get or set the variable. That way, other nodes can read and write the variable by sending get and set RPCs to the leader, respectively.
+As I said, it's easy enough to make a regular, single-node variable. So let's pick one of these nodes and make the variable on that node. That node is now special; let's call it the "leader."
+
+DIAGRAM
+
+The leader can or set the variable normally, because for the leader it's just a regular variable in local memory. Let's also run an RPC server on the leader, and implement RPC calls to get and set the variable. Then the other nodes can get and set the variable by sending the corresponding RPCs to the leader:
 
 DIAGRAM: one node is highlighted as the leader; all others and sending get/set RPCs.
 
-In the words, the leader allocates a variable and runs an RPC server like this:
+The best thing this design has going for it so far is that it's simple. We can sketch out what the code would look like without taking up very much space. The leader might look something like this:
 
 ```
 leader {
@@ -42,7 +45,7 @@ leader {
 }
 ```
 
-All other nodes use a client that sends RPCs to the server, like this:
+And the other nodes &mdash; the "followers" &mdash; might work like this:
 
 ```
 client {
@@ -56,57 +59,110 @@ client {
 }
 ```
 
-So, did we do it? Do we have distributed variables now?
+So, have we done it? Do we have distributed variables now? I would claim technically yes, we did, but the system we have so far isn't very useful in the real world. As is sadly often the case, things seem simple so far only because we've missed a key aspect of the problem.
 
 ## Fault Tolerance
 
-Think for a second about the device you used to open and read this webpage. Have you ever had weird little problems with it?  Freezes, or crashing apps, system-wide slowdowns, overheating, unexplained network disconnects, blue screens, anything like that? Hopefully these things don't pop up enough to be a signfiicant daily disruption, but even so I'm guessing you've run into these from time to time. How often would you say these kinds of things have happened to you? Would you ballpark the number in hours, days, weeks?
+<div style="margin-left: 1em; padding-left: 1em; padding-top: .1em; padding-bottom: .1em; border-left: .3em solid #eee; color: #333" markdown="1">
+*"How can you make a reliable computer service? It may be difficult if you can’t trust anything and the entire concept of happiness is a lie designed by unseen overlords of [endless deceptive power](https://scholar.harvard.edu/files/mickens/files/thesaddestmoment.pdf)."*
 
-Now imagine instead of having to keep just your one device up and running, you had to manage a network of hundreds of them; or maybe you're a cloud provider managing tens of thousands of them. How often do you think at least one of your computers will have one of these problems? Heck, do you think you'll ever get to a point where *all* of them are working at the same time?
+</div>
 
-Welcome to the world of distributed systems! At scale, you'll find yourself dealing with rare problems all the time &mdash; even if a problem rarely affects any one computer, if you have a lot of computers, the odds any one computer is having that problem right now are pretty good. And since you're going to be deluged with these little glitches, freezes, disconnects, and so on, you have no hope of fixing them all and making them all stay fixed; and if you can't fix them, then the code running in that environment will have to live with them.
+Think about the device you're using right now to read this page. Have you ever had weird little problems with it? Freezes, crashing apps, system slowdowns, overheating, unexplained network disconnects, blue screens, anything like that? In the distributed systems world, we call these little failures **faults**. While your device probably (hopefully) doesn't fault often enough to be a major disruption day to day, I'm guessing it still from time to time. How often would you say that is? Once every few hours, days, or weeks?
 
-This makes distributed systems a kind of funny environment to work in. It's certainly unforgiving: the platform provides few guarantees &mdash; fewer than you'd expect &mdash; and even the guarantees you get on paper don't always hold up in practice. It’s a world where anything that can go wrong will go wrong, is going wrong, and has been going wrong for weeks unnoticed. Working on distributed systems is like playing a perverse game of Simon Says, where you make assumptions you think are already very conservative, only to find out that &ndash; Simon didn’t say! &ndash; that assumption can break too. As much as you'd like say the platform isn't supposed to do something, the fact always remains that it does, and the fact that it does is now your problem. In the end, it's always your job to make the system work, even though the platform you're running on frequently doesn't.
+Now take that number and multiply it by a thousand. That's how often you would be dealing faults when managing a fleet of a thousand devices! And your device probably spends most of its time doing absolutely nothing (doing nothing is great for battery life after all), so to estimate what it's like to run a thousand servers, we ought to multiply that number by another factor of a thousand. Did you end up with a silly-big number?
 
-The kinds of hardware failures, software glitches and network problems we've been talking about are collectively known as **faults**. Software that continues to work in spite of faults in the underlying platform is said to be **fault tolerant**. Since there is no feasible way to eradicate faults in a large enough network, your choices as a distributed systems engineer are to make your code fault tolerant, or suffer frequent downtime and outages. That's no decision at all! Everything we code in a distributed setting must be fault tolerant; it's non-negotiable.
+This is what makes distributed systems a kind of funny environment to work in. The platform running your code provides surprisingly few guarantees, and even the guarantees you get on paper don't always hold up in practice. It’s a world where anything that can go wrong will go wrong, is going wrong, and has been going wrong for weeks unnoticed. Working on distributed systems is like playing a perverse game of Simon Says, where you think you've been careful, checked your assumptions, covered your bases, only to find out that &mdash; Simon didn't say! &mdash; there's yet another thing that can break in a way you didn't expect.
+
+As a software person, it's tempting to write code that assumes the underlying platforms always works, and when the platform doesn't work, leading to outages and downtime, it's tempting to tell the hardware people to fix their stuff. But the hardware people are managing a huge fleet, and they're constantly deluged by problem after unexplainable problem. You'd be best off writing code that anticipates these problems, and works despite them. In distributed systems parlance, we'd say that you need to make your code **fault tolerant**. It's that, or frequent downtime, outages, and unhappy users!
+
+That was the aspect of the problem we were missing: we don't just want "distributed variables that any node can get or set." We also want that variable to be fault-tolerant.
+
+## Finding Fault
 
 In that light, let's double-check our algorithm for making a distributed variable:
 
 DIAGRAM: another copy of the RPC diagram, last one in the previous section
 
-What happens if the leader node goes offline? Maybe it had an operating system crash, or someone tripped over its power cable, or [Ted the Poorly Paid Datacenter Operator](https://scholar.harvard.edu/files/mickens/files/thesaddestmoment.pdf) pulled the wrong network cable while trying to fix a different problem. What happens to the rest of the system if RPCs aren't reaching the leader node?
+What happens if a random node goes offline? Maybe it had an operating system crash, or someone tripped over its power cable, or [Ted the Poorly Paid Datacenter Operator](https://scholar.harvard.edu/files/mickens/files/thesaddestmoment.pdf) pulled the wrong network cable while trying to fix a different problem.
+
+Well, if I pick a node at random, most likely I'll end up picking one of the follower nodes; there are so many followers, and only one leader. If a follower node goes offline, we should be safe; the variable is safe and sound on the leader node, which is still working, and all the other nodes can still contact the leader, so they're not disrupted by the crash:
+
+DIAGRAM: same diagram with a random follower Xed out
+
+What happens if the leader node goes offline?
 
 DIAGRAM: same diagram, but with the leader Xed out
 
-Looks like we have a cascading failure on our hands. The leader failed, which is a problem, in and of itself, but on top of that, none of the *working* nodes can gets or set the variable either, because they rely on RPCs to the leader and the leader isn't responding right now. So whatever fault brought down the leader, the system is not tolerating. We need fault tolerance.
+Now we have a problem! It's a cascading failure: now that the leader is gone, so is the variable! The follower nodes are still up and running, but all they know how to do is send get/set RPCs to the leader, and the leader ain't responding. It would seem the variable as a whole has faulted. Since one fault (namely, the leader going offline) was enough to make our distributed variable fault, it would seem our distributed variable was not fault tolerant after all. We need to fix that.
 
-What should we try next? Oftentimes the solution to problems of fault tolerance and resiliency is **redundancy**: if the leader becomes unreachable, let's just fail over to a new leader.
+What should we try next? Oftentimes the solution to problems of fault tolerance is **redundancy**: since the leader can crash, let's set up some backup leaders, and **fail over** by selecting a new leader when the current leader fails. Let's try it out.
 
-Of course, when a failover occurs, we don't want to lose whatever was in the variable before. But we also don't know if or when a failover will be needed. That seems to mean we need to eagerly store backups of the leader's variable on other nodes, so that we're ready to fail over to another node at any time. So let's do that. 
-
-## Leader Replication
+## Leader Failover
 
 To start, let's put a copy of our distributed variable on every node:
 
 DIAGRAM
 
-We'll still send get and set RPCs to the leader as before . . .
+Each copy of the variable is called a **replica** of that variable. As before, we'll still implement our distributed variable by having the followers send get and set RPCs to the leader:
 
 DIAGRAM
 
-. . . Now, however, any time the leader sets the variable, it also sends an updated copy to all followers, telling each of the followers to update its backup copy of the variable:
+Now, however, any time the leader sets the variable, it also sends an updated copy to all followers, telling each of the followers to update its backup copy of the variable:
 
 DIAGRAM
 
-TODO introduce the terms replica and replication
+The process of updating all the replicas is called **replication**. Now that we've sketched out a tentative scheme for replication, let's figure out how to fail over.
 
-## Leader Failover
+Up until now, our the answer to the question "which node is the leader?" was a compile-time constant. It could have been hardcoded, or provided via a config file. Now that we support failover, the leader can change at runtime, so we need a runtime algorithm for determining who currently is leader. Also, whatever scheme we come up with cannot itself rely on a leader to tell us who is leader &mdash; the whole point is the leader might have crashed, lost power, or gotten disconnected from the network because Ted was in a rush to go home and watch his extensive collection of ["Thundercats" cartoons](https://scholar.harvard.edu/files/mickens/files/thesaddestmoment.pdf).
 
-Now we have a tentative scheme for replication. Let's come up with a scheme for failing over.
+Let's see if we can find a scheme where each node independently figures out who the leader is, using its own local information. Maybe, if we can make it so every node has the same local information and every node runs the same deterministic algorithm using that information to figure out who the leader is, then they'll all independently figure out who the leader is without having to coordinate with one another!
 
-Before our algorithm supported failover, the answer to the question "which node is the leader?" was a compile-time constant. It could have been hardcoded, or provided via a config file. Now that we support failover, "which is node the leader" can change at runtime. We need a scheme for a node to figure out who the current leader is, at runtime. Whatever scheme we choose cannot itself rely on a leader to tell us who is leader &mdash; after all, the leader might have crashed, lost power, or gotten disconnected from the network because Ted was in a rush to go home and watch his extensive collection of ["Thundercats" cartoons](https://scholar.harvard.edu/files/mickens/files/thesaddestmoment.pdf). Since we can't rely on a leader to tell each node who is leader, let's come up with a scheme where each node independently figures out who the leader is, using its own local information.
+Start by assigning every node a numerical ID:
 
-To begin, we'll have each node periodically send out "heartbeat" messages to one another over the network. A heartbeat is a tiny network protocol you use to test whether a remote node is still reachable. A heartbeat consists of a request ("Hey (peer), are you still online?") followed by an immediate response ("Yup, I am!"). If you send a heartbeat request to another node and that other node never responds, that's pretty good evidence the node is unreachable. If a node crashes, it won't respond to any of its heartbeat requests, causing all other nodes to eventually decide that the node is unreachable.
+DIAGRAM
+
+We'll also assume every node knows all the other nodes' IDs as well as its own (maybe this information is hardcoded, or provided via a config file). Once we have a set of unique numerical IDs, one of the simplest deterministic rules we can use to pick a leader is a **bully algorithm**, such as "pick the node with the lowest ID." So in this network . . .
+
+DIAGRAM every node is labelled with an ID 1-5
+
+. . . node 1 would be the leader, because its ID is numerically the lowest.
+
+So far our rule for picking a leader always picks the same leader, so we haven't actually made a failover scheme. But it's easy enough to augment this to make it a failover scheme: just run the rule on the set of node IDs that haven't failed.
+
+To support that idea, we'll have each node periodically send out "heartbeat" messages to one another over the network. A heartbeat is a tiny network protocol you use to test whether a remote node is still reachable. A heartbeat consists of a request ("Hey (peer), are you still online?") followed by an immediate response ("Yup, I am!"). A node that's offline can't respond to heartbeat requests, so sending a heartbeat to a peer node and not getting a response is pretty good evidence that peer is offline.
+
+TODO finish refactoring past here
+
+----
+
+
+
+
+
+
+
+
+
+If you send a heartbeat request to another node and that other node never responds, that's p
+
+
+
+
+
+---
+
+TODO decompose the problem from here. Start with a bully algorithm, then come up with heartbeats as a failure detector
+
+---
+
+
+
+
+
+
+
+To begin, we'll have 
 
 Next we need a deterministic rule for deciding who is leader: one that can run on every node simultaneously and always produce the same result. To support such a rule, let's assign every node a numerical ID. It doesn't really matter how node IDs are assigned to nodes, as long as every node has a unique ID; say for example we require the operator to assign IDs to nodes via a config file or something:
 

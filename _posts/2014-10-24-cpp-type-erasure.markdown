@@ -143,7 +143,7 @@ When we were using interfaces, we could store an instance of each of `Cow`,
 ~~~cpp
 void pullTheString()
 {
-    Animal *animals[] = { new Cow, new Pig, new Dog };
+    Animal *animals[] = { new Cow(), new Pig(), new Dog() };
 
     size_t len = sizeof(animals) / sizeof(Animal*);
     size_t index = rand() % len;
@@ -156,7 +156,7 @@ However, with the template-based polymorphism approach, we couldn't create this
 array, because there is no common subtype for the array:
 
 ~~~cpp
-    ??? animals[] = { new Cow, new Pig, new Dog };
+    ??? animals[] = { new Cow(), new Pig(), new Dog() };
 ~~~
 
 The second drawback is a little more subtle. 
@@ -244,9 +244,9 @@ void pullTheString()
 {
     MyAnimal *animals[] = 
     {
-        new MyCow, 
-        new MyPig, 
-        new MyDog
+        new MyCow(), 
+        new MyPig(), 
+        new MyDog()
     };
 
     size_t len = sizeof(animals) / sizeof(Animal*);
@@ -274,15 +274,15 @@ us: by using templates for polymorphism ...
 template <typename T>
 class AnimalWrapper : public MyAnimal
 {
-    const T &m_animal;
+    const T *m_animal;
 
 public:
-    AnimalWrapper(const T &animal)
+    AnimalWrapper(const T *animal)
         : m_animal(animal)
     { }
 
-    const char *see() const { return m_animal.see(); }
-    const char *say() const { return m_animal.say(); }
+    const char *see() const { return m_animal->see(); }
+    const char *say() const { return m_animal->say(); }
 };
 ~~~
 
@@ -294,12 +294,12 @@ void pullTheString()
 {
     MyAnimal *animals[] = 
     {
-        new AnimalWrapper(Cow()),
-        new AnimalWrapper(Pig()),
-        new AnimalWrapper(Dog()),
+        new AnimalWrapper(new Cow()),
+        new AnimalWrapper(new Pig()),
+        new AnimalWrapper(new Dog()),
     };
 
-    size_t len = sizeof(animals) / sizeof(Animal*);
+    size_t len = sizeof(animals) / sizeof(Animal *);
     size_t index = rand() % len;
 
     seeAndSay(animals[index]);
@@ -516,3 +516,6 @@ For more information on C++'s type erasure idiom, try ...
 * [This cplusplus.com article](http://www.cplusplus.com/articles/oz18T05o/)
 * [Type Erasure with Merged Concepts](http://aherrmann.github.io/programming/2014/10/19/type-erasure-with-merged-concepts/)
 
+## Special Thanks
+
+Thanks to Šimon Bařinka for pointing out an object lifetime bug in a previous draft!

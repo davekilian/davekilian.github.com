@@ -5,8 +5,7 @@ author: Dave
 draft: true
 ---
 
-<div style="padding-left: 1em; border-left: .3em solid #eee;" markdown="1">
-
+<div style="padding-left: 1em; padding-top: .1em; padding-bottom: .1em; border-left: .3em solid #eee; color: #333" markdown="1">
 *"How can you make a reliable computer service? It may be difficult if you can’t trust anything and the entire concept of happiness is a lie designed by unseen overlords of endless [deceptive power](https://scholar.harvard.edu/files/mickens/files/thesaddestmoment.pdf)."*
 
 </div>

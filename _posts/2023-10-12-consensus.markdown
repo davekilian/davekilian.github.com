@@ -233,11 +233,16 @@ Each node has its own local "who is leader?" variable; what we're looking for no
 
 To say that again more generally: we have a bunch of nodes, each node stores its own copy of some variable, and we want the nodes to agree amongst themselves what is the current value of that variable. This is the definition of a well-known problem in distributed systems called the **consensus problem**. The problem we're solving has a name, that means we must be on the right track :-)
 
-Consensus is the problem of getting a group of nodes to agree on the value of some variable they each store a copy of. If we had such an algorithm, we could apply it to the failover split-brain problem we have on our hands; but more interestingly, we could alternately just use such a consensus algorithm to solve the original problem at hand. The original goal was to design a distributed variable that any node could get and set; if we had a working consensus algorithm, then one way to do that would be to have each node store its own local copy of the distributed variable, and then have all the nodes use the consensus algorithm to keep their local copies of the variable in sync.
+Consensus is the problem of getting a group of nodes to agree on the value of some variable they each store a copy of. If we had such an algorithm, we could apply it to the failover split-brain problem we have on our hands. However, we could alternately just use such a consensus algorithm to solve the original problem at hand. Our original goal was to design a distributed variable that any node could get and set; if we had a working consensus algorithm, then we could accomplish that by having each node store its own local copy of the distributed variable, and then having all the nodes use the consensus algorithm to keep their local copies of the variable in sync.
 
-So let's table the algorithm we've been working on so far, and starting working on this consensus thing. (Don't worry, the designs we're tabling were absolutely not wasted work.)
+So let's table the algorithm we've been working on so far, and starting working on this consensus thing. (Don't worry, the work we've done so far wasn't wasted.)
 
 ## Consensus
+
+> TODO things I want to tackle
+>
+> * Agreement, Validity, Termination properties
+> * One-shot binary decision for simplifying our work
 
 ## Majority-Rules Voting
 

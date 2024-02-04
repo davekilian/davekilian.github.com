@@ -223,7 +223,7 @@ That's certainly not right. We're supposed to have one distributed variable; it 
 
 This situation, where the system is only supposed to have one leader but has accidentally split into two, is called **split-brain**. We cannot ship a distributed variable that is prone to split-brain behavior. So it seems we're not done yet.
 
-## Back Up One Rabbit Hole and Down Another
+## Back Up One Rabbit Hole and Straight Down Another
 
 We've already taken a much longer journey than we originally intended, so it'd be a good idea to stop here and reflect on how we got here. We started out trying to create a distributed variable, and ended up playing out a story as old as <s>time</s> distributed computing itself: we accidentally created an algorithm that wasn't fault tolerant, and in trying to fix our mistake, we ended up with split-brain. Specifically, we created a single-leader algorithm that accidentally could end up with no leaders, and in trying to fix that, we created a single-leader algorithm that can accidentally end up with too many leaders.
 
@@ -239,10 +239,11 @@ So let's table the algorithm we've been working on so far, and starting working 
 
 ## Consensus
 
-> TODO things I want to tackle
+> TODO things I want to tackle here
 >
 > * Agreement, Validity, Termination properties
-> * One-shot binary decision for simplifying our work
+> * One-shot binary decision as a simplification
+> * Set up using a real-life metaphor
 
 ## Majority-Rules Voting
 

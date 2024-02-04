@@ -245,6 +245,10 @@ So let's table the algorithm we've been working on so far, and think about conse
 > * One-shot binary decision as a simplification
 > * Set up using a real-life metaphor
 >
+> How can we derive the properties from first principles? 
+>
+> Also, I was on Wikipedia recently, and apparently some people like to use "integrity" instead of validity? And there seems to be some disagreement over what validity means? Would it be worth switching to validity here?
+>
 > A potential segue into the real-life metaphor is to reiterate that single-leader replication can only be a fault-tolerant consensus algorithm if you have a leaderless consensus algorithm, and from there think about making a decision such as selecting a leader in a distributed, peer-to-peer way, which leads into voting.
 
 ## Majority-Rules Voting

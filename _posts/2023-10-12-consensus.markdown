@@ -239,17 +239,17 @@ So let's table the algorithm we've been working on so far, and think about conse
 
 ## Consensus
 
-> TODO things I want to tackle here
->
-> * Agreement, Validity, Termination properties
-> * One-shot binary decision as a simplification
-> * Set up using a real-life metaphor
->
-> How can we derive the properties from first principles? 
->
-> Also, I was on Wikipedia recently, and apparently some people like to use "integrity" instead of validity? And there seems to be some disagreement over what validity means? Would it be worth switching to validity here?
->
-> A potential segue into the real-life metaphor is to reiterate that single-leader replication can only be a fault-tolerant consensus algorithm if you have a leaderless consensus algorithm, and from there think about making a decision such as selecting a leader in a distributed, peer-to-peer way, which leads into voting.
+At a high level, consensus is the problem of keeping replicas of a variable in sync; people who study consensus algorithms typically call this basic requirement **Agreement**.
+
+A trivial way to implement Agreement is to [hardcode an answer](https://xkcd.com/221/). In a way, that's what we did originally when we had a single leader node and didn't allow the leader to change. Hardcoding is no good for our use case; we need an algorithm that picks between a set of values known only at runtime. This idea is called **Integrity**. (Integrity has a more technical definition we don't need to get into here; you can find it [on Wikipedia](https://en.wikipedia.org/wiki/Consensus_(computer_science)) later if you're interested.)
+
+Another trivial way to implement Agreement is give your self an unlimited amount of time to decide; for example, TODO
+
+TODO mention fault tolerance
+
+TODO recap the four properties
+
+TODO a potential segue now is to reconsider the notion the single-leader replication with failover was a consensus algorithm that fits all the criteria, except we can't actually find a way to make the failover part work correctly yet; so in addition to the above, there's a kind of design constraint which is that we can't rely on a single leader. It has to be a leaderless, peer-to-peer algorithm that achieves all of the above. Then appeal to real life metaphor: what do you do when you need to make a decision and nobody's in charge? What do societies do when they need to choose a leader?
 
 ## Majority-Rules Voting
 

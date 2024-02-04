@@ -112,7 +112,9 @@ Now, however, any time the leader sets the variable, it also sends an updated co
 
 DIAGRAM
 
-The process of updating all the replicas is called **replication**. This is a good starting point for a design sketch, although there are some details we haven't worked out yet. Now let's figure out how to fail over to one of our backups.
+The process of updating all the replicas this way is called **replication**.
+
+For a design sketch, this is a good starting point, although there are some details we still need to work out to get this right. For now, though, let's figure out how to fail over to one of our backups.
 
 Up until now, our the answer to the question "which node is the leader?" was a compile-time constant. It could have been hardcoded, or provided via a config file. Now that we support failover, the leader can change at runtime, so we need a runtime algorithm for determining who currently is the leader. Whatever scheme we come up with cannot itself rely on some kind of leader to tell us who is leader &mdash; the whole point is the leader might have crashed, lost power, or gotten disconnected from the network because Ted was in a rush to go home and enjoy his extensive collection of ["Thundercats" cartoons](https://scholar.harvard.edu/files/mickens/files/thesaddestmoment.pdf).
 
@@ -121,147 +123,123 @@ Let's see if we can find a scheme where each node independently figures out who 
 1. We need a way for each node to figure out which of its peers have faulted and cannot serve as the leader
 2. We need a deterministic rule for choosing a leader among the non-faulted node
 
+We'll go one step at a time.
+
 ### Detecting Node Faults
+
+**Heartbeating** is a simple approach for detecting node faults.
+
+If you've ever ued the `ping` command to check if you're online, heartbeating is a pretty similar concept. A heartbeat is a request/response pair. To start a heartbeat, one node sends a request, asking "Are you still online?" The receiving node immediately responds, "Yes, I am!" A node that is offline will not send a response to a heartbeat request, so getting a heartbeat is pretty strong evidence the other node is still online; and not getting a response is reasonably strong evidence the other node is offline.
+
+By having each node periodically send heartbeats to all other nodes and track who did and did not respond, we can build local information on every node tracking which peers are online and which are offline. Assuming every node responds to a heartbeat message promptly unless it's offline, this should allow each node to individually determine which nodes are online or faulted.
 
 ### Selecting a Leader
 
+Once a node has built that map of online vs faulted nodes using the heartbeating system, how does the node decide who should be leader? Remember, we are assuming every node has the same map of online/offline nodes, and we want every node to pick the same leader.
+
+The simplest approach is to use some variant of the **bully algorithm**.
+
+Bully algorithms follow the principle, "the biggest guy wins" &mdash; you come up with some sort order and pick the one that's first or last in the list. If every node has the same list and comes up with the same sort order, they'll all pick the same first or last item from the sorted list.
+
+To apply that idea here, start by assigning every node a numerical ID:
+
+DIAGRAM
+
+We'll assume every node knows its own ID as well as the IDs of every other node. (Maybe this information is hardcoded, or provided via a config file.) Combining this information with node health information from the heartbeating system should be enough to give us a list of node IDs of nodes we know have not faulted. Now we simply need a rule for selecting a specific node from that list to be the leader. There are many potential rules that would work; let's go with this one:
+
+<center>Pick the node with the smallest numerical node ID</center>
+
 ### Failover
 
+We've kind of already sketched it out already, but let's put all the pieces together and see how our failover algorithm will work. Succinctly, a our leader selection algorithm is:
 
+> 1. Take the set of node IDs of all peer nodes
+> 2. Eliminate any peer which isn't responding to heartbeat requests
+> 3. Pick the lowest remaining node ID. That node is the leader
 
-
-
-
-
-
-
-Start by assigning every node a numerical ID:
+Time to check whether this works. Let's say we're in the initial state where all nodes are booting up for the first time, and nobody has figured out who the leader is yet:
 
 DIAGRAM
 
-We'll also assume every node knows all the other nodes' IDs as well as its own (maybe this information is hardcoded, or provided via a config file). Once we have a set of unique numerical IDs, one of the simplest deterministic rules we can use to pick a leader is a **bully algorithm**, such as "pick the node with the lowest ID." So in this network . . .
-
-DIAGRAM every node is labelled with an ID 1-5
-
-. . . node 1 would be the leader, because its ID is numerically the lowest.
-
-So far our rule for picking a leader always picks the same leader, so we haven't actually made a failover scheme. But it's easy enough to augment this to make it a failover scheme: just run the rule on the set of node IDs that haven't failed.
-
-To support that idea, we'll have each node periodically send out "heartbeat" messages to one another over the network. A heartbeat is a tiny network protocol you use to test whether a remote node is still reachable. A heartbeat consists of a request ("Hey (peer), are you still online?") followed by an immediate response ("Yup, I am!"). A node that's offline can't respond to heartbeat requests, so sending a heartbeat to a peer node and not getting a response is pretty good evidence that peer is offline.
-
-TODO finish refactoring past here
-
-----
-
-
-
-
-
-
-
-
-
-If you send a heartbeat request to another node and that other node never responds, that's p
-
-
-
-
-
----
-
-TODO decompose the problem from here. Start with a bully algorithm, then come up with heartbeats as a failure detector
-
----
-
-
-
-
-
-
-
-To begin, we'll have 
-
-Next we need a deterministic rule for deciding who is leader: one that can run on every node simultaneously and always produce the same result. To support such a rule, let's assign every node a numerical ID. It doesn't really matter how node IDs are assigned to nodes, as long as every node has a unique ID; say for example we require the operator to assign IDs to nodes via a config file or something:
-
-DIAGRAM
-
-Now that we have static node IDs, a simple rule that determines the rule might be:
-
-<center><i>The leader is the node with the smallest node ID.</i></center>
-
-Combine this with the heartbeating scheme, and our leader selection algorithm becomes:
-
-1. Take the set of node IDs of all peer nodes
-2. Eliminate the node ID of any peer which isn't responding to heartbeat requests
-3. Pick the lowest remaining node ID. That node is the leader
-
-Does this work? Let's check. Say, initially, all the nodes boot up and nobody has figured out who the leader is yet:
-
-DIAGRAM
-
-All nodes start exchanging heartbeats with one another. Say at this point nobody has faulted, so all heartbeat requests get a timely response. Each node now executes the steps of the leader selection rule above:
+All nodes start exchanging heartbeats with one another. Say at this point nobody has faulted, which means every heartbeat request gets a timely response. Each node now executes the steps of the leader selection rule above:
 
 1. First, every node starts with the full set of node IDs: $(1, 2, 3, 4, 5)$
 2. Next, every node eliminates any peers that aren't responding to heartbeats; since all nodes are online and responding to heartbeats, no IDs are eliminated. Every node finishes step 2 with the full set of node IDs: $(1,2, 3, 4, 5)$
-3. Pick the lowet remaining node ID: every node picks $1$
+3. Pick the lowet remaining node ID: every node picks $1$​
 
-So now node $1$ is the leader, and the RPC algorithm runs as it did previously:
-
-DIAGRAM
-
-Now, let's try the case that broke our algorithm before. Say the leader crashes; node $1$ goes offline:
+Now node 1 is the leader. The RPC algorithm begins running as we described previously:
 
 DIAGRAM
 
-Soon afterward, other peers start to see that node $1$ is missing its heartbeats. A new leader is needed. Each node now runs the same algorithm as before to select a leader. 
+All looks well so far. Now, let's try the case that broke our algorithm before. Say the leader crashes or gets disconnected (jeez Ted); now node 1 is offline:
 
-1. First, every node starts with the full set of node IDs: $(1, 2, 3, 4, 5)$
-2. Eliminate nodes missing heartbeats. That's node $1$, so the remaining node IDs are: $(2, 3, 4, 5)$
+DIAGRAM
+
+Soon afterward, node 1 starts missing heartbeats. A new leader is needed. Each node now runs the same algorithm as before to select a leader. 
+
+1. Start with the full set of node IDs: $(1, 2, 3, 4, 5)$
+2. Eliminate nodes missing heartbeats. That's just node $1$, so the remaining node IDs are: $(2, 3, 4, 5)$
 3. Pick the lowet remaining node ID: every node picks $2$
 
-And voila, the system has failed over from node 1 to node 2!
+And just like that, every node has switched over to believing node 2 is the leader:
 
 DIAGRAM
 
-Ah, a beautiful sight to behold. So, we're good, right?
+Things are looking pretty good! Well, this whole failover thing was quite the diversion, but now we have fault-tolerant distributed variables; time to pack up and go home.
 
-Right?
+Rght?
 
 ## Split-Brain
 
-Let's try a different kind of fault. Wind back the clock to the point where every node was healthy and node $1$ was the leader:
+Alas, outright crashes are not the only way nodes in a distributed system can fault. In the scheme of things, crashes are a relatively simple, clear cut type of failure; other kinds of faults can be much more insidious. Let's try our algorithm on one of those.
+
+Wind back the clock to the point where every node was healthy and node $1$ was still the leader:
 
 DIAGRAM copied from before
 
-We've been looking at this network rather abstractly. In a real network, nodes aren't usually wired directly together; they're usually interconnected through neworking devices called switches:
+We've been looking at this network rather abstractly; let's zoom in. In a real network, nodes aren't usually wired directly together; they're usually connected through a network of devices called switches.
 
 DIAGRAM
 
-Let's consider the case where two switches connecting portions of our network get disconnected:
+Nodes aren't the only things that can get disconnected; switches can to! What happens if a switches that bridge two portions of our network get disconnected?
 
 DIAGRAM
 
-Now our network has been split into two **partitions**: two different sub-networks. Nodes within the same partition (i.e. connected to the same switch) can communicate with one another, but nodes cannot communicate across partitions (because the two switches are disconnected)
+Now our system has been split into two **network partitions**. Nodes within the same partition (i.e. connected to the same switch) can communicate with one another, but nodes cannot communicate across partitions (because the two switches have been disconnected).
 
 DIAGRAM
 
 What is our leader selection algorithm going to do in this case?
 
-On the left hand partition, nodes 1-3 can still heartbeat with each other, but not nodes 4-5. So when they select a leader, they pick from the node ID set $(1, 2, 3)$, and decide that node $1$ is still the leader.
+On the left-hand partition, nodes 1-3 can still heartbeat with each other, but not nodes 4-5. So when they select a leader, they pick from the node ID set $(1, 2, 3)$, and decide that node $1$ is still the leader.
 
-On the right hand partition, however, nodes 4-5 can heartbeat with each other but not nodes 1-3. So when *these* nodes select a leader, they pick from the set $(4, 5)$ and choose $4$. 
+On the right-hand partition, however, nodes 4-5 can heartbeat with each other but not nodes 1-3. So when *these* nodes select a leader, they pick from the set $(4, 5)$ and choose $4$. 
 
 That's right &mdash; our system has two leaders!
 
 DIAGRAM
 
-This is a disaster! Our single distributed variable has forked into two distributed variables, and nobody can detect that anything is wrong. If anyone has written code that calls set() on the variable and assumes all other nodes will see the result of that set() going forward, well, we didn't manage to provide that guarantee, and that code is now broken. But a distributed variable that doesn't provide this guarantee is a useless tool indeed.
+That's certainly not right. We're supposed to have one distributed variable; it seems to have accidentally gotten forked into two. If anyone has written code that calls set() on the variable and assumes all other nodes will see the result of that set() going forward, well, we didn't manage to provide that guarantee, and that code is now broken. We were being so hard on everyone else before for not providing their stated guarantees, and yet here we are now breaking our promises too!
 
-This situation, where the system is only supposed to have one leader but has accidentally split into two, is called **split-brain**. Split-brain is the bane of every distributed systems engineer.
+This situation, where the system is only supposed to have one leader but has accidentally split into two, is called **split-brain**. We cannot ship a distributed variable that is prone to split-brain behavior. So it seems we're not done yet.
 
-## Up One Rabbit Hole and Down Another
+## Back Up One Rabbit Hole and Down Another
 
-It's a story as old as <s>time</s> distributed computing itself: we accidentally created an algorithm that wasn't fault tolerant &mdash; a single-leader algorithm that can end up with no leaders &mdash; and in trying to fix that, we ended up with split-brain &mdash; a single-leader algorithm that can end up with too many leaders. Neither is acceptable. We must keep working.
+We've already taken a much longer journey than we originally intended to, so it'd be a good idea to stop and reflect on what's happened so far. In trying to create a distributed variable, we played out a story as old as <s>time</s> distributed computing itself: first we accidentally created an algorithm that wasn't fault tolerant &mdash; a single-leader algorithm that can end up with no leaders &mdash; and in trying to fix that, we ended up with split-brain &mdash; a single-leader algorithm that can end up with too many leaders. We really need a fault-tolerant approach to selecting one, and only one leader; that, or an entirely different approach for building our distributed variable.
+
+
+
+
+
+
+
+
+
+---
+
+TODO this here is basically right, but we need a more decisive flow into the idea of a consensus variable.
+
+---
 
 Where do we go next?
 

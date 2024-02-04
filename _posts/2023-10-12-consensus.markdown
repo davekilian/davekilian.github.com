@@ -64,7 +64,7 @@ So, is that it? Have we invented distributed variables? I would say technically 
 ## Fault Tolerance
 
 <div style="margin-left: 1em; padding-left: 1em; padding-top: .1em; padding-bottom: .1em; border-left: .3em solid #eee; color: #333" markdown="1">
-*"How can you make a reliable computer service? It may be difficult if you can’t trust anything and the entire concept of happiness is a lie designed by unseen overlords of [endless deceptive power](https://scholar.harvard.edu/files/mickens/files/thesaddestmoment.pdf)."*
+*"“How can you make a reliable computer service?” the presenter will ask in an innocent voice before continuing, “It may be difficult if you can’t trust anything and the entire concept of happiness is a lie designed by unseen overlords of [endless deceptive power](https://scholar.harvard.edu/files/mickens/files/thesaddestmoment.pdf)."*
 
 </div>
 
@@ -225,31 +225,17 @@ This situation, where the system is only supposed to have one leader but has acc
 
 ## Back Up One Rabbit Hole and Down Another
 
-We've already taken a much longer journey than we originally intended to, so it'd be a good idea to stop and reflect on what's happened so far. In trying to create a distributed variable, we played out a story as old as <s>time</s> distributed computing itself: first we accidentally created an algorithm that wasn't fault tolerant &mdash; a single-leader algorithm that can end up with no leaders &mdash; and in trying to fix that, we ended up with split-brain &mdash; a single-leader algorithm that can end up with too many leaders. We really need a fault-tolerant approach to selecting one, and only one leader; that, or an entirely different approach for building our distributed variable.
+We've already taken a much longer journey than we originally intended, so it'd be a good idea to stop here and reflect on how we got here. We started out trying to create a distributed variable, and ended up playing out a story as old as <s>time</s> distributed computing itself: we accidentally created an algorithm that wasn't fault tolerant, and in trying to fix our mistake, we ended up with split-brain. Specifically, we created a single-leader algorithm that accidentally could end up with no leaders, and in trying to fix that, we created a single-leader algorithm that can accidentally end up with too many leaders.
 
+I'm starting to sound like a broken record here, but, can we rescue the algoritm we already have? How can we make a safe failover process?
 
+Each node has its own local "who is leader?" variable; what we're looking for now is a reliable way to keep all those variables in sync. We want to have one well-defined cutover point, before which all nodes are still with the previous, failed leader, and after which all nodes have moved to the same new leader.
 
+To say that again more generally: we have a bunch of nodes, each node stores its own copy of some variable, and we want the nodes to agree amongst themselves what is the current value of that variable. This is the definition of a well-known problem in distributed systems called the **consensus problem**. The problem we're solving has a name, that means we must be on the right track :-)
 
+Consensus is the problem of getting a group of nodes to agree on the value of some variable they each store a copy of. If we had such an algorithm, we could apply it to the failover split-brain problem we have on our hands; but more interestingly, we could alternately just use such a consensus algorithm to solve the original problem at hand. The original goal was to design a distributed variable that any node could get and set; if we had a working consensus algorithm, then one way to do that would be to have each node store its own local copy of the distributed variable, and then have all the nodes use the consensus algorithm to keep their local copies of the variable in sync.
 
-
-
-
-
----
-
-TODO this here is basically right, but we need a more decisive flow into the idea of a consensus variable.
-
----
-
-Where do we go next?
-
-If we want to continue down the line of thought we're already on, we need to find a failover protocol that is not prone to split-brain. Every node independently tracks who is leader; we're looking for a way to keep each node's copy of the "who is leader?" variable in sync. We want to have one well-defined cutover point, at which point all nodes switch from the old leader to the new one. That way nobody can get left behind on the old leader, preventing split-brain.
-
-In more general terms, we have a bunch of nodes, each of which stores a copy of some variable; we want an algorithm that can update the variable, keeping all copies of that variable in sync. The problem of keeping copies of a variable in sync is called **consensus**.
-
-An algorithm that solves consensus would certainly be useful for implementing safe failover; but beyond that, a consensus algorithm might also be a solution to the original problem! To make a distributed variable, maybe we could make an instance of that variable on each node, and then use a consensus algorithm to keep all the copies of that variable in sync.
-
-Sounds like consensus is a good direction to go next.
+So let's table the algorithm we've been working on so far, and starting working on this consensus thing. (Don't worry, the designs we're tabling were absolutely not wasted work.)
 
 ## Consensus
 

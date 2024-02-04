@@ -9,11 +9,11 @@ Say we have a network of computers. Call each of the computers a **node**. We mi
 
 DIAGRAM
 
-How can we make a "distributed" variable &mdash; a single vriable any of these nodes can get and set?
+How can we make a "distributed" variable &mdash; a variable any of these nodes can get and set?
 
 DIAGRAM: nodes a network, thought bubble question mark in the middle for a variable
 
-It's easy enough to make a variable on any one of these nodes, so let's pick one and make the variable on that node. That node is now special; let's call it the **leader**. Accordingly, we can call all the other nodes **followers**.
+It's easy enough to make a variable on any one of these nodes, so let's pick one node and make the variable on it. That node is now special; let's call it the **leader**. Accordingly, we can call all the other nodes **followers**.
 
 DIAGRAM
 
@@ -45,7 +45,7 @@ leader {
 }
 ```
 
-And the other nodes &mdash; the "followers" &mdash; might work like this:
+The followers might work like this:
 
 ```
 client {
@@ -59,24 +59,24 @@ client {
 }
 ```
 
-So, is that it? Have we invented distributed variables? I would say technically yes, we did make distributed variables, but the system we have so far isn't very useful. As is sadly often the case, things have been simple so far only because we've missed a major aspect of the problem.
+So, is that it? Have we invented distributed variables? I would say technically yes, we did make distributed variables, but the system we have so far isn't very useful. As is sadly so often the case, things have been simple so far only because we missed a major aspect of the problem.
 
 ## Fault Tolerance
 
-<div style="margin-left: 1em; padding-left: 1em; padding-top: .1em; padding-bottom: .1em; border-left: .3em solid #eee; color: #333" markdown="1">
-*"“How can you make a reliable computer service?” the presenter will ask in an innocent voice before continuing, “It may be difficult if you can’t trust anything and the entire concept of happiness is a lie designed by unseen overlords of [endless deceptive power](https://scholar.harvard.edu/files/mickens/files/thesaddestmoment.pdf)."*
+<div style="margin-left: 1em; margin-right: 1em; padding-left: 1em; padding-top: .1em; padding-bottom: .1em; border-left: .3em solid #eee; color: #333" markdown="1">
+*"How can you make a reliable computer service?” the presenter will ask in an innocent voice before continuing, “It may be difficult if you can’t trust anything and the entire concept of happiness is a lie designed by unseen overlords of [endless deceptive power](https://scholar.harvard.edu/files/mickens/files/thesaddestmoment.pdf)."*
 
 </div>
 
 Think about the device you're using right now to read this page. Have you ever had weird little problems with it? Freezes, crashing apps, system slowdowns, overheating, unexplained network disconnects, blue screens, anything like that? Let's call these kinds of problems **faults**. Although your device probably (hopefully) doesn't fault often enough to be a daily disruption, I'm guessing it still happens from time to time. How often would you say that is? Once every few hours, days, or weeks?
 
-Now take that number and multiply it by a thousand. That's how often you would be dealing with individual server faults when managing a fleet of a thousand server! Except, we probably need to scale that number up even higher: servers are always on and doing work, whereas your device probably spends quite a bit of time doing nothing. The moral of the story: rare events become common once you have enough devices. Even if a problem is rare on the scale of one device, when you have many devices, the odds are high that at least one of your devices is having that problem.
+Now take that number and multiply it by a thousand. That's how often you would be dealing with individual server faults when managing a fleet of a thousand servers! Even if a problem is rare on the scale of one device, when you have many devices, the odds are pretty high that at least one of your devices is having that problem.
 
-This is what makes distributed systems a kind of funny environment to work in. The platform running your code provides fewer guarantees than you'd think, and even the guarantees you get on paper don't always hold up in practice. It’s a world where anything that can go wrong will go wrong, is going wrong, and has been going wrong for weeks before someone noticed. Working on distributed systems is like playing a perverse game of Simon Says, where you think you've checked your assumptions and covered your bases, only to find out &mdash; Simon didn't say! &mdash; there's yet another thing that can break in a way you didn't anticipate.
+This is what makes distributed systems a kind of funny environment to work in. The platform running your code provides fewer guarantees than you'd expect, and even the guarantees you get on paper don't always hold up in practice. It’s a world where anything that can go wrong will go wrong, is going wrong, and has been going wrong for weeks unnoticed. Working on distributed systems is like playing a perverse game of Simon Says, where you think you've checked your assumptions and covered your bases, only to find out &mdash; Simon didn't say! &mdash; there's yet another thing that can break in a way you didn't anticipate.
 
-As software people, it's tempting to write code that assumes the underlying platforms always works, and when the platform doesn't work, leading to outages and downtime, it's tempting to tell the datacenter ops people to fix their stuff. But the ops people are managing a huge fleet, and they're constantly being deluged by problem after unexplainable problem. You'd be best off writing code that anticipates these problems and works despite them. In other words, you need to make your code **fault tolerant**. Your choice is between that, or frequent downtime, outages, and unhappy users!
+As software people, it's tempting to write code that assumes the underlying platforms always works. When that code breaks because the platform ended up not working, it's tempting to blame the platform and tell the ops people to fix the hardware. But the ops people are managing a huge fleet, and they're constantly being deluged by problem after unexplainable problem. They're never going to fully catch up. You'd be best off coding around the problems instead of hoping they won't happen; in other words, you ought to make your code **fault tolerant**. It's that, or frequent downtime, outages, and unhappy users!
 
-That was the aspect of the problem we were missing: we don't just want "distributed variables that any node can get or set." We also want that variable to be fault-tolerant. No crash of a single node should be able to stop the variable from working.
+This was the aspect of the problem we were missing before: we don't just want "distributed variables that any node can get or set." We also want that variable to be fault-tolerant. No crash of a single node should be able to stop the variable from working.
 
 ## Finding Fault
 
@@ -84,19 +84,19 @@ In that light, let's re-evaluate our algorithm:
 
 DIAGRAM: another copy of the RPC diagram, last one in the previous section
 
-What happens if a random node goes offline? Maybe it had an operating system crash, or someone tripped over its power cable, or [Ted the Poorly Paid Datacenter Operator](https://scholar.harvard.edu/files/mickens/files/thesaddestmoment.pdf) pulled the wrong network cable while trying to fix a different problem.
+What happens if a random node goes offline? Maybe the operating system crashed, or someone tripped over its power cable, or [Ted the Poorly Paid Datacenter Operator](https://scholar.harvard.edu/files/mickens/files/thesaddestmoment.pdf) pulled the wrong network cable while trying to fix some other problem.
 
-If we pick a node totally at random, most likely it'll be one of the follower nodes, since there are so many of them. If a follower node goes offline, we should be safe; the variable is safe and sound on the leader node, which is still working, and all the other nodes can still contact the leader, so they're not disrupted by the crash:
+If a random node crashes, most likely that node will be a follower, since there are many followers and only one leader. If a follower goes offline, we should be safe; the variable is safe and sound on the leader node, which is still working, and all the other nodes can still contact the leader:
 
 DIAGRAM: same diagram with a random follower Xed out
 
-That's pretty good. What happens if the leader node goes offline?
+Nobody else is disrupted if one of the followers crashes. That's pretty good! Now, what happens if the leader node goes offline?
 
 DIAGRAM: same diagram, but with the leader Xed out
 
-Hm, we have a problem. Now that the leader is gone, so is the variable &mdash; a cascading failure! The follower nodes may still be up and running, but they're programming to send RPCs to the leader, and the leader ain't there to respond. Our distributed variable is not working. And since a single node crash was enough to crash the variable too, we have to admit that our variable isn't fault tolerant. This is no good; we have to do something.
+Here we have a problem. Now that the leader is gone, so is the variable. The follower nodes may still be up and running, but they're programmed to send RPCs to the leader, and the leader is no longer there to respond. Our distributed variable is not working at all! And since a single node crash was enough to crash the variable too, we have to admit that our variable is not fault tolerant. This is no good; we have to do something.
 
-Oftentimes the solution to problems of fault tolerance is **redundancy**. In this case, since the leader can crash, let's set up some backups and **fail over** by selecting a new leader when the current leader fails. Ready to try it out?
+Oftentimes the simplest way to achieve fault tolerance is **redundancy**. In our case, since the leader can crash, let's set up some backups and **fail over** to new leader when whichever node is currently the leader fails. Ready to try it out?
 
 ## Leader Failover
 
@@ -104,7 +104,7 @@ To start, let's put a copy of our distributed variable on every node:
 
 DIAGRAM
 
-Each copy of the variable is called a **replica** of that variable. As before, we'll still implement our distributed variable by having the followers send get and set RPCs to the leader:
+Each copy of the variable is called a **replica** of that variable. As before, we'll still implement our distributed variable by having the followers send get() and set() RPCs to the leader:
 
 DIAGRAM
 
@@ -112,16 +112,16 @@ Now, however, any time the leader sets the variable, it also sends an updated co
 
 DIAGRAM
 
-The process of updating all the replicas this way is called **replication**.
+The process of updating all the replicas this way is called **replication**. Perhaps unsurprising.
 
-For a design sketch, this is a good starting point, although there are some details we still need to work out to get this right. For now, though, let's figure out how to fail over to one of our backups.
+This is a good enough starting point for a design sketch, although we're still missing some of the details. For now, though, let's focus on how we fail over to a backup replica.
 
-Up until now, our the answer to the question "which node is the leader?" was a compile-time constant. It could have been hardcoded, or provided via a config file. Now that we support failover, the leader can change at runtime, so we need a runtime algorithm for determining who currently is the leader. Whatever scheme we come up with cannot itself rely on some kind of leader to tell us who is leader &mdash; the whole point is the leader might have crashed, lost power, or gotten disconnected from the network because Ted was in a rush to go home and enjoy his extensive collection of ["Thundercats" cartoons](https://scholar.harvard.edu/files/mickens/files/thesaddestmoment.pdf).
+Up until now, our the answer to the question "which node is the leader?" was a constant: it could have been hardcoded, or provided via a config file. Now that we support failover, the leader can change at runtime, so we need a runtime algorithm for determining who currently is the leader. Whatever scheme we come up with cannot itself rely on some kind of leader &mdash; the whole point is the leader might have crashed, or lost power, or gotten disconnected from the network because Ted was in a rush to go home and enjoy his extensive collection of ["Thundercats" cartoons](https://scholar.harvard.edu/files/mickens/files/thesaddestmoment.pdf).
 
-Let's see if we can find a scheme where each node independently figures out who the leader is, using its own local information. In principle, if we can make it so every node has the same local information and runs the same deterministic algorithm on that information, they should all independently pick the same leader. To get there, we need to solve two problems: 
+Let's see if we can find a scheme where each node independently figures out who the leader is, using local information only. In principle, if we can make it so every node has the same local information and runs the same deterministic algorithm on that information, they should all independently pick the same leader. To get there, we need to solve two problems: 
 
-1. We need a way for each node to figure out which of its peers have faulted and cannot serve as the leader
-2. We need a deterministic rule for choosing a leader among the non-faulted node
+1. We need a way for each node to figure out which of its peers have faulted, and thus cannot serve as the leader
+2. We need a deterministic rule for choosing a leader among the remaining candidates
 
 We'll go one step at a time.
 
@@ -129,9 +129,9 @@ We'll go one step at a time.
 
 **Heartbeating** is a simple approach for detecting node faults.
 
-If you've ever ued the `ping` command to check if you're online, heartbeating is a pretty similar concept. A heartbeat is a request/response pair. To start a heartbeat, one node sends a request, asking "Are you still online?" The receiving node immediately responds, "Yes, I am!" A node that is offline will not send a response to a heartbeat request, so getting a heartbeat is pretty strong evidence the other node is still online; and not getting a response is reasonably strong evidence the other node is offline.
+If you've ever ued the `ping` command to check if you're online, heartbeating is pretty much the same concept. A heartbeat is a request/response pair. To start a heartbeat, one node sends a request, asking "Are you still online?" As soon as it can, the receiving node responds, "Yes, I am!" A node that is offline will not send a response to a heartbeat request, so getting a heartbeat is pretty strong evidence the other node is still online; conversely, a node missing a heartbeat is a good indicator it's offline.
 
-By having each node periodically send heartbeats to all other nodes and track who did and did not respond, we can build local information on every node tracking which peers are online and which are offline. Assuming every node responds to a heartbeat message promptly unless it's offline, this should allow each node to individually determine which nodes are online or faulted.
+By having each node periodically send heartbeats to all other nodes and track who did and did not respond, we can build local information on every node tracking which peers are online or offline. Assuming each node either is online and responding to all heartbeats, or offline and not responding to any heartbeats, this should allow each node to individually determine which nodes are online or faulted.
 
 ### Selecting a Leader
 
@@ -139,19 +139,19 @@ Once a node has built that map of online vs faulted nodes using the heartbeating
 
 The simplest approach is to use some variant of the **bully algorithm**.
 
-Bully algorithms follow the principle, "the biggest guy wins" &mdash; you come up with some sort order and pick the one that's first or last in the list. If every node has the same list and comes up with the same sort order, they'll all pick the same first or last item from the sorted list.
+Bully algorithms follow the principle, "the biggest guy wins" &mdash; you come up with a sort order of some kind, and then you pick the element that's first or last in the sorted list. If every node has the same list and comes up with the same sort order, they'll all pick the same element out of that list.
 
-To apply that idea here, start by assigning every node a numerical ID:
+To apply that idea here, we start by assigning every node a numerical ID:
 
 DIAGRAM
 
-We'll assume every node knows its own ID as well as the IDs of every other node. (Maybe this information is hardcoded, or provided via a config file.) Combining this information with node health information from the heartbeating system should be enough to give us a list of node IDs of nodes we know have not faulted. Now we simply need a rule for selecting a specific node from that list to be the leader. There are many potential rules that would work; let's go with this one:
+We'll assume every node knows its own ID as well as the IDs of every other node. (Maybe this information is hardcoded, or provided via a config file.) Combining this information with node health information from the heartbeating system should be enough to give us a list of node IDs of nodes we know are still online. Now we simply need a rule for selecting a specific node from that list to be the leader. There are many potential rules that would work; let's go with this one:
 
 <center>Pick the node with the smallest numerical node ID</center>
 
 ### Failover
 
-We've kind of already sketched it out already, but let's put all the pieces together and see how our failover algorithm will work. Succinctly, a our leader selection algorithm is:
+We've already sketched it out, but nonetheless let's put all the pieces together and see how our failover algorithm will work. Succinctly, a our leader selection algorithm is:
 
 > 1. Take the set of node IDs of all peer nodes
 > 2. Eliminate any peer which isn't responding to heartbeat requests
@@ -163,9 +163,9 @@ DIAGRAM
 
 All nodes start exchanging heartbeats with one another. Say at this point nobody has faulted, which means every heartbeat request gets a timely response. Each node now executes the steps of the leader selection rule above:
 
-1. First, every node starts with the full set of node IDs: $(1, 2, 3, 4, 5)$
-2. Next, every node eliminates any peers that aren't responding to heartbeats; since all nodes are online and responding to heartbeats, no IDs are eliminated. Every node finishes step 2 with the full set of node IDs: $(1,2, 3, 4, 5)$
-3. Pick the lowet remaining node ID: every node picks $1$​
+> 1. First, every node starts with the full set of node IDs: $(1, 2, 3, 4, 5)$
+> 2. Next, every node eliminates any peers that aren't responding to heartbeats; since all nodes are online and responding to heartbeats, no IDs are eliminated. Every node finishes step 2 with the full set of node IDs: $(1,2, 3, 4, 5)$
+> 3. Pick the lowet remaining node ID: every node picks $1$​
 
 Now node 1 is the leader. The RPC algorithm begins running as we described previously:
 
@@ -177,35 +177,35 @@ DIAGRAM
 
 Soon afterward, node 1 starts missing heartbeats. A new leader is needed. Each node now runs the same algorithm as before to select a leader. 
 
-1. Start with the full set of node IDs: $(1, 2, 3, 4, 5)$
-2. Eliminate nodes missing heartbeats. That's just node $1$, so the remaining node IDs are: $(2, 3, 4, 5)$
-3. Pick the lowet remaining node ID: every node picks $2$
+> 1. Start with the full set of node IDs: $(1, 2, 3, 4, 5)$
+> 2. Eliminate nodes missing heartbeats. That's just node $1$, so the remaining node IDs are: $(2, 3, 4, 5)$
+> 3. Pick the lowet remaining node ID: every node picks $2$
 
-And just like that, every node has switched over to believing node 2 is the leader:
+And just like that, every node has switched over to node 2 as the leader:
 
 DIAGRAM
 
-Things are looking pretty good! Well, this whole failover thing was quite the diversion, but now we have fault-tolerant distributed variables; time to pack up and go home.
+Things are looking pretty good! Well, this whole failover thing was quite the diversion, but now we have fault-tolerant distributed variables. Time to pack up and go home.
 
-Rght?
+Right?
 
 ## Split-Brain
 
-Alas, outright crashes are not the only way nodes in a distributed system can fault. In the scheme of things, crashes are a relatively simple, clear cut type of failure; other kinds of faults can be much more insidious. Let's try our algorithm on one of those.
+Alas, outright crashes are not the only way nodes in a distributed system can fault. In the scheme of things, crashes are one of the simpler ways a node can fail; other kinds of faults are much more insidious. Let's try our algorithm on one of those.
 
-Wind back the clock to the point where every node was healthy and node $1$ was still the leader:
+Wind back to the point where every node was healthy and node $1$ was still the leader:
 
 DIAGRAM copied from before
 
-We've been looking at this network rather abstractly; let's zoom in. In a real network, nodes aren't usually wired directly together; they're usually connected through a network of devices called switches.
+We've been looking at this network rather abstractly; let's zoom in. In a real network, nodes aren't usually wired directly together; they're usually connected through a network of intermediary devices called switches:
 
 DIAGRAM
 
-Nodes aren't the only things that can get disconnected; switches can to! What happens if a switches that bridge two portions of our network get disconnected?
+Nodes aren't the only things that can get disconnected; switches can too! What happens if the switches that bridge two portions of our network get disconnected?
 
 DIAGRAM
 
-Now our system has been split into two **network partitions**. Nodes within the same partition (i.e. connected to the same switch) can communicate with one another, but nodes cannot communicate across partitions (because the two switches have been disconnected).
+Now our system has been split into two **network partitions**. (Darn you, Ted!) Nodes within the same partition (i.e. connected to the same switch) can communicate with one another, but nodes cannot communicate across partitions (because the two switches are disconnected).
 
 DIAGRAM
 
@@ -289,13 +289,7 @@ So let's table the algorithm we've been working on so far, and starting working 
 
 
 
-
-
----
-
-
-
-
+<!--
 
 
 
@@ -911,3 +905,4 @@ This is all completely in bounds with FLP, there is no message the system is gua
 
 
 
+-->

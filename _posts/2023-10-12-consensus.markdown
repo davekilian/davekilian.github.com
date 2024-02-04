@@ -5,23 +5,23 @@ author: Dave
 draft: true
 ---
 
-Say I have a bunch of computers connected by a network. Call each of the computers a **node**. We might picture the network something like this:
+Say we have a network of computers. Call each of the computers a **node**. We might picture the network something like this:
 
 DIAGRAM
 
-It's easy enough to make a variable on any one of these nodes. How can we make a "distributed" variable &mdash; one any of these nodes can get and set?
+How can we make a "distributed" variable &mdash; a single vriable any of these nodes can get and set?
 
 DIAGRAM: nodes a network, thought bubble question mark in the middle for a variable
 
-As I said, it's easy enough to make a regular, single-node variable. So let's pick one of these nodes and make the variable on that node. That node is now special; let's call it the "leader."
+It's easy enough to make a variable on any one of these nodes, so let's pick one and make the variable on that node. That node is now special; let's call it the "leader." Accordingly, we can call all the other nodes "followers."
 
 DIAGRAM
 
-The leader can or set the variable normally, because for the leader it's just a regular variable in local memory. Let's also run an RPC server on the leader, and implement RPC calls to get and set the variable. Then the other nodes can get and set the variable by sending the corresponding RPCs to the leader:
+The leader can or set the variable normally, because for the leader it's just a regular variable in local memory. But what about the followers? Let's set up an RPC server on the leader, and implement RPC calls to get and set the variable. Then the other nodes can get and set the variable by sending the corresponding RPCs to the leader:
 
 DIAGRAM: one node is highlighted as the leader; all others and sending get/set RPCs.
 
-The best thing this design has going for it so far is that it's simple. We can sketch out what the code would look like without taking up very much space. The leader might look something like this:
+This seems like a good start. One of the best things about this design is how simple it is. We can sketch out what the code would look like without taking up very much space. The leader might look something like this:
 
 ```
 leader {
@@ -59,7 +59,7 @@ client {
 }
 ```
 
-So, have we done it? Do we have distributed variables now? I would claim technically yes, we did, but the system we have so far isn't very useful in the real world. As is sadly often the case, things seem simple so far only because we've missed a key aspect of the problem.
+So, is that all there is to it? Have we invented distributed variables? I would say technically yes, we did make distributed variables, but the system we have so far isn't very useful. As is sadly often the case, things have been simple so far only because we've missed a major aspect of the problem.
 
 ## Fault Tolerance
 
@@ -116,7 +116,27 @@ The process of updating all the replicas is called **replication**. Now that we'
 
 Up until now, our the answer to the question "which node is the leader?" was a compile-time constant. It could have been hardcoded, or provided via a config file. Now that we support failover, the leader can change at runtime, so we need a runtime algorithm for determining who currently is leader. Also, whatever scheme we come up with cannot itself rely on a leader to tell us who is leader &mdash; the whole point is the leader might have crashed, lost power, or gotten disconnected from the network because Ted was in a rush to go home and watch his extensive collection of ["Thundercats" cartoons](https://scholar.harvard.edu/files/mickens/files/thesaddestmoment.pdf).
 
-Let's see if we can find a scheme where each node independently figures out who the leader is, using its own local information. Maybe, if we can make it so every node has the same local information and every node runs the same deterministic algorithm using that information to figure out who the leader is, then they'll all independently figure out who the leader is without having to coordinate with one another!
+Let's see if we can find a scheme where each node independently figures out who the leader is, using its own local information. Maybe, if we can make it so every node has the same local information and every node runs the same deterministic algorithm using that information to figure out who the leader is, then they'll all independently figure out who the leader is without having to coordinate with one another.
+
+To get there, we need two new tools for our toolbox: a rule for selecting a leader, and a way to detect when nodes have faulted. If we can have all nodes independently, deterministically pick a leader from the set of nodes that have not faulted
+
+### Selecting a Leader
+
+
+
+### Detecting Node Faults
+
+
+
+### Failover
+
+
+
+
+
+
+
+
 
 Start by assigning every node a numerical ID:
 
@@ -242,7 +262,7 @@ This is a disaster! Our single distributed variable has forked into two distribu
 
 This situation, where the system is only supposed to have one leader but has accidentally split into two, is called **split-brain**. Split-brain is the bane of every distributed systems engineer.
 
-## A Temporary Setback
+## Up One Rabbit Hole and Down Another
 
 It's a story as old as <s>time</s> distributed computing itself: we accidentally created an algorithm that wasn't fault tolerant &mdash; a single-leader algorithm that can end up with no leaders &mdash; and in trying to fix that, we ended up with split-brain &mdash; a single-leader algorithm that can end up with too many leaders. Neither is acceptable. We must keep working.
 

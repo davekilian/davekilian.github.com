@@ -285,11 +285,63 @@ Oh yeah, voting! Voting is a leaderless algorithm that results in a group agreem
 
 ## Majority-Rules Voting
 
+Let's code up an algorithm where nodes throw out proposals and vote on them, just like in the restaurant example above. However, in real life, people  have individual preferences, we'll code an algorithm where nodes have no preferences whatsoever. Each node will vote for whichever option it heard about first, and never changes its mind.
 
+Here's the basic idea:
 
+* Start by having each node track is own replica of the distributed variable, initially null.
 
+* Next, we implement set() by sending the desired value (red or blue) to every other node in this system. The set() calls are the "proposals" in our voting system. When a node receives its very first set() request, it updates its replica to that value, "voting" for it. Since we're building a one-shot algorithm, a node votes only once and never changes its vote once set.
 
+* Finally, we define get() as "whichever value gained a majority of the votes, or null." 
 
+Since the idea is so simple, here it is again, as pseudocode:
+
+```
+consensus {
+  vote: Red | Blue; // this node's vote
+  peers: Node[]; // all nodes, including self
+  
+  init {
+    vote := null // haven't voted yet
+  }
+  
+  // a caller wants to set the variable
+  set(value) {
+    nodes.all.send(proposal, value)
+  }
+  
+  // received a proposal from another node
+  on received set(value) {
+    // accept the first proposal, ignore others
+    if (vote == null) {
+      vote := value
+    }
+  }
+  
+  // a caller wants to read the final value
+  get() {
+    counts: map{ from proposal to int }
+    foreach node in nodes {
+      counts.add(node.get_current_value())
+    }
+    
+    return get_majority_proposal(counts) 
+  }
+  
+  on received get_current_value() {
+    return vote
+  }
+}
+```
+
+There's just one important piece missing; what do we do about split votes? In other words, what it by pure bad luck, we end up with a tie?
+
+DIAGRAM 3 red vs 3 blue
+
+We're not allowed to end up with a tie; that would mean we exit without reaching agreement on any proposed value. A simple way to work around this for now is to require the algorithm run on an odd number of nodes. That way, if every node has voted, the two vote counts cannot be equal, so one of either red or blue must have gotten more votes and wins.
+
+DIAGRAM 3 red vs 2 blue
 
 
 
@@ -300,59 +352,6 @@ Oh yeah, voting! Voting is a leaderless algorithm that results in a group agreem
 Old content to adapt:
 
 ---
-
-We can totally code up something that throws out proposals and votes on them, just like in the restaurant example above. But unlike real life, where people have preferences, we’ll code an algorithm where each node has zero preference and just votes for whichever option it heard about first, and never changes its mind. Here's a sketch:
-
-Every node will have its own local accepted `value`, which is the value it heard about first and voted for. At the start of the algorithm, every `value` is null. Each time a client of our system calls **propose()**, proposing red or blue, we send that proposal to all nodes, including ourselves. When a node receives its very first proposal, it updates its `value` variable to the porposed value, thereby "voting" for it, and then sends out its own round of message to all its peers. After that, whenever a node receives a proposal, it ignores it because it has already voted.
-
-Then we implement **query()** by tallying votes: ask every node what it voted for (what its current `value` variable holds), and see if any proposal has been voted in by a majority (more than half of the nodes). If so, that is the consensus decision; otherwise, the system is considered to still be deciding; the client gets an error saying to wait a little bit and retry.
-
-Here's the same design sketch again, as pseudocode:
-
-```
-consensus {
-  value: Proposal; // the accepted proposal
-  nodes: Node[]; // all nodes in the network
-  
-  init {
-    value := null // no accepted proposal yet
-  }
-  
-  // this is the propose() API
-  propose(proposal) {
-    // nodes.all includes this node as well
-    nodes.all.send(proposal)
-  }
-  
-  // received a proposal from a peer
-  on peer proposal(proposal) {
-    // accept the first proposal, ignore others
-    if (value == null) {
-      value := proposal
-    }
-  }
-  
-  // the query() API
-  query() {
-    counts: map{ from proposal to int }
-    foreach node in nodes {
-      counts.add(node.get_current_value())
-    }
-    
-    return get_majority_proposal(counts) 
-  }
-  
-  on value requested(peer) {
-    peer.reply(value)
-  }
-}
-```
-
-The sketch is almost complete. One problem we still need to deal with is split votes.
-
-What if every node votes, but no proposal reaches a majority. For right now we only allow the proposal to be one of two values, red or blue, but even so, if we have an even number of nodes we can end up with a perfect tie: half of the nodes vote red and half vote blue. If that happens, we run out of votes and exit, but have not yet made a decision; that violates the Termination rule ("at least one decision is made").
-
-It's okay though, we can work around that problem relatively easily: just require that the algorithm run on an odd number of nodes. That way, if every node has voted, the two vote counts cannot be equal, so one of either red or blue must have gotten more votes. That's the value we decide on.
 
 Okay, so ... does *this* design work?
 

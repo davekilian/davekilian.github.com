@@ -295,6 +295,126 @@ Oh yeah, voting! Voting is a leaderless algorithm that results in a group agreem
 
 
 
+<!--
+
+Old content to adapt:
+
+---
+
+We can totally code up something that throws out proposals and votes on them, just like in the restaurant example above. But unlike real life, where people have preferences, we’ll code an algorithm where each node has zero preference and just votes for whichever option it heard about first, and never changes its mind. Here's a sketch:
+
+Every node will have its own local accepted `value`, which is the value it heard about first and voted for. At the start of the algorithm, every `value` is null. Each time a client of our system calls **propose()**, proposing red or blue, we send that proposal to all nodes, including ourselves. When a node receives its very first proposal, it updates its `value` variable to the porposed value, thereby "voting" for it, and then sends out its own round of message to all its peers. After that, whenever a node receives a proposal, it ignores it because it has already voted.
+
+Then we implement **query()** by tallying votes: ask every node what it voted for (what its current `value` variable holds), and see if any proposal has been voted in by a majority (more than half of the nodes). If so, that is the consensus decision; otherwise, the system is considered to still be deciding; the client gets an error saying to wait a little bit and retry.
+
+Here's the same design sketch again, as pseudocode:
+
+```
+consensus {
+  value: Proposal; // the accepted proposal
+  nodes: Node[]; // all nodes in the network
+  
+  init {
+    value := null // no accepted proposal yet
+  }
+  
+  // this is the propose() API
+  propose(proposal) {
+    // nodes.all includes this node as well
+    nodes.all.send(proposal)
+  }
+  
+  // received a proposal from a peer
+  on peer proposal(proposal) {
+    // accept the first proposal, ignore others
+    if (value == null) {
+      value := proposal
+    }
+  }
+  
+  // the query() API
+  query() {
+    counts: map{ from proposal to int }
+    foreach node in nodes {
+      counts.add(node.get_current_value())
+    }
+    
+    return get_majority_proposal(counts) 
+  }
+  
+  on value requested(peer) {
+    peer.reply(value)
+  }
+}
+```
+
+The sketch is almost complete. One problem we still need to deal with is split votes.
+
+What if every node votes, but no proposal reaches a majority. For right now we only allow the proposal to be one of two values, red or blue, but even so, if we have an even number of nodes we can end up with a perfect tie: half of the nodes vote red and half vote blue. If that happens, we run out of votes and exit, but have not yet made a decision; that violates the Termination rule ("at least one decision is made").
+
+It's okay though, we can work around that problem relatively easily: just require that the algorithm run on an odd number of nodes. That way, if every node has voted, the two vote counts cannot be equal, so one of either red or blue must have gotten more votes. That's the value we decide on.
+
+Okay, so ... does *this* design work?
+
+* **Agreement**: ✅ &mdash; only one proposal can reach a majority, and that's the proposal **query()** always returns; so at most one value can be returned by **query()**
+* **Validity**: ✅ &mdash; nodes only vote for a value someone proposed; so the value that got the most votes was proposed by somebody
+* **Termination**: ✅ &mdash; a decision is reached after all votes are in
+* **Fault Tolerance**: . . . 😀 I told you this would be tricky, didn't I? 
+
+No, this algorithm isn't fault-tolerant either! But we're getting better at this &mdash; this time, the problem is much more subtle.
+
+## Faults and Split Votes
+
+This design is pretty resilient, but depending on how things play out, it sometimes has a **window of vulnerability** where one *very* poorly timed crash could deadlock the algorithm This case might be rare, but it still happens as a result of just one crash, so by worst-case analysis we technically have to admit this algorithm cannot withstand just one crash &mdash; hence, it's not fault-tolerant.
+
+More specifically, the problem is that split vote again. We can fix split votes by having an odd number of nodes, but if just one node crashes, we're back to having an even number of nodes, reintroducing the possibility of a tie. Let's watch this in action:
+
+Say we have a cluster of 7 nodes. One proposes <span style="color:blue">blue</span>, the other <span style="color:red">red</span>:
+
+[diagram]
+
+Off to the races! Those two nodes each send their proposals, <span style="color:blue">blue</span> and <span style="color:red">red</span>, to all their peers. Remember, each of those peers will vote for whichever proposal it receives first, then never change its mind. Since we have two proposals propagating at the same time, the choice will come down to small timing variances. Let's say the race continues for a while, and just happens to turn out neck-and-neck, three votes each for <span style="color:blue">blue</span> and <span style="color:red">red</span>. Just one node is still decided because it hasn't received a proposal yet:
+
+[diagram]
+
+What happens if that undecided node crashes right now?
+
+[diagram]
+
+Now we're in trouble. A proposal needs 4 votes to reach majority and be accepted; but the voting is over, and no proposal has 4 votes! Seems like we're stuck.
+
+Can we get the algorithm un-stuck from this point? Maybe! Earlier on we said we couldn't use simple deterministic "tiebreaking" rules as a consensus algorithm because a consensus algorithm must discover new candidate values concurrently with making a decision, and must ensure a decision once made never gets changed even if a 'better' candidate is discovered later. But in this case, all the voting is done, so all the discovering is done. So maybe we can include some kind of tiebreak rule? For example, we could say, "in the event of a tie vote, red always wins" (chosen fairly by asking my 4 year old what his favorite color is).
+
+It's alluring, because it *almost* works. *Almost*!
+
+Right now, all we know is the undecided node is currently unreachable; we actually don't know whether it's offline or just running slowly:
+
+[diagram with 3 red, 3 blue, one thought bubble with a question mark inside]
+
+It could be that the undecided node has actually crashed and not coming back. In this case, "3 votes for red, 3 votes for blue" is the final state of the system, so having a tiebreak rule like "in the event of a tie, assume red has won" is a great idea and allows us to decide in spite of the split vote and inopportune crash:
+
+[diagram with 3 red, 3 blue, one empty node crossed out to indicate its gone. Scribble in "interpretation: red wins"]
+
+But, it's just as possible the undecided node is simply running slowly. In that case, the 3v3 split is *not* the final state of the system, and having a tiebreak rule would be a disaster: you would be able to transition directly from:
+
+[copy and paste the diagram above, which still says "interpretation: red wins"]
+
+to:
+
+[diagram with undecided node now decided blue, with "interpretation: blue wins"]
+
+Whoops, the algorithm changed its mind! We absolutely cannot allow that. So we can't have a tiebreak. But if we can't have a tiebreak, then we can't fix the split vote situation. So we can't make the majority algorithm decide in spite of even one crash. This whole majority voting thing was so promising at the beginning, and now it's starting to look like a dead end.
+
+Dang.
+
+-->
+
+
+
+
+
+
+
 
 
 

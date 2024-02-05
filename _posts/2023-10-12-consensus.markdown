@@ -237,8 +237,6 @@ Unfortunately, since the two problems are one and the same, discovering a link b
 
 What would we need a consensus algorithm to do in order for it to underpin a distributed variable? At a high level, consensus is the problem of keeping replicas of a variable in sync; people who study consensus algorithms typically call this basic requirement **Agreement**.
 
-What else?
-
 A trivial way to implement Agreement is to [hardcode an answer](https://xkcd.com/221/). That's no good for our use case; the result would be a distributed constant, not a variable! The value of the variable should always be the one specified in the most recent call to set(). If two nodes call set() at the same time with different values, the consensus algorithm should choose one of those two values. If both set() calls specified the same value, that's the value the consensus algorithm should choose. This idea is called **Integrity**.
 
 Another trivial way to implement Agreement is to keep running forever and never return an answer. If we don't return an answer, we can't ever be wrong! This too is a non-solution. We need an algorithm that's guaranteed to reach agreement in a finite number of steps. This idea is called **Termination**.
@@ -255,9 +253,27 @@ In conclusion, a consensus algorithm should provide:
 >
 > **Fault Tolerance**: No single fault can violate any of the above.
 
-Also, while it's not a property of consensus algorithms per se, one thing we already know is a solution to consensus should be **leaderless**. We've already seen that solving consensus with a single-leader approach isn't fault tolerant, unless we implement a failover scheme &mdash; but failing over without causing split-brain itself requires a leaderless consensus algorithm. Ergo, any consensus algorithm with a leader contains within it a leaderless consensus algorithm. That leaderless consensus algorithm is the thing we need to invent.
+Also, while it's not a property of consensus algorithms per se, we already know something about the solution we're looking for: it should be **leaderless**. We've already seen that solving consensus with a single-leader approach isn't fault tolerant, unless we implement a failover scheme &mdash; but failing over without split-brain requires a leaderless consensus algorithm. Ergo, any consensus algorithm with a leader contains within it a leaderless consensus algorithm. That leaderless consensus algorithm is the thing we need to invent.
 
-### Simplifying the Design Space
+## Making Our Lives Easier
+
+Just as important as knowing what to build is knowing what *not* to build. Consensus algorithms are famous for being difficult. We'd do well to figure out some ways to reduce the difficulty of the problem before we start. Here are two simplfications we'll take:
+
+### Binary Decisions
+
+For now, our algorithm will only allow two values to be proposed. Let's call the two options <span style="color:red">red</span> and <span style="color:blue">blue</span>.
+
+DIAGRAM: the two colored circles we'll use
+
+Remember, these options can stand in for anything else: 0 and 1, yes and no, apples and oranges, etc. Supporting only two options is too simplistic to implement a useful distributed variable; however, in most of computing, you end always being able to have exactly zero of something, exactly one of something, or $N$ of something. If we can figure out how to have exactly two options, there's probably a way to extend it from 2 to $N$ options.
+
+### One-Shot Decisions
+
+For now, let's make a consensus algorithm that can only reach one decision and never change it. This too is too simplistic for a useful distributed variable; the result would be a write-once variable, which isn't too far removed from a constant.However, in most of computing, instantiating things is easy; so if we can figure out how to do a one-shot decision, maybe we can implement a stream of decisions by chaining a sequence of one-shot decisions. 
+
+In conclusion, we'll focus for now on designing a consensus algorithm for one-shot binary decisions: two options (<span style="color:red">red</span> and <span style="color:blue">blue</span>) can be proposed, and the algorithm will pick one, and every node will agree which option was picked.
+
+## Consensus IRL
 
 ## Majority-Rules Voting
 

@@ -249,11 +249,11 @@ TODO recap the four properties
 
 > **Termination**: The algorithm exits.
 >
-> **Agreement**: When the algorithm exits, all replicas agree on a value
+> **Agreement**: When the algorithm exits, all replicas agree on a value.
 >
-> **Integrity**: That value is one somebody wanted
+> **Integrity**: That value is one somebody wanted.
 >
-> **Fault Tolerance**: The algorithm works despite platform-level faults
+> **Fault Tolerance**: No single fault can violate any of the above.
 
 TODO it's not a property per se, but also mention that we've done some prior design footwork and already know of one design constraint: the algorithm must be leaderless. This is because, if you have a leader, then you must support leader failover, and to fail over safely, you need to 
 

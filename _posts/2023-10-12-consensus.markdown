@@ -221,19 +221,25 @@ That's certainly not right. We're supposed to have one distributed variable; it 
 
 This situation, where the system is only supposed to have one leader but accidentally now has two, is called **split-brain**. We cannot ship a distributed variable that is prone to split-brain. We need a "safe" failover algorithm that guarantees all nodes always agree who is the leader.
 
+So how do we make all nodes agree on something? That's a problem called **consensus**.
+
 ## Consensus
 
-At the beginning of this discussion, we were just trying to make a 'distributed variable' that any node on a network could get or set. Now, in trying to rid our solution of split-brain, we find ourselves staring down a different problem: how do we get nodes to agree on something? That problem is known as **consensus**.
+Consensus is the problem of keeping replicas of a variable in sync. It's not a new problem for us; we've been trying to solve it for a while now!
 
-But . . . is consensus really a different problem? Because consensus is the problem of keeping replicas of a variable in sync, and we've been trying to do that for a while now.
+We decided a while back that having only one copy of our distributed variable wouldn't be fault-tolerant, so we decided to make replicas of that variable on every node. As soon as we did that, we had a consensus problem on our hands: we needed to keep those replicas in sync. Our strategy for that was to pass all get and set requests through a single leader node, and have the leader manage the replication process. This is a perfectly valid consensus algorithm; our only problem was figuring out how to survive a leader-node fault.
 
-We decided a long time ago that having only one copy of our distributed variable wouldn't be fault-tolerant, so we decided to make replicas of that variable on every node. We even have a way to keep those replicas in sync: we forward all get and set requests to the leader node, and have the leader node coordinate the replication process. Our only problem thus far has been in trying to keep working in spite of the leader faulting.
+How could we try to solve the distributed variable problem and end up solving consensus instead? These problem are in fact two sides of the same coin. If you have a consensus algorithm, you can implement distributed variables by storing a replica of that variable on every node, then running the consensus algorithm to keep the replicas in sync. If you have a distributed variable, you can implement consensus by storing the data in a distributed variable. Each problem can be reduced to the other.
 
-In that light, the distributed variable problem sort of *is* the consensus problem. If you have a working consensus algorithm, we 
+Unfortunately, since the two problems are one and the same, discovering a link between them doesn't tell us anything new about how to solve either. Still, recasting the distributed variable problem as consensus might yield new insight that helps us solve the problem.
 
-TODO maybe we can succinctly draw equivalence between the two: consensus gives you distributed variables and vice versa, so they're really two sides of the same coin.
+### Properties of a Consensus Algorithm
 
-TODO say, maybe it'll be helpful to think about the problem in this new way
+### Simplifying the Design Space
+
+### Everything We Know So Far
+
+
 
 
 

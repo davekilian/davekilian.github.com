@@ -343,7 +343,16 @@ We're not allowed to end up with a tie; that would mean we exit without reaching
 
 DIAGRAM 3 red vs 2 blue
 
+That ought to be good enough for now. Let's check if our design worked:
 
+* **Agreement**: ✅ &mdash; only one value can reach a majority, and the majority is the same no matter which node is calling get(), so get() always returns the same value
+* **Integrity**: ✅ &mdash; nodes only vote for a value someone proposed; so the value that got the most votes was proposed by somebody
+* **Termination**: ✅ &mdash; the number of votes equals the number of nodes, and a decision is reached after all votes are in
+* **Fault Tolerance**: . . . hmmm
+
+We may have a problem. Again.
+
+## Faults and Split Votes
 
 
 
@@ -352,17 +361,6 @@ DIAGRAM 3 red vs 2 blue
 Old content to adapt:
 
 ---
-
-Okay, so ... does *this* design work?
-
-* **Agreement**: ✅ &mdash; only one proposal can reach a majority, and that's the proposal **query()** always returns; so at most one value can be returned by **query()**
-* **Validity**: ✅ &mdash; nodes only vote for a value someone proposed; so the value that got the most votes was proposed by somebody
-* **Termination**: ✅ &mdash; a decision is reached after all votes are in
-* **Fault Tolerance**: . . . 😀 I told you this would be tricky, didn't I? 
-
-No, this algorithm isn't fault-tolerant either! But we're getting better at this &mdash; this time, the problem is much more subtle.
-
-## Faults and Split Votes
 
 This design is pretty resilient, but depending on how things play out, it sometimes has a **window of vulnerability** where one *very* poorly timed crash could deadlock the algorithm This case might be rare, but it still happens as a result of just one crash, so by worst-case analysis we technically have to admit this algorithm cannot withstand just one crash &mdash; hence, it's not fault-tolerant.
 

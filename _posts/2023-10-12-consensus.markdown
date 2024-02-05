@@ -223,7 +223,41 @@ This situation, where the system is only supposed to have one leader but acciden
 
 ## Consensus
 
-At the very beginning of this discussion, we were just trying to make a shared variable that any node on a network could get or set. Now, in trying to rid our solution of split-brain problems, we find ourselves staring down a different problem: how do we get nodes to agree on something? This problem is well-known; it's called **consensus**.
+At the beginning of this discussion, we were just trying to make a 'distributed variable' that any node on a network could get or set. Now, in trying to rid our solution of split-brain, we find ourselves staring down a different problem: how do we get nodes to agree on something? That problem is known as **consensus**.
+
+Consensus is often touted as *the* foundational problem in distributed systems, and in our case it's not too hard to see why. A solution to the consensus problem wouldn't just be useful for fixing our failover scheme; it would also be enough to solve the distributed variable problem in the first place! If we had a working consensus algorithm, we could solve the distributed variable problem by creating a replica of that variable on every node, then running the consensus algorithm to keep the replicas in sync. We wouldn't need any of this single-leader replication or failover stuff at all.
+
+Since we need to tackle consensus anyway to get failover working, maybe we should try it that way. So let's put away our incomplete single-leader-scheme, and rethink the distributed variable problem as the problem of keeping replicas of that vairable in sync.
+
+
+
+---
+
+TODO but this is going in the wrong direction.
+
+I wanted to reach back and identify our incomplete single-leader-with-failover design as one example of a broken consensus algorithm per FLP's Lemma 3. So we don't want to say we're putting that design away; we want to recast it as an incomplete attempt to solve consensus, and then segue into voting by setting the additional design constraint that a consensus algorithm should be leaderless ...
+
+---
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -238,6 +272,8 @@ At the very beginning of this discussion, we were just trying to make a shared v
 TODO I'm going to have to log off soon, but the idea I'm trying out here is to do this next transition by first refocusing from "solving failover" to "solving distributed variable," and then point out that's the path we were already on: consensus is the problem of keeping replicas of a variable in sync, we have replicas of a variable, and we were trying to keep them in sync. The strategy we chose was to pass all the updates through a single leader, who coordinates the replication proess. But it seems that strategy wasn't fault tolerant. 
 
 Then we can try to get more crisp on what consensus really is and think of other ways we could solve it. 
+
+A sentence: If we have to tackle consensus to get failover working, we may as well just use consensus to solve the distributed variable problem in the first place.
 
 ---
 

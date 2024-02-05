@@ -78,7 +78,7 @@ As software people, it's tempting to write code that assumes the underlying plat
 
 Fault tolerance is the aspect of the problem we were missing before: we don't just want "distributed variables that any node can get or set." We also want that variable to be fault-tolerant. The variable should keep working even if a single node or a single network connection faults.
 
-## Finding Fault
+## The Fault in Our Star Algorithm
 
 In that light, let's re-evaluate our algorithm:
 

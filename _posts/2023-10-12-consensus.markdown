@@ -241,11 +241,11 @@ What else?
 
 A trivial way to implement Agreement is to [hardcode an answer](https://xkcd.com/221/). That's no good for our use case; the result would be a distributed constant, not a variable! The value of the variable should always be the one specified in the most recent call to set(). If two nodes call set() at the same time with different values, the consensus algorithm should choose one of those two values. If both set() calls specified the same value, that's the value the consensus algorithm should choose. This idea is called **Integrity**.
 
-TODO Termination
+Another trivial way to implement Agreement is to keep running forever and never return an answer. If we don't return an answer, we can't ever be wrong! This too is a non-solution. We need an algorithm that's guaranteed to reach agreement in a finite number of steps. This idea is called **Termination**.
 
-TODO mention fault tolerance
+And, of course, we can't forget how important it is to make every algorithm **Fault Tolerant**. 
 
-TODO recap the four properties
+In conclusion, a consensus algorithm should provide:
 
 > **Termination**: The algorithm exits.
 >
@@ -255,21 +255,11 @@ TODO recap the four properties
 >
 > **Fault Tolerance**: No single fault can violate any of the above.
 
-TODO it's not a property per se, but also mention that we've done some prior design footwork and already know of one design constraint: the algorithm must be leaderless. This is because, if you have a leader, then you must support leader failover, and to fail over safely, you need to 
+Also, while it's not a property of consensus algorithms per se, one thing we already know is a solution to consensus should be **leaderless**. We've already seen that solving consensus with a single-leader approach isn't fault tolerant, unless we implement a failover scheme &mdash; but failing over without causing split-brain itself requires a leaderless consensus algorithm. Ergo, any consensus algorithm with a leader contains within it a leaderless consensus algorithm. That leaderless consensus algorithm is the thing we need to invent.
 
 ### Simplifying the Design Space
 
 ## Majority-Rules Voting
-
-
-
-
-
-
-
-
-
-
 
 
 

@@ -225,6 +225,80 @@ This situation, where the system is only supposed to have one leader but acciden
 
 At the beginning of this discussion, we were just trying to make a 'distributed variable' that any node on a network could get or set. Now, in trying to rid our solution of split-brain, we find ourselves staring down a different problem: how do we get nodes to agree on something? That problem is known as **consensus**.
 
+But . . . is consensus really a different problem? Because consensus is the problem of keeping replicas of a variable in sync, and we've been trying to do that for a while now.
+
+We decided a long time ago that having only one copy of our distributed variable wouldn't be fault-tolerant, so we decided to make replicas of that variable on every node. We even have a way to keep those replicas in sync: we forward all get and set requests to the leader node, and have the leader node coordinate the replication process. Our only problem thus far has been in trying to keep working in spite of the leader faulting.
+
+In that light, the distributed variable problem sort of *is* the consensus problem. If you have a working consensus algorithm, we 
+
+TODO maybe we can succinctly draw equivalence between the two: consensus gives you distributed variables and vice versa, so they're really two sides of the same coin.
+
+TODO say, maybe it'll be helpful to think about the problem in this new way
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+TODO justify we should be thinking about consensus, then jump into properties
+
+## Properties of a Consensus Algorithm
+
+TODO cover agreement, integrity, termination; add fault tolerance; tack on te design constraint (not a requirement per se) that it should be leaderless, for exactly the reasons we've already discovered
+
+## A Real-Life Consensus Algorithm
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+---
+
 Consensus is often touted as *the* foundational problem in distributed systems, and in our case it's not too hard to see why. A solution to the consensus problem wouldn't just be useful for fixing our failover scheme; it would also be enough to solve the distributed variable problem in the first place! If we had a working consensus algorithm, we could solve the distributed variable problem by creating a replica of that variable on every node, then running the consensus algorithm to keep the replicas in sync. We wouldn't need any of this single-leader replication or failover stuff at all.
 
 Since we need to tackle consensus anyway to get failover working, maybe we should try it that way. So let's put away our incomplete single-leader-scheme, and rethink the distributed variable problem as the problem of keeping replicas of that vairable in sync.
@@ -236,6 +310,8 @@ Since we need to tackle consensus anyway to get failover working, maybe we shoul
 TODO but this is going in the wrong direction.
 
 I wanted to reach back and identify our incomplete single-leader-with-failover design as one example of a broken consensus algorithm per FLP's Lemma 3. So we don't want to say we're putting that design away; we want to recast it as an incomplete attempt to solve consensus, and then segue into voting by setting the additional design constraint that a consensus algorithm should be leaderless ...
+
+So really the tone should be like "this is what we've been trying to do all along" and get the reader to see the same algorithm in a different way.
 
 ---
 

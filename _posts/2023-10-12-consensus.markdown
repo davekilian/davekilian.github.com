@@ -13,15 +13,15 @@ How can we make a "distributed variable" that any of these nodes can get and set
 
 DIAGRAM: nodes a network, thought bubble question mark in the middle for a variable
 
-It's easy enough to make a variable on any one of these nodes, so let's pick a node and make it the one to store the variable. That node is now special; let's call it the **leader**. Accordingly, we can call all the other nodes **followers**.
+It's easy enough to make a variable on a single node, so let's pick a node and make a variable on it. That node now plays a special role; let's call it the **leader**. Accordingly, we can call all the other nodes **followers**.
 
 DIAGRAM
 
-The leader can or set the variable normally, because for the leader it's just a regular variable in local memory. But what about the followers? Let's set up an RPC server on the leader, and implement RPC calls to get and set the variable. Then the other nodes can get and set the variable by sending the corresponding RPCs to the leader:
+The leader can or set the variable normally, because it's just a regular variable in local memory. But what about the followers? Let's set up an RPC server on the leader, and implement RPC calls to get and set the variable. Then the other nodes can get and set the variable by sending the corresponding RPCs to the leader:
 
 DIAGRAM: one node is highlighted as the leader; all others and sending get/set RPCs.
 
-This seems like a good start. One of the best things about this design is how simple it is. The leader's logic is basically:
+And, that's pretty much all we need! This seems like a good start. One of the best things about this design is how simple it is. The leader's logic is basically:
 
 ```
 leader {
@@ -59,7 +59,7 @@ client {
 }
 ```
 
-So, is that it? Have we invented distributed variables? I would say technically yes, we did make distributed variables, but the system we have so far isn't very useful. As is sadly so often the case, things have been simple so far only because we missed a major aspect of the problem.
+So, is this mission accomplished? Have we invented distributed variables? I would say technically yes, we did make distributed variables, but the system we have so far isn't very useful. As is sadly so often the case, things have been simple so far only because we missed a major aspect of the problem.
 
 ## Fault Tolerance
 
@@ -219,9 +219,173 @@ DIAGRAM
 
 That's certainly not right. We're supposed to have one distributed variable; it seems to have accidentally gotten forked into two. If anyone has written code that calls set() on the variable and assumes all other nodes will see the result of that set() going forward, well, we didn't manage to provide that guarantee, and that code is now broken. We were being so hard on other people before for not providing their stated guarantees, and yet here we are now breaking our promises too!
 
-This situation, where the system is only supposed to have one leader but has accidentally split into two, is called **split-brain**. We cannot ship a distributed variable that is prone to split-brain behavior. So it seems we're not out of the woods yet.
+This situation, where the system is only supposed to have one leader but accidentally now has two, is called **split-brain**. We cannot ship a distributed variable that is prone to split-brain. We need a "safe" failover algorithm that guarantees all nodes always agree who is the leader.
 
-## Back Up One Rabbit Hole and Straight Down Another
+## Consensus
+
+At the very beginning of this discussion, we were just trying to make a shared variable that any node on a network could get or set. Now, in trying to rid our solution of split-brain problems, we find ourselves staring down a different problem: how do we get nodes to agree on something? This problem is well-known; it's called **consensus**.
+
+
+
+
+
+
+
+
+
+---
+
+TODO I'm going to have to log off soon, but the idea I'm trying out here is to do this next transition by first refocusing from "solving failover" to "solving distributed variable," and then point out that's the path we were already on: consensus is the problem of keeping replicas of a variable in sync, we have replicas of a variable, and we were trying to keep them in sync. The strategy we chose was to pass all the updates through a single leader, who coordinates the replication proess. But it seems that strategy wasn't fault tolerant. 
+
+Then we can try to get more crisp on what consensus really is and think of other ways we could solve it. 
+
+---
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+---
+
+
+
+Having a solution to the consensus problem would be useful to us in several ways. For one, we could fix our split-brain problem with a consensus algorithm, by having all the nodes come to consensus on who is the current leader. But the uses don't end there: we could also use a consensus algorithm to solve the original problem! To create a distributed variable, we could store a replica
+
+
+
+
+
+Interestingly, this is something we were already doing! It would seem well stumbled into the problem of consensus inadvertently.
+
+
+
+
+
+
+
+Thinking bigger, solving consensus would also give us a simple solution to the distributed variable problem: we just have each node store a replica of the variable, and use a consensus algorithm to keep the replicas in agreement with one another.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+---
+
+TODO maybe we can make a segue from "all nodes always agree" to the problem of consensus?
+
+Maybe we can frame it as, we have found a second problem embedded in our original problem, and call it out. The problem is getting a set of nodes to agree on something, and is called consensus.
+
+
+
+---
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+---
+
+
+
+
+
+
+
+
+
+
+
+## How Deep the Rabbit Hole Goes
+
+This seems like a good time to stop and get our bearings. We started with the simple goal of creating a variable any node on a network can get or set. But now we've had several false starts, and we seem to be progressing down a rabbit hole. How much deeper will it go?
+
+Quite deep as it turns out. We've stumbled into a well-known problem called **consensus**.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 We've just played out a story as old as <s>time</s> distributed computing itself: we accidentally created an algorithm that wasn't fault tolerant (our single-leader algorithm could end up with no leaders), and in trying to fix it we ended up with split brain instead (our single-leader algorithm could have multiple leaders). Neither is acceptable. If we want to stay on the path we're already on, we need a safe failover process.
 
@@ -248,6 +412,16 @@ Another trivial way to implement Agreement is give your self an unlimited amount
 TODO mention fault tolerance
 
 TODO recap the four properties
+
+> **Termination**: The algorithm exits.
+>
+> **Agreement**: When the algorithm exits, all replicas agree on a value
+>
+> **Integrity**: That value is one somebody wanted
+>
+> **Fault Tolerance**: The algorithm works despite platform-level faults
+
+TODO this is probably as good a point as any to start restricting the problem space to one-shot binary consensus
 
 TODO a potential segue now is to reconsider the notion the single-leader replication with failover was a consensus algorithm that fits all the criteria, except we can't actually find a way to make the failover part work correctly yet; so in addition to the above, there's a kind of design constraint which is that we can't rely on a single leader. It has to be a leaderless, peer-to-peer algorithm that achieves all of the above. Then appeal to real life metaphor: what do you do when you need to make a decision and nobody's in charge? What do societies do when they need to choose a leader?
 

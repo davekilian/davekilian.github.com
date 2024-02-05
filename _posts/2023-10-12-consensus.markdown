@@ -348,11 +348,31 @@ That ought to be good enough for now. Let's check if our design worked:
 * **Agreement**: ✅ &mdash; only one value can reach a majority, and the majority is the same no matter which node is calling get(), so get() always returns the same value
 * **Integrity**: ✅ &mdash; nodes only vote for a value someone proposed; so the value that got the most votes was proposed by somebody
 * **Termination**: ✅ &mdash; the number of votes equals the number of nodes, and a decision is reached after all votes are in
-* **Fault Tolerance**: . . . hmmm
+* **Fault Tolerance**: . . . we might have a problem here
 
-We may have a problem. Again.
+## Faults and Ties
 
-## Faults and Split Votes
+Remember how fixed the split vote problem by having an odd number of nodes?
+
+DIAGRAM
+
+If just one node goes down, we're back to having an even number of nodes:
+
+DIAGRAM
+
+Once we're back to an even number of nodes, split votes are once again a problem:
+
+DIAGRAM
+
+That means there are still sitations where just one fault can bring down this algorithm: if a single node goes down and the other nodes end up in a tie, the algorithm finishes with no value reaching a majority, which means we're exiting with no decision made. Even if a whole lotta things have to go wrong for us to get here, the fact remains that a single fault was enough to bring us down; we're forced to conclude our algorithm is not fault tolerant.
+
+TODO I significantly cut down on the old example here. Finish it off by discussing a tiebreaker, and show how tiebreaking can screw up agreement by changing our answer.
+
+
+
+
+
+
 
 
 
@@ -361,24 +381,6 @@ We may have a problem. Again.
 Old content to adapt:
 
 ---
-
-This design is pretty resilient, but depending on how things play out, it sometimes has a **window of vulnerability** where one *very* poorly timed crash could deadlock the algorithm This case might be rare, but it still happens as a result of just one crash, so by worst-case analysis we technically have to admit this algorithm cannot withstand just one crash &mdash; hence, it's not fault-tolerant.
-
-More specifically, the problem is that split vote again. We can fix split votes by having an odd number of nodes, but if just one node crashes, we're back to having an even number of nodes, reintroducing the possibility of a tie. Let's watch this in action:
-
-Say we have a cluster of 7 nodes. One proposes <span style="color:blue">blue</span>, the other <span style="color:red">red</span>:
-
-[diagram]
-
-Off to the races! Those two nodes each send their proposals, <span style="color:blue">blue</span> and <span style="color:red">red</span>, to all their peers. Remember, each of those peers will vote for whichever proposal it receives first, then never change its mind. Since we have two proposals propagating at the same time, the choice will come down to small timing variances. Let's say the race continues for a while, and just happens to turn out neck-and-neck, three votes each for <span style="color:blue">blue</span> and <span style="color:red">red</span>. Just one node is still decided because it hasn't received a proposal yet:
-
-[diagram]
-
-What happens if that undecided node crashes right now?
-
-[diagram]
-
-Now we're in trouble. A proposal needs 4 votes to reach majority and be accepted; but the voting is over, and no proposal has 4 votes! Seems like we're stuck.
 
 Can we get the algorithm un-stuck from this point? Maybe! Earlier on we said we couldn't use simple deterministic "tiebreaking" rules as a consensus algorithm because a consensus algorithm must discover new candidate values concurrently with making a decision, and must ensure a decision once made never gets changed even if a 'better' candidate is discovered later. But in this case, all the voting is done, so all the discovering is done. So maybe we can include some kind of tiebreak rule? For example, we could say, "in the event of a tie vote, red always wins" (chosen fairly by asking my 4 year old what his favorite color is).
 

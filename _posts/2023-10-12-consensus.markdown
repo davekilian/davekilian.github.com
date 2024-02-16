@@ -365,7 +365,7 @@ Now we have a complete algorithm, that pretty much works:
 
 * **Agreement**: ✅ &mdash; only one value can reach a majority, and any value that reaches a majority will always be the majority
 * **Integrity**: ✅ &mdash; nodes only vote for a value someone proposed; so the value that got the most votes was proposed by somebody
-* **Termination**: oh wait. Does this algorithm always terminate?
+* **Termination**: oh wait, does this algorithm always terminate?
 
 In our new algorithm, agreement is reached once a value reaches a majority; so we can only terminate if some value reaches a majority. But what if we're unlucky, and we end up with a split vote?
 
@@ -392,24 +392,27 @@ Man, the wheels are really starting to fall off again, aren't they? Having an od
 
 ## Tiebreaks and Takebacks
 
+Okay, there's no way to prevent split votes, so there's no way to ensure some value always reaches a majority. Maybe it's not as bad as it sounds. Remember, our consensus algorithm rests on a deterministic rule that every node runs on the same information, and that information is the set of votes. If we can't prevent the vote from splitting, maybe we can tweak the rule to fix it.
 
+Let's add a tiebreak rule: if a color has a majority of the votes, we pick that color, but in the event of a tie, we pick red (chosen fairly by asking my 4-year-old his favorite color). Now if there's a split vote, we still get an answer:
 
+DIAGRAM
 
+But, but .. . no wait, hold on now, we can't do this. We're making a decision before all the votes are in! Right now we have a tie vote and we picked red, but how do we know that last node is actually offline? What if it's completely healthy, and just happens to be the last node to vote? What if it comes back and votes blue?
 
- 
+DIAGRAM
 
----
+Well, this is kind of a disaster! We violated Agreement, the most sacred of all the consensus properties. At one point in the system, we had a 3v3 split vote, and all nodes agreed on red. But then that last vote came in, and everybody changed their mind to blue. You can't change your mind! Agreement is agreement.
 
-TODO
+It gets worse. This isn't a problem with the tiebreaking rule we chose; it's going to be a problem with any tiebreaking rule. Using a tiebreaker is totally fine *if* the final node is offline and is guaranteed never to come back. But how do we know the final node is offline and not coming back? No matter how much time has passed, it is always still possible for the final node to come back and enter the final vote; so no matter how much time has passed, it's never safe to run the tiebreaker rule. Ergo, we simply can't have one.
 
-* Maybe we can come up with a tiebeak rule, like in a tie red always wins * (*: chosen fairly by red being my four year old's favorite color)
-* But wait, a tiebreak rule doesn't work when *nobody* fails: 2v2 red-vs-blue means red wins, but then the fifth vote comes in blue and the system changes its mind to blue
+So, we can't prevent split votes, and we can't run tiebreaking rules either.
 
----
+Okay, that's it. I'm all out of ideas.
 
 ## Something Has Gone Very Wrong
 
-Okay, it's time to step back for a minute.
+Let's step back for a minute.
 
 We started out with such a simple goal: all we wanted was one distributed variable, and it only took us about 30 seconds to come up with a simple and pretty robust algorithm. The one little thing our first draft was missing was fault tolerance. But as soon as we started trying to make our variable fault-tolerant, all of a sudden everything was like "heartbeat this," "split brain that," broken failover algorithms, broken split-vote-tiebreaking rules . . . we ended up in a labrynth of dead ends in a sea of ever-growing complexity, and now we're walking away with almost nothing to show for it all. What *happened?*
 

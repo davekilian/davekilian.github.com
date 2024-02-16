@@ -436,9 +436,28 @@ Welcome back! How did it go? I'm guessing you're still stuck, but don't worry &m
 
 Protip: if you repeatedly find yourself unable to solve a problem, and you ask your smartest friends and they can't solve it either, you think really, really hard and, nada, the next thing to do is see if you can prove impossibility. Maybe the reason you can't solve the problem is because no solution exists! When the going gets tough, the tough give up (but only after formally proving how tough the going really is). This is exactly what three researchers managed to do in the mid-1980s.
 
-In their paper *Impossibility of Distributed Consensus with One Faulty Process*, Fischer, Lynch and Paterson (the "FLP" in what later became known as the "FLP result") explained exactly why nobody could come up with a fault-tolerant consensus algorithm. It turns out we chose the wrong consensus properties earlier: it's impossible for a single algorithm to provide Agreement, Termination, Integrity and Fault Tolerance. If we want to solve the consensus problem, we'll have to bend at least one of the requirements. In particular, it would seem Termination and Fault Tolerance are at odds with one another.
+In their paper *Impossibility of Distributed Consensus with One Faulty Process*, Fischer, Lynch and Paterson (the "FLP" in what later became known as the "FLP result") explained exactly why nobody could come up with a fault-tolerant consensus algorithm. It turns out we chose the wrong consensus properties earlier: it's impossible for a single algorithm to provide Agreement, Termination, Integrity and Fault Tolerance all at the same time, specifically because Termination and Fault Tolerance are at odds with one another. We'll have to compromise one or the other if we plan to ever solve the problem.
 
 ## FLP
+
+The basic result of FLP is a consensus algorithm with provides Agreement, Integrity and Fault Tolerance does not Terminate.
+
+<div class="overflows" markdown="block"><center>
+
+
+Agreement + Integrity + Fault Tolerance = Non-Termination
+
+</center></div>
+
+To show that's true, we need to talk abstractly about all possible consensus algorithms at the same time. If things ever start to get too abstract and your heads starts spinning, try applying what we're saying to one of the two consensus algorithms you already know &mdash; majority-rules voting and single-leader replication. Those are consensus algorithms, so anything we say about all consensus algorithms abstractly should apply to those consensus algorithms concretely as well.
+
+
+
+
+
+
+
+
 
 <!--
 

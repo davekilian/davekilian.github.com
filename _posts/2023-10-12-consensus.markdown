@@ -449,7 +449,15 @@ Agreement + Integrity + Fault Tolerance = Non-Termination
 
 </center></div>
 
-To show that's true, we need to talk abstractly about all possible consensus algorithms at the same time. If things ever start to get too abstract and your heads starts spinning, try applying what we're saying to one of the two consensus algorithms you already know &mdash; majority-rules voting and single-leader replication. Those are consensus algorithms, so anything we say about all consensus algorithms abstractly should apply to those consensus algorithms concretely as well.
+To show that's true, we need to talk abstractly about all possible consensus algorithms at the same time. If things ever start to get too abstract and your heads starts spinning, try applying what we're saying to one of the two consensus algorithms you already know &mdash; majority-rules voting and single-leader replication. Those are consensus algorithms, so anything we say about all consensus algorithms abstractly had better apply to those consensus algorithms concretely.
+
+### The Terminator
+
+TODO any algorithm that guarantees termination has a "final" message we can call *the terminator*. A property of the terminator 
+
+### I'll Be Back (or Not?)
+
+TODO the failed vs slow dillemma
 
 
 

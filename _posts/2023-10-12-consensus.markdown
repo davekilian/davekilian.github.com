@@ -189,23 +189,23 @@ Now node 1 is the leader. The RPC algorithm begins running as we described previ
 
 DIAGRAM
 
-All looks well so far. Now, let's try the case that broke our algorithm before. Say the leader crashes or gets disconnected. (Darn it, Ted!) Now node 1 is offline:
+All looks well so far. Now, let's try the case that broke our algorithm before. Say the leader crashes or gets disconnected. Now node 1 is offline:
 
 DIAGRAM
 
 Soon afterward, node 1 starts missing heartbeats. A new leader is needed. Each node now runs the same algorithm as before to select a leader:
 
-> 1. Start with the full set of node IDs: $(1, 2, 3, 4, 5)$
-> 2. Eliminate nodes missing heartbeats. That's just node $1$, so the remaining node IDs are: $(2, 3, 4, 5)$
-> 3. Pick the lowet remaining node ID: every node picks $2$
+> 1. **Take the set of node IDs of all peer nodes.** That's still $(1, 2, 3, 4, 5)$. 
+> 2. **Eliminate any peer which isn't responding to heartbeat requests.** Only node $1$ is missing hearbeats, so the remaining node IDs are: $(1, 2, 3, 4, 5)$
+> 3. **Pick the lowest remaining node ID.** Every node picks $2$
 
 And just like that, every node has switched over to node 2 as the leader:
 
 DIAGRAM
 
-This is looking pretty good! This whole failover thing was quite the diversion, but now that we have a working failover scheme, we have managed to fix our single-leader distributed variable algorithm, and finally invented distributed variables.
+This is looking pretty good! This whole failover thing was quite the diversion, but now that we have a working failover scheme, we have managed to fix our distributed variable algorithm, and finally invented fault-tolerant distributed variables.
 
-Right?
+Hang on. If that's true, why is there so much more text in this post?
 
 ## Split-Brain
 

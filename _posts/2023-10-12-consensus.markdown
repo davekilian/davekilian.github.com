@@ -13,15 +13,15 @@ How can we make a "distributed variable" that any of these nodes can get and set
 
 DIAGRAM: nodes a network, thought bubble question mark in the middle for a variable
 
-It's easy enough to make a variable on a single node, so let's pick a node and make a variable on it. That node now plays a special role; let's call it the **leader**. Accordingly, we can call all the other nodes **followers**.
+Well, we know how to make regular (non-distributed) variables, and we know how to pass messages between nodes using the network, so how about we pick a node, put a regular old variable on it, and set up an RPC server so other nodes can access that variable remotely?
 
 DIAGRAM
 
-The leader can or set the variable normally, because it's just a regular variable in local memory. But what about the followers? Let's set up an RPC server on the leader, and implement RPC calls to get and set the variable. Then the other nodes can get and set the variable by sending the corresponding RPCs to the leader:
+The node we picked to store the variable is now special; let's call it the **leader**. The other nodes, we'll call **followers**.
 
-DIAGRAM: one node is highlighted as the leader; all others and sending get/set RPCs.
+Seems to me like we might have a complete design already. We have a variable any node on the network can get and set: the leader treats the variable like any other local variable, and the followers can access the variable by sending RPCs to the leader.
 
-And, that's pretty much all we need! This seems like a good start. One of the best things about this design is how simple it is. The leader's logic is basically:
+One of the best things about this design is how simple it is. The leader's logic is roughly this:
 
 ```
 leader {
@@ -59,24 +59,40 @@ client {
 }
 ```
 
-So, is this mission accomplished? Have we invented distributed variables? I would say technically yes, we did make distributed variables, but the system we have so far isn't very useful. As is sadly so often the case, things have been simple so far only because we missed a major aspect of the problem.
+We're off to a great start, but I'm afraid we're not quite done. We have a design that meets our specification, but we didn't think hard enough about what the specification should have been. As is sadly so often the case, things have been simple thus far only because we missed a major aspect of the problem.
 
-## Fault Tolerance
+## Whose Fault is it Anyways?
 
 <div style="margin-left: 1em; margin-right: 1em; padding-left: 1em; padding-top: .1em; padding-bottom: .1em; border-left: .3em solid #eee; color: #333" markdown="1">
 *"How can you make a reliable computer service?” the presenter will ask in an innocent voice before continuing, “It may be difficult if you can’t trust anything and the entire concept of happiness is a lie designed by unseen overlords of [endless deceptive power](https://scholar.harvard.edu/files/mickens/files/thesaddestmoment.pdf)."*
 
 </div>
 
-Think about the device you're using right now to read this page. Have you ever had weird little problems with it? Freezes, crashing apps, system slowdowns, overheating, unexplained network disconnects, blue screens, anything like that? Let's call these kinds of problems **faults**. Although your device probably (hopefully) doesn't fault often enough to be a daily disruption, I'm guessing it still happens from time to time. How often would you say that is? Once every few hours, days, or weeks?
+You're reading this page on a computing device of some kind. Have you ever had problems with it? Does this thing ever freeze up, crash, overheat, disconnect randomly from the network for no discernible reason? The kind of problems I'm asking about here are what distributed systems people call **faults**. So how often does your device fault? It hopefully doesn't happen often enough to be a major day-to-day disruption, but I'm still betting it happens. How often what you say it does &mdash; on the order hours, days, weeks?
 
-Now take that number and multiply it by a thousand. That's how often you would be dealing with individual server faults when managing a fleet of a thousand servers! Even if a problem is rare on the scale of one device, when you have many, many devices, the odds are pretty good a few of your devices has that problem. On a large enough network, you're experiencing every possible problem all the time (just not on every node simultaneously).
+Well, that's just with one device. What if you had to manage two thousand of them? What if I told you to keep them all working all the time?
 
-This is what makes distributed systems a kind of funny environment to work in. The platform running your code provides fewer guarantees than you'd expect, and even the guarantees you get on paper don't always hold up in practice. It’s a world where anything that can go wrong will go wrong, is going wrong, and has been going wrong for weeks unnoticed. Working on distributed systems is like playing a perverse game of Simon Says, where you think you've checked your assumptions and covered your bases, only to find out &mdash; Simon didn't say! &mdash; there's one more thing that can break in a way you didn't anticipate.
+Let's say your device normally glitches out on us once every two weeks. (I'd say that's on the conservative end of normal.) Then we'd be going a smidge over 1 million seconds between faults:
 
-As software people, it's tempting to write code that assumes the underlying platforms always works. When that code breaks because the platform ended up not working, it's tempting to blame the platform and tell the ops people to fix the hardware. But the ops people are managing a huge fleet, and they're constantly being deluged by problem after unexplainable problem. They're never going to catch up. You'd be best off coding around the problems instead of asserting they won't happen; that is, you ought to make your code **fault tolerant**. It's that, or frequent downtime, outages, and unhappy users!
+<div class="overflows" markdown="block"><center>
 
-Fault tolerance is the aspect of the problem we were missing before: we don't just want "distributed variables that any node can get or set." We also want that variable to be fault-tolerant. The variable should keep working even if a single node or a single network connection faults.
+$$2 \; weeks \times 7 \; \dfrac{days}{week} \times 24 \; \dfrac{hours}{day} \times 60 \; \dfrac{minutes}{hour} \times 60 \; \dfrac{seconds}{minute} = 1,209,600 \; seconds$$​
+
+</center></div>
+
+Not too bad. But if we now have 2,000 devices to manage, we're going to hit random device faults about 2,000 times more often. Then our average time between faults drops to:
+
+$$1,209,600 \div 2,000 = 604.8 \; seconds$$
+
+That's one new fault every 10 minutes . . . 24 hours a day, 7 days a week, until the day we decommision the system. This is going to be a problem! Even if we do ever manage to get on top of all the weird nonsense going on in our network, we'll never be done for more than 10 minutes at a time by this estimate.
+
+It's kind of funny how the random crashes, freezes, disconnects that don't seem like a big problem day to day become insurmountable sources of endless problems at scale. It makes distributed systems a kind of funny environment to work in. The platform running our code provides fewer guarantees than we might expect, and even the guarantees we get on paper don't always hold up in practice. Distributed systems is a world where anything that can go wrong will go wrong, is going wrong, and has been going wrong for weeks unnoticed. It's like playing a perverse game of Simon Says, where you think you've checked your assumptions and covered your bases, only to find out &mdash; Simon didn't say! &mdash; there's one more thing that can break in a way you didn't realize.
+
+As software people, it's tempting to write code that assumes the undelrying platforms and systems always work, and when they inevitably break, it's tempting to just tell the ops people it's their problem &mdash; just fix the hardware! But the ops people are managing a huge fleet, and they're being inundated by problem after unexplainable problem day in and day out. They're never going to catch up, and neither would you in their shoes. The best way forward is to code around the problems instead of asserting they shouldn't happen; that is, we ought to make our code **fault tolerant**. It's that, or frequent downtime, outages, and unhappy users!
+
+(Besides, it's never a good idea to yell at the ops people. Make friends with your ops people. They have the best stories.)
+
+Anyways, fault tolerance is the major aspect of the problem that we were missing before. It's not enough to just want "distributed variables that any node can get or set," we also need fault tolerance: the variable should keep working even if a node crashes, or a network connection goes down.
 
 ## The Fault in Our Star Algorithm
 
@@ -116,7 +132,7 @@ The process of updating all the replicas this way is called **replication**. (Pe
 
 This is a good enough starting point for a design sketch, although we're still missing some of the details. Let's switch focus and consider how to fail over.
 
-Up until now, our the answer to the question "which node is the leader?" was a constant: it could have been hardcoded, or provided via a config file. Now that we support failover, the leader can change at runtime, so we need a runtime algorithm for determining who currently is the leader. Whatever scheme we come up with cannot itself rely on some kind of leader &mdash; the whole point is the leader might have crashed, or lost power, or gotten disconnected from the network because Ted was in a rush to go home and peruse his [extensive collection of "Thundercats" cartoons](https://scholar.harvard.edu/files/mickens/files/thesaddestmoment.pdf).
+Up until now, our the answer to the question "which node is the leader?" was a constant: it could have been hardcoded, or provided via a config file. Now that we support failover, the leader can change at runtime, so we need a runtime algorithm for determining who currently is the leader. Whatever scheme we come up with cannot itself rely on some kind of leader &mdash; the whole point is the leader might have crashed, or lost power, or gotten disconnected from the network because Ted was in a rush to go home and peruse his [extensive collection of "Thundercats" cartoons](https://scholar.harvard.edu/files/mickens/files/thesaddestmoment.pdf). (I'm going to keep linking to the paper until you read it.)
 
 Let's see if we can find a scheme where each node independently figures out who the leader is, using local information only. In principle, if we can make it so every node has the same local information and runs the same deterministic algorithm on that information, they should all independently pick the same leader. To get there, we need to solve two problems: 
 

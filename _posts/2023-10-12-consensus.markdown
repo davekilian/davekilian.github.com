@@ -406,7 +406,7 @@ Well, this is kind of a disaster! We violated Agreement, the most sacred of all 
 
 It gets worse. This isn't a problem with the tiebreaking rule we chose; it's going to be a problem with any tiebreaking rule. Using a tiebreaker is totally fine *if* the final node is offline and is guaranteed never to come back. But how do we know the final node is offline and not coming back? No matter how much time has passed, it is always still possible for the final node to come back and enter the final vote; so no matter how much time has passed, it's never safe to run the tiebreaker rule. Ergo, we simply can't have one.
 
-So, we can't prevent split votes, and we can't run tiebreaking rules either.
+So we can't prevent split votes, and we can't run tiebreaking rules either.
 
 Okay, that's it. I'm all out of ideas.
 

@@ -449,17 +449,27 @@ Agreement + Integrity + Fault Tolerance = Non-Termination
 
 </center></div>
 
-To show that's true, we need to talk abstractly about all possible consensus algorithms at the same time. If things ever start to get too abstract and your heads starts spinning, try applying what we're saying to one of the two consensus algorithms you already know &mdash; majority-rules voting and single-leader replication. Those are consensus algorithms, so anything we say about all consensus algorithms abstractly had better apply to those consensus algorithms concretely.
+To show that's true, we need to talk abstractly about all possible consensus algorithms at the same time. If things ever start to get too abstract and your heads starts spinning, try applying what we're saying to one of the two consensus algorithms you already know &mdash; majority-rules voting and single-leader replication. Those are consensus algorithms, so anything we say about all consensus algorithms in the bastract had better apply to those consensus algorithms specifically.
 
-### The Terminator
+### How Consensus Algorithms Decide
 
-TODO any algorithm that guarantees termination has a "final" message we can call *the terminator*. A property of the terminator 
+TODO the system goes as a whole from undecided to decided, once, in a single step, as a result of some message being processed, and the relative order messages are processed on some node determines the outcome for the entire system. Need to decide how much of this to give as observations vs justify. I don't remember how well justified these observations are in the FLP proof, for them it might fall out of parts of the system design.
+
+### The "Terminator"
+
+TODO any algorithm that guarantees termination has a "final" message we can call *the terminator*. The key property of a terminator: once the message has been processed, the system will have reached a decision. Practically, that means one of two things happens: either the system has already decided and the message does nothing, or the system has not yet decided and the message causes a decision to be reached.
 
 ### *I'll Be Back ... Maybe*
 
-TODO the failed vs slow dillemma
+TODO but once the terminator has been sent, what happens if the receiving node crashes? No decision will be made. We can run more code afterward that makes a decision, but when is it okay to run it? The failed vs slow dillemma. We've created a situation with two parallel execution threads: one is the terminator being processed on that node (may never finish) and the other is the sigma process making a compensating decision. But if you run both of these, you get two decisions &mdash; agreement is now violated.
 
+### TODO
 
+TODO this is a good time to stop and show this playing ou on both of our consensus algorithms, and reiterating that we're saying this is going to happen *no matter what* the algorithm is. The only thing we required is the existence of a terminator
+
+### TODO
+
+TODO finish off by showing an algorithm with no terminator doesn't terminate, by definition. But what good is a consensus algorithm that doesn't terminate (segue alert)
 
 
 

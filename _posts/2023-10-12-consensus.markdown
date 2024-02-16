@@ -243,21 +243,23 @@ This situation, where the system is only supposed to have one leader but acciden
 
 ## Consensus
 
-Consensus is the problem of keeping replicas of a variable in sync. It's not a new problem for us; we've been trying to solve it for a while now!
+Consensus is the problem of getting all nodes in a network to agree on the value of some variable. It's not a new problem for us; we've been trying to solve it for a while now!
 
 We decided a while back that having only one copy of our distributed variable wouldn't be fault-tolerant, so we decided to make replicas of that variable on every node. As soon as we did that, we had a consensus problem on our hands: we needed to keep those replicas in sync. Our strategy for that was to pass all get and set requests through a single leader node, and have the leader manage the replication process. This is a perfectly valid consensus algorithm; our only problem was figuring out how to survive a leader-node fault.
 
-How could we try to solve the distributed variable problem and end up solving consensus instead? These problem are in fact two sides of the same coin. If you have a consensus algorithm, you can implement distributed variables by storing a replica of that variable on every node, then running the consensus algorithm to keep the replicas in sync. If you have a distributed variable, you can implement consensus by storing the data in a distributed variable. Each problem can be reduced to the other.
+How could we try to solve the distributed variable problem and end up solving consensus instead? These problem are in fact two sides of the same coin. If you have a consensus algorithm, you can implement distributed variables by storing a replica of that variable on every node, then running the consensus algorithm to keep the replicas in sync each time somebody sets the variable. If you have a distributed variable, you can implement consensus by storing the data in a distributed variable and setting it once. Each problem can be reduced to the other.
 
-Unfortunately, since the two problems are one and the same, discovering a link between them doesn't tell us anything new about how to solve either. Still, recasting the distributed variable problem as consensus might yield new insight that helps us solve the problem. So let's give it a shot.
+Unfortunately, since the two problems are one and the same, discovering a link between them doesn't tell us anything new about how to solve either. Still, recasting the distributed variable problem as consensus might yield new insight. Let's learn more about consensus
 
 ### Properties of a Consensus Algorithm
 
-What would we need a consensus algorithm to do in order for it to underpin a distributed variable? At a high level, consensus is the problem of keeping replicas of a variable in sync; people who study consensus algorithms typically call this basic requirement **Agreement**.
+Say we planned to implement distributed variables by storing a replica of the variable on every node, and then using a consensus algorithm to keep them in sync. What would we need that consensus algorithm to do?
 
-A trivial way to implement Agreement is to [hardcode an answer](https://xkcd.com/221/). That's no good for our use case; the result would be a distributed constant, not a variable! The value of the variable should always be the one specified in the most recent call to set(). If two nodes call set() at the same time with different values, the consensus algorithm should choose one of those two values. If both set() calls specified the same value, that's the value the consensus algorithm should choose. This idea is called **Integrity**.
+To start, the basic purpose of a consensus algorithm is to ensure all nodes agree on the value of the variable by the time the algorithm exits. In "the literature," this most basic property is often called **Agreement**. When we say all nodes should agree "by the time the algorithm exits," we're also assuming the algorithm should exit. That requirement is called **Termination**.
 
-Another trivial way to implement Agreement is to keep running forever and never return an answer. If we don't return an answer, we can't ever be wrong! This too is a non-solution. We need an algorithm that's guaranteed to reach agreement in a finite number of steps. This idea is called **Termination**.
+Putting on our rules-lawyer hats for a minute, there's a way to achieve Agreement and Termination without really solving the problem: you just hardcode an answer. For example, if you're trying to write a consensus algorithm for integers, "always return 4" is technically a valid consensus algorithm according to the definition above. But algorithms like this are useless for the distributed variable problem; we'd end up with a distribute constant instead!
+
+We want the value of the variable to always be the one specified in the most recent call to set(). If two nodes call set() at the same time with different values, the nodes should end up agreeing  on one of those two values. If both set() calls specify the same value, the nodes should always agree on that value. This idea is called **Integrity**. (Sometimes integrity is defined an alternate way, by saying the value the nodes agree upon should be the value some node proposed. Either definition works for our needs.)
 
 And, of course, we can't forget how important it is to make every algorithm **Fault Tolerant**. 
 
@@ -271,27 +273,9 @@ In conclusion, a consensus algorithm should provide:
 >
 > **Fault Tolerance**: No single fault can violate any of the above.
 
-Also, while it's not a property of consensus algorithms per se, we already know something about the solution we're looking for: it should be **leaderless**. We've already seen that solving consensus with a single-leader approach isn't fault tolerant, unless we implement a failover scheme &mdash; but failing over without split-brain requires a leaderless consensus algorithm. Ergo, any consensus algorithm with a leader contains within it a leaderless consensus algorithm. That leaderless consensus algorithm is the thing we need to invent.
+Although it's not a *property* of consensus algorithms per se, we already know something about the solution we're looking for: it ought to be **leaderless**. We have discovered already that any consensus algorithm which involves a leader must also implement leader failover, and doing so safely is itself a consensus problem &mdash; one that has to be solved without a leader, since the leader already crashed. So any leader-based consensus algorithm itself contains a leaderless consensus algorithm, and the latter is the thing we now need to build.
 
-## Making Our Lives Easier
-
-Just as important as knowing what to build is knowing what *not* to build. Consensus algorithms are famous for being difficult. We'd do well to figure out some ways to reduce the difficulty of the problem before we start. Here are two simplfications we'll take:
-
-### Binary Decisions
-
-For now, our algorithm will only allow two values to be proposed. Let's call the two options <span style="color:red">red</span> and <span style="color:blue">blue</span>.
-
-DIAGRAM: the two colored circles we'll use
-
-Remember, these options can stand in for anything else: 0 and 1, yes and no, apples and oranges, etc. Supporting only two options is too simplistic to implement a useful distributed variable; however, in most of computing, you end always being able to have exactly zero of something, exactly one of something, or $N$ of something. If we can figure out how to have exactly two options, there's probably a way to extend it from 2 to $N$ options.
-
-### One-Shot Decisions
-
-For now, let's make a consensus algorithm that can only reach one decision and never change it. This too is too simplistic for a useful distributed variable; the result would be a write-once variable, which isn't too far removed from a constant.However, in most of computing, instantiating things is easy; so if we can figure out how to do a one-shot decision, maybe we can implement a stream of decisions by chaining a sequence of one-shot decisions. 
-
-In conclusion, we'll focus for now on designing a consensus algorithm for one-shot binary decisions: two options (<span style="color:red">red</span> and <span style="color:blue">blue</span>) can be proposed, and the algorithm will pick one, and every node will agree which option was picked.
-
-## Consensus IRL
+## Leaderless Consensus
 
 Do you know of any real-life algorithms for a group of people to come to an agreement? Preferably, a leaderless one: one where everyone participates, and nobody plays a special role.
 
@@ -305,7 +289,9 @@ Oh yeah, voting! Voting is a leaderless algorithm that results in a group agreem
 
 Let's code up an algorithm where nodes throw out proposals and vote on them, just like in the restaurant example above. However, in real life, people  have individual preferences, we'll code an algorithm where nodes have no preferences whatsoever. Each node will vote for whichever option it heard about first, and never changes its mind.
 
-Here's the basic idea:
+To keep things as simpile as possible (for now), our algorithm will only allow two values to be proposed. Let's call the two options <span style="color:red">red</span> and <span style="color:blue">blue</span>. Remember, these options can stand in for anything else: 0 and 1, yes and no, apples and oranges, etc. Supporting only two options is too simplistic to implement a useful distributed variable; however, in most of computing, you end always being able to have exactly zero of something, exactly one of something, or $N$ of something. If we can figure out how to have exactly two options, there's probably a way to extend it from 2 to $N$​ options.
+
+With that, here's a basic strategy for a voting-based consensus algorithm:
 
 * Start by having each node track is own replica of the distributed variable, initially null.
 

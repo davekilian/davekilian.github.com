@@ -277,13 +277,13 @@ Although it's not a *property* of consensus algorithms per se, we already know s
 
 ## Leaderless Consensus
 
-Do you know of any real-life algorithms for a group of people to come to an agreement? Preferably, a leaderless one: one where everyone participates, and nobody plays a special role.
+Do you know of any real-life algorithms for a group of people to come to an agreement, without someone to boss everyone around and tell us what to do?
 
 For example, think of a group of friends that want to out to eat somewhere. In order to go somewhere, they need to pick a place to eat; that's an agreement problem. What might happen next? Maybe someone throws out an idea, someone throws out another idea, some people agree, some disagree, eventually a group opinion starts to form. The tide starts to turn when someone finally says
 
 <center>"I vote we (blah blah blah . . .)"</center>
 
-Oh yeah, voting! Voting is a leaderless algorithm that results in a group agreement. Maybe we could code up something like that?
+Oh yeah, voting! Majority-rules voting is a leaderless algorithm that results in a group agreement. Maybe we could code up something like that?
 
 ## Majority-Rules Voting
 

@@ -422,11 +422,11 @@ An entire generation of distributed systems researchers got nerd-sniped answerin
 
 At this point I would like to invite you to join in the tradition, by mulling over the problem for yourself. What is wrong with the approaches we've tried so far? Can we fix them? If not, what's going wrong?
 
- TODO now preview FLP by pointing out the weird way we keep getting dead-ended, first by creating an algorithm which is not fault tolerant, then trying to fix that and ending up with agreement violations.
+Here’s a specific question worth pondering:
 
+We have now come up with two broken consensus algorithms. The first algorithm was the single-leader replication algorithm, where we passed all proposals through a leader, and the leader replicated its decision to all followers. The base algorithm worked, but it wasn’t fault tolerant; in trying to add fault tolerance by failing over, we ended up with Agreement violations in the form of split-brain. Then we built a second, majority rules voting algorithm. The base algorithm worked, but it wasn’t fault tolerant; in trying to add fault tolerance by tiebreaking, we ended up with Agreement violations when the last node enters its vote. Two consensus algorithms, neither fault tolerant, and both times we tried to ‘fix’ fault tolerance, we ended up violating Agreement.
 
-
-
+Isn’t it weird that happened twice?
 
 ---
 

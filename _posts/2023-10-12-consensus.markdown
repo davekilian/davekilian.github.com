@@ -414,13 +414,27 @@ Okay, that's it. I'm all out of ideas.
 
 Let's step back for a minute.
 
-We started out with such a simple goal: all we wanted was one distributed variable, and it only took us about 30 seconds to come up with a simple and pretty robust algorithm. The one little thing our first draft was missing was fault tolerance. But as soon as we started trying to make our variable fault-tolerant, all of a sudden everything was like "heartbeat this," "split brain that," broken failover algorithms, broken split-vote-tiebreaking rules . . . we ended up in a labrynth of dead ends in a sea of ever-growing complexity, and now we're walking away with almost nothing to show for it all. What *happened?*
+We started out with such a simple goal: all we wanted was one distributed variable, and it only took us about 30 seconds to come up with a simple and pretty robust algorithm. The one little thing our first draft was missing was fault tolerance. But as soon as we started trying to make our variable fault-tolerant, all of a sudden everything was like "heartbeat this," "split brain that," broken failover algorithms, broken tiebreaking rules . . . we ended up in a labrynth of dead ends in a sea of ever-growing complexity, and now we're walking away with almost nothing to show for it all.
+
+This seemed so very straightforward at the beginning. What *happened?*
 
 An entire generation of distributed systems researchers got nerd-sniped answering that question. Lots of pretty smart people put an awful lot of thought into it, and were able to answer lots of related questions: what doesn't work, properties any solution must have, different ways of simplifying the problem to something we can solve. But, years later, nobody had an answer to the main question.
 
-Well, if you repeatedly find yourself unable to solve a problem, and you ask your smartest friends and they can't solve it either, the next thing to try is see if you can prove the problem was unsolveable in the first place. When the going gets tough, the tough give up (after proving how tough the going really is).
+At this point I would like to invite you to join in the tradition, by mulling over the problem for yourself. What is wrong with the approaches we've tried so far? Can we fix them? If not, what's going wrong?
 
-TODO now find a way to preview FLP by pointing out the weird way we keep getting dead-ended, first by creating an algorithm which is not fault tolerant, then trying to fix that and ending up with agreement violations.
+ TODO now preview FLP by pointing out the weird way we keep getting dead-ended, first by creating an algorithm which is not fault tolerant, then trying to fix that and ending up with agreement violations.
+
+
+
+
+
+---
+
+TODO this probably belongs under the beginning of the FLP heading, so we can immediately segue into the FLP paper itself
+
+Well, if you repeatedly find yourself unable to solve a problem, and you ask your smartest friends and they can't solve it either, the next thing to try is see if you can prove the problem was unsolveable in the first place. When the going gets tough, the tough give up (but only after formally proving how tough the going really is). 
+
+
 
 
 

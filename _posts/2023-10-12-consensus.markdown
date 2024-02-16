@@ -209,13 +209,13 @@ Hang on. If that's true, why is there so much more text in this post?
 
 ## Split-Brain
 
-Alas, outright crashes are not the only way nodes in a distributed system can fail. In the grand scheme of things, crashes are actually some of the least scary problems we have to worry about. Crashes are simple and clear-cut; a node is either alive or dead. Other kinds of faults are much more insidious.
+Alas, outright crashes are not the only way nodes in a distributed system can fail. In the grand scheme of things, crashes are actually some of the least scary problems we have to worry about. Crashes are simple and clear-cut; a node is either alive or it is not. Other kinds of faults are much more insidious.
 
 Wind back to the point where every node was healthy and node $1$ was still the leader:
 
 DIAGRAM copied from before
 
-We've been looking at this network rather abstractly, don't you think? In a real network, nodes aren't wired directly together; they're connected through a network of intermediary devices called **switches**:
+We've been looking at this network a little too abstractly. In a real network, nodes aren't wired directly together; they're connected through a network of intermediary devices called **switches**:
 
 DIAGRAM
 
@@ -237,7 +237,7 @@ That's right &mdash; our system has two leaders!
 
 DIAGRAM
 
-That's certainly not right. Our distributed variable seems to have accidentally forked into two. If anyone has written code that calls set() on the variable and assumes all other nodes will see the result of that set() going forward, well, we didn't manage to provide that guarantee, and their code is now broken. We were being so hard on other people before for not providing their stated guarantees, and here we are now breaking our promises too! Doesn't it suck to be fallible?
+That's certainly not right. Our distributed variable seems to have accidentally forked into two. If anyone has written code that calls set() on the variable and assumes all other nodes will see the result of that set() the next time they call get(), well, we didn't manage to provide that guarantee, and their code is now broken. Remember when we were being so hard on other people before for not providing their stated guarantees? Here we are now breaking our promises too. Being fallible sucks.
 
 This situation, where the system is only supposed to have one leader but accidentally now has two, is called **split-brain**. We cannot ship a distributed variable that is prone to split-brain. We need a "safe" failover algorithm that guarantees all nodes always agree who is the leader.
 

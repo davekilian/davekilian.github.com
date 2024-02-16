@@ -209,13 +209,13 @@ Hang on. If that's true, why is there so much more text in this post?
 
 ## Split-Brain
 
-Alas, outright crashes are not the only way nodes in a distributed system can fail. In fact, in the scheme of things, crashes are one of the simplest and most clear-cut ways a node can fail. Other kinds of faults are much more insidious. Let's try our algorithm on one of those.
+Alas, outright crashes are not the only way nodes in a distributed system can fail. In the grand scheme of things, crashes are actually some of the least scary problems we have to worry about. Crashes are simple and clear-cut; a node is either alive or dead. Other kinds of faults are much more insidious.
 
 Wind back to the point where every node was healthy and node $1$ was still the leader:
 
 DIAGRAM copied from before
 
-We've been looking at this network rather abstractly; let's get a more concrete view of the world. In a real network, nodes aren't usually wired directly together; they're usually connected through a network of intermediary devices called **switches**:
+We've been looking at this network rather abstractly, don't you think? In a real network, nodes aren't wired directly together; they're connected through a network of intermediary devices called **switches**:
 
 DIAGRAM
 

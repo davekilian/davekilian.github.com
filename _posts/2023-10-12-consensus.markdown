@@ -239,9 +239,7 @@ DIAGRAM
 
 That's certainly not right. Our distributed variable seems to have accidentally forked into two. If anyone has written code that calls set() on the variable and assumes all other nodes will see the result of that set() the next time they call get(), well, we didn't manage to provide that guarantee, and their code is now broken. Remember when we were being so hard on other people before for not providing their stated guarantees? Here we are now breaking our promises too. Being fallible sucks.
 
-This situation, where the system is only supposed to have one leader but accidentally now has two, is called **split-brain**. We cannot ship a distributed variable that is prone to split-brain. We need a "safe" failover algorithm that guarantees all nodes always agree who is the leader.
-
-So how do we make all nodes agree on something? That's a problem called **consensus**.
+This situation, where the system is only supposed to have one leader but accidentally now has two, is called **split-brain**. We cannot ship a distributed variable that is prone to split-brain. We need a "safe" failover algorithm that guarantees all nodes always agree who is the leader. Getting nodes to "always agree" on something is a problem called **consensus**.
 
 ## Consensus
 

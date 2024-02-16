@@ -291,6 +291,24 @@ Let's code up an algorithm where nodes throw out proposals and vote on them, jus
 
 To keep things as simpile as possible (for now), let's only allow two values to be proposed. We'll call those options <span style="color:red">red</span> and <span style="color:blue">blue</span>, but they can , these options can stand in for anything: 0 and 1, yes and no, apples and oranges, etc. Supporting only two options is too simplistic to implement distributed variables, but in most of computing, you end up being able to have exactly zero of something, exactly one of something, or $N$ of something. If we can figure out how to have exactly two options, there's probably a way to extend it from 2 to $N$​ options.
 
+With that, let's start by having each node track its own replica of the distributed variable, initially null:
+
+DIAGRAM
+
+
+
+
+
+
+
+---
+
+TODO the example below crosses wires in a way a reasonable person might find confusing. We shouldn't talk about a distributed variable, we should talk about proposing and accepting. If we can do that without having to explicitly define the programming interface for a consensus algorithm, all the better.
+
+---
+
+
+
 With that, here's a basic strategy for a voting-based consensus algorithm:
 
 * Start by having each node track is own replica of the distributed variable, initially null.

@@ -414,25 +414,46 @@ Okay, “uncle.” I'm all out of ideas.
 
 Let's step back for a minute.
 
-We started out with such a simple goal: all we wanted was one distributed variable, and it only took us about 30 seconds to come up with a simple and pretty robust algorithm. The one measly thing our first draft was missing was fault tolerance. But as soon as we started trying to make our variable fault-tolerant, all of a sudden everything was like "heartbeat this," "split brain that," broken failover algorithms, split votes, broken tiebreaking rules . . . we ended up in a labrynth of dead ends in a sea of ever-growing complexity, and now we're walking away with almost nothing to show for it all.
+We started out with such a simple goal: all we wanted was to make a distributed variable, and it only took us about 30 seconds to come up with first stab at a design. Our first try was simple and pretty robust; the one measly thing it was missing was fault tolerance. But as soon as we started trying to make our variable fault-tolerant, all of a sudden everything was like "heartbeat this," "split brain that," broken failover algorithms, split votes, broken tiebreaking rules . . . we ended up in a labrynth of dead ends in a sea of ever-growing complexity, and now we're walking away with almost nothing to show for it all.
 
 This seemed so very straightforward at the beginning. How did we get so stuck?
 
-An entire generation of distributed systems researchers got nerd-sniped answering that question. Lots of pretty smart people put an awful lot of thought into it, and were able to answer lots of related questions: what doesn't work, properties any solution must have, different ways of simplifying the problem to something we can solve. But for years, nobody had an answer to the main question.
+A generation of distributed systems researchers got nerd-sniped answering that question. Lots of pretty smart people put an awful lot of thought into it, and were able to answer lots of related questions: things that don't work work, properties any solution must have, different ways of simplifying the problem and then solving the simplified problem. But for years, nobody had an answer to the main question. How does one design a fault-tolerant consensus algorithm?
 
-At this point I would like to invite you to join in the tradition, by mulling over the problem for yourself. What is wrong with the approaches we've tried so far? Can we fix them? If not, what's going wrong?
+At this point I would like to invite you to join in the tradition, by mulling over the problem for yourself. What is wrong with the approaches we've tried so far? Can we fix them? If not, why not?
 
 Here’s a specific question worth pondering:
 
-We have now come up with two broken consensus algorithms. The first algorithm was the single-leader replication algorithm, where we passed all proposals through a leader, and the leader replicated its decision to all followers. The base algorithm worked, but it wasn’t fault tolerant; in trying to add fault tolerance by failing over, we ended up with Agreement violations in the form of split-brain. Then we built a second, majority rules voting algorithm. The base algorithm worked, but it wasn’t fault tolerant; in trying to add fault tolerance by tiebreaking, we ended up with Agreement violations when the last node enters its vote. Two consensus algorithms, neither fault tolerant, and both times we tried to ‘fix’ fault tolerance, we ended up violating Agreement.
+We have now come up with two different consensus algorithms. The first algorithm was the single-leader replication algorithm, where we passed all proposals through a leader, and the leader replicated its decision to all followers. The base algorithm worked, but it wasn’t fault tolerant; in trying to add fault tolerance by failing over, we ended up with Agreement violations in the form of split-brain. Then we built a second algorithm based on the idea of voting and majority-rules. The base algorithm worked, but it wasn’t fault tolerant; in trying to add fault tolerance by tiebreaking, we ended up with Agreement violations when the last node enters its vote. Two completely consensus algorithms, neither turned out to be fault tolerant, and both times we tried to ‘fix’ that by adding fault tolerance, we violated Agreement.
 
 Isn’t it weird that happened twice?
 
----
+Think about it! This page will still be here when you get back.
 
-TODO this probably belongs under the beginning of the FLP heading, so we can immediately segue into the FLP paper itself
+<center>* * *</center>
 
-Well, if you repeatedly find yourself unable to solve a problem, and you ask your smartest friends and they can't solve it either, the next thing to try is see if you can prove the problem was unsolveable in the first place. When the going gets tough, the tough give up (but only after formally proving how tough the going really is). 
+Welcome back! How did it go? I'm guessing you're still stuck, but don't worry &mdash; I think know what the problem is.
+
+Protip: if you repeatedly find yourself unable to solve a problem, and you ask your smartest friends and they can't solve it either, you think really, really hard and, nada, the next thing to do is see if you can prove impossibility. Maybe the reason you can't solve the problem is because no solution exists! When the going gets tough, the tough give up (but only after formally proving how tough the going really is). This is exactly what three researchers managed to do in the mid-1980s.
+
+In their paper *Impossibility of Distributed Consensus with One Faulty Process*, Fischer, Lynch and Paterson (the "FLP" in what later became known as the "FLP result") explained exactly why nobody could come up with a fault-tolerant consensus algorithm. It turns out we chose the wrong consensus properties earlier: it's impossible for a single algorithm to provide Agreement, Termination, Integrity and Fault Tolerance. If we want to solve the consensus problem, we'll have to bend at least one of the requirements. In particular, it would seem Termination and Fault Tolerance are at odds with one another.
+
+## FLP
+
+<!--
+
+TODO here's what I had in my phone notes
+
+1. We want to terminate, so design the an algorithm that has a finite number of messages and always makes a decision, thereby terminating
+2. By induction, one such message must be the “terminator” which has the “decide-if-not-already-decided” semantic we called the one weird property
+3. Preview: you cannot have a terminator.
+4. Say you design the algorithm such that the terminator is the last step. Then if you lose the receiving node, nobody has made a decision and nobody will. So the algorithm doesn’t terminate after all
+5. Say there is more code that runs after and can make a decision. This code must be designed not to wait on the node that receives the terminator; after all, the whole problem is said node can crash
+6. But now we have two parallel execution threads in our algorithm that can both make a decision: node A receiving the terminator, and the rest of the nodes running without node A. Both threads decide in parallel, neither can yield to the other, so now two decisions are possible. We have split brain!
+7. Unraveling: we can’t have a terminator at the end (not fault tolerant) and we can’t have a terminator not at the end (split brain), ergo we can’t have a terminator. But without a terminator we cannot guarantee termination. So actually a fault tolerant consensus algorithm cannot guarantee termination
+8. Conclusion: throw out the termination property 
+
+-->
 
 
 

@@ -289,7 +289,7 @@ Let's code up an algorithm where nodes throw out proposals and vote on them, jus
 
 To keep things as simpile as possible (for now), let's only allow two values to be proposed. We'll call those options <span style="color:red">red</span> and <span style="color:blue">blue</span>, but they can , these options can stand in for anything: 0 and 1, yes and no, apples and oranges, etc. Supporting only two options is too simplistic to implement distributed variables, but in most of computing, you end up being able to have exactly zero of something, exactly one of something, or $N$ of something. If we can figure out how to have exactly two options, there's probably a way to extend it from 2 to $N$​ options.
 
-With that, let's start by having each node track its own replica of the distributed variable, initially null:
+With that, let's start by having each node track its own vote, initially null:
 
 DIAGRAM
 
@@ -301,7 +301,7 @@ Then we'll have each node vote for the first proposal it hears about. Since ther
 
 DIAGRAM all nodes colored in the same color
 
-Lucky us! We won't always be so lucky though. There's no central coordination involved in creating proposals, so we have to anticipate multiple proposals could be thrown out at the same time; they might agree, but they also might not:
+Lucky us! We won't always be so lucky though. There's no central coordination involved in creating proposals, so we have to anticipate multiple proposals could be thrown out at the same time. If we have multiple racing proposals, they might agree, but they also might not:
 
 DIAGRAM three proposals, two blue and one red
 
@@ -309,79 +309,49 @@ With multiple competing proposals, different nodes can receive different proposa
 
 DIAGRAM
 
-Now the votes don't agree. But that's okay, we don't need the votes to agree. Remember earlier, when we said we could have every node obtain the same information, and then run the same deterministic algorithm on the same information on every node to come to the same result on every node? We can have nodes tell each other what they voted for, and in doing so end up with every node knowing what every node voted for:
+Now the votes don't agree. But that's okay, we don't need the votes to agree. Remember earlier, when we wanted every node to obtain the same information, and then run the same deterministic algorithm on said information so they all come to the same conclusion? We can have every node tell every other node who they voted for:
 
 DIAGRAM
 
-Then the deterministic rule is "pick the value that received a majority of the votes."
+Once every node knows what the final votes were, they can each run the same deterministic rule to pick the winner: "pick the value that received a majority of the votes."
 
 DIAGRAM
 
+As long as some value reaches a majority of votes, that value will be the one and only value every node picks as the winner.
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
----
-
-TODO the example below crosses wires in a way a reasonable person would find confusing. We shouldn't talk about a distributed variable, we should talk about proposing and accepting. If we can do that without having to explicitly define the programming interface for a consensus algorithm, all the better.
-
----
-
-
-
-Since the idea is so simple, here it is again, as pseudocode:
+Here's the full algorithm, for reference:
 
 ```
 consensus {
   vote: Red | Blue; // this node's vote
-  peers: Node[]; // all nodes, including self
+  nodes: Node[]; // all nodes, including self
   
   init {
     vote := null // haven't voted yet
   }
   
-  // a caller wants to set the variable
-  set(value) {
+  // a caller wants to propose a value
+  propose(value) {
     nodes.all.send(proposal, value)
   }
   
   // received a proposal from another node
-  on received set(value) {
+  on received propose(value) {
     // accept the first proposal, ignore others
     if (vote == null) {
       vote := value
     }
   }
   
-  // a caller wants to read the final value
+  // a caller wants to read the final value.
+  // returns null if decision still in progress.
   get() {
     counts: map{ from proposal to int }
     foreach node in nodes {
       counts.add(node.get_current_value())
     }
     
+    // returns null if there is no majority yet
     return get_majority_proposal(counts) 
   }
   
@@ -391,80 +361,36 @@ consensus {
 }
 ```
 
-There's just one important piece missing; what do we do about split votes? In other words, what it by pure bad luck, we end up with a tie?
+Now we have a complete algorithm, that pretty much works:
 
-DIAGRAM 3 red vs 3 blue
-
-We're not allowed to end up with a tie; that would mean we exit without reaching agreement on any proposed value. A simple way to work around this for now is to require the algorithm run on an odd number of nodes. That way, if every node has voted, the two vote counts cannot be equal, so one of either red or blue must have gotten more votes and wins.
-
-DIAGRAM 3 red vs 2 blue
-
-That ought to be good enough for now. Let's check if our design worked:
-
-* **Agreement**: ✅ &mdash; only one value can reach a majority, and the majority is the same no matter which node is calling get(), so get() always returns the same value
+* **Agreement**: ✅ &mdash; only one value can reach a majority, and any value that reaches a majority will always be the majority
 * **Integrity**: ✅ &mdash; nodes only vote for a value someone proposed; so the value that got the most votes was proposed by somebody
-* **Termination**: ✅ &mdash; the number of votes equals the number of nodes, and a decision is reached after all votes are in
-* **Fault Tolerance**: . . . we might have a problem here
+* **Termination**: oh wait. Does this algorithm always terminate?
 
-## Faults and Ties
+In our new algorithm, agreement is reached once a value reaches a majority; so we can only terminate if some value reaches a majority. But what if we're unlucky, and we end up with a split vote?
 
-Remember how fixed the split vote problem by having an odd number of nodes?
+DIAGRAM 3 v 3 split vote
 
-DIAGRAM
+Now no value has reached a majority, and since there are no more nodes left to vote, no value ever will reach a majority. Our algorithm doesn't terminate!
 
-If just one node goes down, we're back to having an even number of nodes:
-
-DIAGRAM
-
-Once we're back to an even number of nodes, split votes are once again a problem:
+Well, there's a simple solution for that: just require an odd number of nodes. If there are only two values you can propose, and there's an odd number of nodes, *some* proposal has to have reached a majority once all votes are in!
 
 DIAGRAM
 
-That means there are still sitations where just one fault can bring down this algorithm: if a single node goes down and the other nodes end up in a tie, the algorithm finishes with no value reaching a majority, which means we're exiting with no decision made. Even if a whole lotta things have to go wrong for us to get here, the fact remains that a single fault was enough to bring us down; we're forced to conclude our algorithm is not fault tolerant.
+Great, let's assume an odd number of nodes and check again:
 
-TODO I significantly cut down on the old example here. Finish it off by discussing a tiebreaker, and show how tiebreaking can screw up agreement by changing our answer.
-
-
-
-
-
+* **Agreement**: ✅ &mdash; only one value can reach a majority, and any value that reaches a majority will always be the majority
+* **Integrity**: ✅ &mdash; nodes only vote for a value someone proposed; so the value that got the most votes was proposed by somebody
+* **Termination**: ✅ &mdash; with only two values and an odd number of nodes, some value will have reached a majority once all votes are in
+* **Fault Tolerance**: 
 
 
-<!--
 
-Old content to adapt:
 
----
-
-Can we get the algorithm un-stuck from this point? Maybe! Earlier on we said we couldn't use simple deterministic "tiebreaking" rules as a consensus algorithm because a consensus algorithm must discover new candidate values concurrently with making a decision, and must ensure a decision once made never gets changed even if a 'better' candidate is discovered later. But in this case, all the voting is done, so all the discovering is done. So maybe we can include some kind of tiebreak rule? For example, we could say, "in the event of a tie vote, red always wins" (chosen fairly by asking my 4 year old what his favorite color is).
-
-It's alluring, because it *almost* works. *Almost*!
-
-Right now, all we know is the undecided node is currently unreachable; we actually don't know whether it's offline or just running slowly:
-
-[diagram with 3 red, 3 blue, one thought bubble with a question mark inside]
-
-It could be that the undecided node has actually crashed and not coming back. In this case, "3 votes for red, 3 votes for blue" is the final state of the system, so having a tiebreak rule like "in the event of a tie, assume red has won" is a great idea and allows us to decide in spite of the split vote and inopportune crash:
-
-[diagram with 3 red, 3 blue, one empty node crossed out to indicate its gone. Scribble in "interpretation: red wins"]
-
-But, it's just as possible the undecided node is simply running slowly. In that case, the 3v3 split is *not* the final state of the system, and having a tiebreak rule would be a disaster: you would be able to transition directly from:
-
-[copy and paste the diagram above, which still says "interpretation: red wins"]
-
-to:
-
-[diagram with undecided node now decided blue, with "interpretation: blue wins"]
-
-Whoops, the algorithm changed its mind! We absolutely cannot allow that. So we can't have a tiebreak. But if we can't have a tiebreak, then we can't fix the split vote situation. So we can't make the majority algorithm decide in spite of even one crash. This whole majority voting thing was so promising at the beginning, and now it's starting to look like a dead end.
-
-Dang.
-
--->
 
 ## Something Has Gone Very Wrong
 
-Step back for a minute.
+Okay, it's time to step back for a minute.
 
 We started out with such a simple goal: all we wanted was one distributed variable, and it only took us about 30 seconds to come up with a simple and pretty robust algorithm. The one little thing our first draft was missing was fault tolerance. But as soon as we started trying to make our variable fault-tolerant, all of a sudden everything was like "heartbeat this," "split brain that," broken failover algorithms, broken split-vote-tiebreaking rules . . . we ended up in a labrynth of dead ends in a sea of ever-growing complexity, and now we're walking away with almost nothing to show for it all. What *happened?*
 

@@ -275,8 +275,6 @@ In conclusion, a consensus algorithm should provide:
 
 Although it's not a *property* of consensus algorithms per se, we already know something about the solution we're looking for: it ought to be **leaderless**. We have discovered already that any consensus algorithm which involves a leader must also implement leader failover, and doing so safely is itself a consensus problem &mdash; one that has to be solved without a leader, since the leader already crashed. So any leader-based consensus algorithm itself contains a leaderless consensus algorithm, and the latter is the thing we now need to build.
 
-## Leaderless Consensus
-
 Do you know of any real-life algorithms for a group of people to come to an agreement, without someone to boss everyone around and tell us what to do?
 
 For example, think of a group of friends that want to out to eat somewhere. In order to go somewhere, they need to pick a place to eat; that's an agreement problem. What might happen next? Maybe someone throws out an idea, someone throws out another idea, some people agree, some disagree, eventually a group opinion starts to form. The tide starts to turn when someone finally says

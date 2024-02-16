@@ -382,13 +382,26 @@ Great, let's assume an odd number of nodes and check again:
 * **Agreement**: ✅ &mdash; only one value can reach a majority, and any value that reaches a majority will always be the majority
 * **Integrity**: ✅ &mdash; nodes only vote for a value someone proposed; so the value that got the most votes was proposed by somebody
 * **Termination**: ✅ &mdash; with only two values and an odd number of nodes, some value will have reached a majority once all votes are in
-* **Fault Tolerance**: TODO 
+* **Fault Tolerance**: hmm . . . we might have a problem here
+
+In a fault tolerant algorithm, it should be okay for one node to crash. But we just said it was really important for us to have an odd number of nodes . . . if a node crashes, we're left with an even number of nodes again, and split votes become a concern again:
+
+DIAGRAM
+
+Man, the wheels are really starting to fall off again, aren't they? Having an odd number of nodes isn't sufficient to protect from split votes; we need to find another solution.
+
+## Tiebreaks and Takebacks
+
+
+
+
+
+ 
 
 ---
 
 TODO
 
-* One fault is enough to drop us back to an even number of nodes and bring back split votes
 * Maybe we can come up with a tiebeak rule, like in a tie red always wins * (*: chosen fairly by red being my four year old's favorite color)
 * But wait, a tiebreak rule doesn't work when *nobody* fails: 2v2 red-vs-blue means red wins, but then the fifth vote comes in blue and the system changes its mind to blue
 

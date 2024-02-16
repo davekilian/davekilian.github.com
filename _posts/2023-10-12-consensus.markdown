@@ -209,13 +209,13 @@ Hang on. If that's true, why is there so much more text in this post?
 
 ## Split-Brain
 
-Alas, outright crashes are not the only way nodes in a distributed system can fault. In the scheme of things, crashes are one of the cleaner ways a node can fail; other kinds of faults are much more insidious. Let's try our algorithm on one of those.
+Alas, outright crashes are not the only way nodes in a distributed system can fail. In fact, in the scheme of things, crashes are one of the simplest and most clear-cut ways a node can fail. Other kinds of faults are much more insidious. Let's try our algorithm on one of those.
 
 Wind back to the point where every node was healthy and node $1$ was still the leader:
 
 DIAGRAM copied from before
 
-We've been looking at this network rather abstractly; let's zoom in. In a real network, nodes aren't usually wired directly together; they're usually connected through a network of intermediary devices called switches:
+We've been looking at this network rather abstractly; let's get a more concrete view of the world. In a real network, nodes aren't usually wired directly together; they're usually connected through a network of intermediary devices called **switches**:
 
 DIAGRAM
 
@@ -227,7 +227,7 @@ Now our system has been split into two **network partitions**. Nodes within the 
 
 DIAGRAM
 
-What is our leader selection algorithm going to do in this case?
+What is our leader selection algorithm going to do now?
 
 On the left-hand partition, nodes 1-3 can still heartbeat with each other, but not nodes 4-5. So when they select a leader, they pick from the node ID set $(1, 2, 3)$, and decide that node $1$ is still the leader.
 
@@ -237,7 +237,7 @@ That's right &mdash; our system has two leaders!
 
 DIAGRAM
 
-That's certainly not right. We're supposed to have one distributed variable; it seems to have accidentally gotten forked into two. If anyone has written code that calls set() on the variable and assumes all other nodes will see the result of that set() going forward, well, we didn't manage to provide that guarantee, and that code is now broken. We were being so hard on other people before for not providing their stated guarantees, and yet here we are now breaking our promises too!
+That's certainly not right. Our distributed variable seems to have accidentally forked into two. If anyone has written code that calls set() on the variable and assumes all other nodes will see the result of that set() going forward, well, we didn't manage to provide that guarantee, and their code is now broken. We were being so hard on other people before for not providing their stated guarantees, and here we are now breaking our promises too! Doesn't it suck to be fallible?
 
 This situation, where the system is only supposed to have one leader but accidentally now has two, is called **split-brain**. We cannot ship a distributed variable that is prone to split-brain. We need a "safe" failover algorithm that guarantees all nodes always agree who is the leader.
 

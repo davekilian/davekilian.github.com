@@ -382,11 +382,17 @@ Great, let's assume an odd number of nodes and check again:
 * **Agreement**: ✅ &mdash; only one value can reach a majority, and any value that reaches a majority will always be the majority
 * **Integrity**: ✅ &mdash; nodes only vote for a value someone proposed; so the value that got the most votes was proposed by somebody
 * **Termination**: ✅ &mdash; with only two values and an odd number of nodes, some value will have reached a majority once all votes are in
-* **Fault Tolerance**: 
+* **Fault Tolerance**: TODO 
 
+---
 
+TODO
 
+* One fault is enough to drop us back to an even number of nodes and bring back split votes
+* Maybe we can come up with a tiebeak rule, like in a tie red always wins * (*: chosen fairly by red being my four year old's favorite color)
+* But wait, a tiebreak rule doesn't work when *nobody* fails: 2v2 red-vs-blue means red wins, but then the fifth vote comes in blue and the system changes its mind to blue
 
+---
 
 ## Something Has Gone Very Wrong
 

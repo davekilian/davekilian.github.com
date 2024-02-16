@@ -394,8 +394,6 @@ TODO I significantly cut down on the old example here. Finish it off by discussi
 
 
 
-
-
 <!--
 
 Old content to adapt:
@@ -428,9 +426,9 @@ Dang.
 
 -->
 
+## Something Has Gone Very Wrong
 
-
-
+TODO take a second to reflect on what a simple problem we were trying to solve, how simple our solution was initially, how we added a simple requirement, and suddenly ended up in a labrynth of ever-growing complexity and dead ends. Something has gone very wrong in our lives. It doesn't feel like the problem should be this hard, right? Then say yeah, other people thought so too. And lead into the whole industry getting stuck, what you do when you're stuck, FLP, yadda yadda
 
 
 

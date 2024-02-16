@@ -65,7 +65,6 @@ We're off to a great start, but I'm afraid we're not quite done. We have a desig
 
 <div style="margin-left: 1em; margin-right: 1em; padding-left: 1em; padding-top: .1em; padding-bottom: .1em; border-left: .3em solid #eee; color: #333" markdown="1">
 *"How can you make a reliable computer service?” the presenter will ask in an innocent voice before continuing, “It may be difficult if you can’t trust anything and the entire concept of happiness is a lie designed by unseen overlords of [endless deceptive power](https://scholar.harvard.edu/files/mickens/files/thesaddestmoment.pdf)."*
-
 </div>
 
 You're reading this page on a computing device of some kind. Have you ever had problems with it? Does this thing ever freeze up, crash, overheat, disconnect randomly from the network for no discernible reason? The kind of problems I'm asking about here are what distributed systems people call **faults**. So how often does your device fault? It hopefully doesn't happen often enough to be a major day-to-day disruption, but I'm still betting it happens. How often what you say it does &mdash; on the order hours, days, weeks?
@@ -465,11 +464,22 @@ TODO but once the terminator has been sent, what happens if the receiving node c
 
 ### TODO
 
-TODO this is a good time to stop and show this playing ou on both of our consensus algorithms, and reiterating that we're saying this is going to happen *no matter what* the algorithm is. The only thing we required is the existence of a terminator
+TODO this is a good time to stop and show this playing out on both of our consensus algorithms, and reiterating that we're saying this is going to happen *no matter what* the algorithm is. The only thing we required is the existence of a terminator
 
 ### TODO
 
 TODO finish off by showing an algorithm with no terminator doesn't terminate, by definition. But what good is a consensus algorithm that doesn't terminate (segue alert)
+
+## *Lateralus*
+
+TODO the takeaway, you can't guarantee agreement, integrity, fault tolerance and termination. We're at a dead end. We need a lateral move. Actually, there's one readily available in the FLP paper. Pull the quote:
+
+<div style="margin-left: 1em; margin-right: 1em; padding-left: 1em; padding-top: .1em; padding-bottom: .1em; border-left: .3em solid #eee; color: #333" markdown="1">
+These results do not show that such problems cannot be “solved” in practice; rather, they point up the need for more refined models of distributed computing that better reflect realistic assumptionsabout processor and communication timings, and for less stringent requirements on the solution to such problems. (For example, **termination might be required only with probability 1**.)
+
+</div>
+
+
 
 
 

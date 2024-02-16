@@ -293,6 +293,50 @@ With that, let's start by having each node track its own replica of the distribu
 
 DIAGRAM
 
+To get things started, let's have a node throw out a proposal. We'll implement proposals by broadcasting a message to all other nodes, telling them all to vote for either <span style="color:red">red</span> or <span style="color:blue">blue</span>.
+
+DIAGRAM one proposal
+
+Then we'll have each node vote for the first proposal it hears about. Since there is only one proposal, every node hears about the same proposal first, so they all end up in agreement immediately:
+
+DIAGRAM all nodes colored in the same color
+
+Lucky us! We won't always be so lucky though. There's no central coordination involved in creating proposals, so we have to anticipate multiple proposals could be thrown out at the same time; they might agree, but they also might not:
+
+DIAGRAM three proposals, two blue and one red
+
+With multiple competing proposals, different nodes can receive different proposals first, and end up voting for different things:
+
+DIAGRAM
+
+Now the votes don't agree. But that's okay, we don't need the votes to agree. Remember earlier, when we said we could have every node obtain the same information, and then run the same deterministic algorithm on the same information on every node to come to the same result on every node? We can have nodes tell each other what they voted for, and in doing so end up with every node knowing what every node voted for:
+
+DIAGRAM
+
+Then the deterministic rule is "pick the value that received a majority of the votes."
+
+DIAGRAM
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -301,19 +345,11 @@ DIAGRAM
 
 ---
 
-TODO the example below crosses wires in a way a reasonable person might find confusing. We shouldn't talk about a distributed variable, we should talk about proposing and accepting. If we can do that without having to explicitly define the programming interface for a consensus algorithm, all the better.
+TODO the example below crosses wires in a way a reasonable person would find confusing. We shouldn't talk about a distributed variable, we should talk about proposing and accepting. If we can do that without having to explicitly define the programming interface for a consensus algorithm, all the better.
 
 ---
 
 
-
-With that, here's a basic strategy for a voting-based consensus algorithm:
-
-* Start by having each node track is own replica of the distributed variable, initially null.
-
-* Next, we implement set() by sending the desired value (red or blue) to every other node in this system. The set() calls are the "proposals" in our voting system. When a node receives its very first set() request, it updates its replica to that value, "voting" for it. Since we're building a one-shot algorithm, a node votes only once and never changes its vote once set.
-
-* Finally, we define get() as "whichever value gained a majority of the votes, or null." 
 
 Since the idea is so simple, here it is again, as pseudocode:
 

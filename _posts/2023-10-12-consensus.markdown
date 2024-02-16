@@ -455,7 +455,7 @@ To show that's true, we need to talk abstractly about all possible consensus alg
 
 TODO any algorithm that guarantees termination has a "final" message we can call *the terminator*. A property of the terminator 
 
-### I'll Be Back (or Not?)
+### *I'll Be Back ... Maybe*
 
 TODO the failed vs slow dillemma
 

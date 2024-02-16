@@ -287,9 +287,9 @@ Oh yeah, voting! Majority-rules voting is a leaderless algorithm that results in
 
 ## Majority-Rules Voting
 
-Let's code up an algorithm where nodes throw out proposals and vote on them, just like in the restaurant example above. However, in real life, people  have individual preferences, we'll code an algorithm where nodes have no preferences whatsoever. Each node will vote for whichever option it heard about first, and never changes its mind.
+Let's code up an algorithm where nodes throw out proposals and vote on them, just like in the restaurant example above. However, in real life, people  have preferences, we'll code an algorithm where nodes have no preferences whatsoever. Each node will vote for whichever option it heard about first, and never changes its mind.
 
-To keep things as simpile as possible (for now), our algorithm will only allow two values to be proposed. Let's call the two options <span style="color:red">red</span> and <span style="color:blue">blue</span>. Remember, these options can stand in for anything else: 0 and 1, yes and no, apples and oranges, etc. Supporting only two options is too simplistic to implement a useful distributed variable; however, in most of computing, you end always being able to have exactly zero of something, exactly one of something, or $N$ of something. If we can figure out how to have exactly two options, there's probably a way to extend it from 2 to $N$​ options.
+To keep things as simpile as possible (for now), let's only allow two values to be proposed. We'll call those options <span style="color:red">red</span> and <span style="color:blue">blue</span>, but they can , these options can stand in for anything: 0 and 1, yes and no, apples and oranges, etc. Supporting only two options is too simplistic to implement distributed variables, but in most of computing, you end up being able to have exactly zero of something, exactly one of something, or $N$ of something. If we can figure out how to have exactly two options, there's probably a way to extend it from 2 to $N$​ options.
 
 With that, here's a basic strategy for a voting-based consensus algorithm:
 

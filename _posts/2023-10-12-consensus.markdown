@@ -13,15 +13,15 @@ How can we make a "distributed variable" that any of these nodes can get and set
 
 DIAGRAM: nodes a network, thought bubble question mark in the middle for a variable
 
-Well, we know how to make regular (non-distributed) variables, and we know how to pass messages between nodes using the network, so how about we pick a node, put a regular old variable on it, and set up an RPC server so other nodes can access that variable remotely?
+Well, we know how to make regular (non-distributed) variables, and we know how to pass messages between nodes using the network, so how about this: we pick a node, put a regular old variable on it, and set up an RPC server so other nodes can access that variable remotely:
 
 DIAGRAM
 
 The node we picked to store the variable is now special; let's call it the **leader**. The other nodes, we'll call **followers**.
 
-Seems to me like we might have a complete design already. We have a variable any node on the network can get and set: the leader treats the variable like any other local variable, and the followers can access the variable by sending RPCs to the leader.
+We now have a variable any node on the network can get and set: the leader treats the variable like any other local variable, and the followers can access the variable by sending RPCs to the leader. Sounds to me like we’ve just about solved the problem.
 
-One of the best things about this design is how simple it is. The leader's logic is roughly this:
+And one of the best things about this design is how simple it is. The leader's logic is roughly this:
 
 ```
 leader {
@@ -50,11 +50,11 @@ The followers are just:
 ```
 client {
   get {
-    return leader.send_rpc(get);
+    return leader.rpc(get);
   }
   
   set(value) {
-    leader.send_rpc(set, value);
+    leader.rpc(set, value);
   }
 }
 ```
@@ -70,9 +70,9 @@ We're off to a great start, but I'm afraid we're not quite done. We have a desig
 
 You're reading this page on a computing device of some kind. Have you ever had problems with it? Does this thing ever freeze up, crash, overheat, disconnect randomly from the network for no discernible reason? The kind of problems I'm asking about here are what distributed systems people call **faults**. So how often does your device fault? It hopefully doesn't happen often enough to be a major day-to-day disruption, but I'm still betting it happens. How often what you say it does &mdash; on the order hours, days, weeks?
 
-Well, that's just with one device. What if you had to manage two thousand of them? What if I told you to keep them all working all the time?
+Well, that's just with one device. What if you had to manage two thousand of them? What if you had to keep all of them working all the time?
 
-Let's say your device normally glitches out on us once every two weeks. (I'd say that's on the conservative end of normal.) Then we'd be going a smidge over 1 million seconds between faults:
+Let's say your device normally glitches out once every two weeks. (I'd say that's on the conservative end of normal.) Then we’d be going a smidge over 1 million seconds between faults:
 
 <div class="overflows" markdown="block"><center>
 
@@ -84,11 +84,11 @@ Not too bad. But if we now have 2,000 devices to manage, we're going to hit rand
 
 $$1,209,600 \div 2,000 = 604.8 \; seconds$$
 
-That's one new fault every 10 minutes . . . 24 hours a day, 7 days a week, until the day we decommision the system. This is going to be a problem! Even if we do ever manage to get on top of all the weird nonsense going on in our network, we'll never be done for more than 10 minutes at a time by this estimate.
+That's one new fault every 10 minutes . . . 24 hours a day, 7 days a week, until the day we decommision the system. This is going to be a problem! By this estimate, even if we do ever manage to get on top of all the weird nonsense going on in our network, we'll never be done for more than 10 minutes at a time. 
 
 It's kind of funny how the random crashes, freezes, disconnects that don't seem like a big problem day to day become insurmountable sources of endless problems at scale. It makes distributed systems a kind of funny environment to work in. The platform running our code provides fewer guarantees than we might expect, and even the guarantees we get on paper don't always hold up in practice. Distributed systems is a world where anything that can go wrong will go wrong, is going wrong, and has been going wrong for weeks unnoticed. It's like playing a perverse game of Simon Says, where you think you've checked your assumptions and covered your bases, only to find out &mdash; Simon didn't say! &mdash; there's one more thing that can break in a way you didn't realize.
 
-As software people, it's tempting to write code that assumes the undelrying platforms and systems always work, and when they inevitably break, it's tempting to just tell the ops people it's their problem &mdash; just fix the hardware! But the ops people are managing a huge fleet, and they're being inundated by problem after unexplainable problem day in and day out. They're never going to catch up, and neither would you in their shoes. The best way forward is to code around the problems instead of asserting they shouldn't happen; that is, we ought to make our code **fault tolerant**. It's that, or frequent downtime, outages, and unhappy users!
+As software people, it's tempting to write code that assumes the underlying platforms and systems always work, and when they inevitably break, it's tempting to just tell the ops people it's their problem &mdash; just fix the hardware! But the ops people are managing a huge fleet, and they're being inundated by problem after unexplainable problem day in and day out. They're never going to catch up, and neither would you in their shoes. The best way forward is to code around the problems instead of asserting they shouldn't happen; that is, we ought to make our code **fault tolerant**. It's that, or frequent downtime, outages, and unhappy users!
 
 (Besides, it's never a good idea to yell at the ops people. Make friends with your ops people. They have the best stories.)
 
@@ -110,7 +110,7 @@ But the leader has no special immunity here. If a random node crashes, it very w
 
 DIAGRAM: same diagram, but with the leader Xed out
 
-Now we have a problem. With the leader gone, so is the variable. All the follower nodes are still up and running, but they're only programmed to send RPCs to the leader, and the leader is online to respond. Our distributed variable went offline! And since a single node crash was enough to bring down the variable too, we have to admit that our variable was not fault tolerant. That's no good; we need to fix this.
+Now we have a problem. With the leader gone, so is the variable. All the follower nodes are still up and running, but they're only programmed to send RPCs to the leader, and the leader isn’t going to respond now that it’s offline. Our distributed variable is now offline! And since a single node crash was enough to bring down the variable too, we have to admit that our variable was not fault tolerant. That's no good; we need to fix this.
 
 Oftentimes the way to achieve fault tolerance is **redundancy**. In our case, since the leader can crash, let's set up some backups, and **fail over** to new leader when the current leader fails.
 
@@ -247,7 +247,7 @@ Consensus is the problem of getting all nodes in a network to agree on the value
 
 We decided a while back that having only one copy of our distributed variable wouldn't be fault-tolerant, so we decided to make replicas of that variable on every node. As soon as we did that, we had a consensus problem on our hands: we needed to keep those replicas in sync. Our strategy for that was to pass all get and set requests through a single leader node, and have the leader manage the replication process. This is a perfectly valid consensus algorithm; our only problem was figuring out how to survive a leader-node fault.
 
-How could we try to solve the distributed variable problem and end up solving consensus instead? These problem are in fact two sides of the same coin. If you have a consensus algorithm, you can implement distributed variables by storing a replica of that variable on every node, then running the consensus algorithm to keep the replicas in sync each time somebody sets the variable. If you have a distributed variable, you can implement consensus by storing the data in a distributed variable and setting it once. Each problem can be reduced to the other.
+How could we try to solve the distributed variable problem and end up solving consensus instead? These problem are in fact two sides of the same coin. If you have a consensus algorithm, you can implement distributed variables by storing a replica of that variable on every node, then running the consensus algorithm each time someone sets the variable, to keep the replicas in sync. If you have a distributed variable, you can implement consensus by storing the data in a distributed variable and setting it once. Each problem can be reduced to the other.
 
 Unfortunately, since the two problems are one and the same, discovering a link between them doesn't tell us anything new about how to solve either. Still, recasting the distributed variable problem as consensus might yield new insight. Let's learn more about consensus
 
@@ -255,11 +255,11 @@ Unfortunately, since the two problems are one and the same, discovering a link b
 
 Say we planned to implement distributed variables by storing a replica of the variable on every node, and then using a consensus algorithm to keep them in sync. What would we need that consensus algorithm to do?
 
-To start, the basic purpose of a consensus algorithm is to ensure all nodes agree on the value of the variable by the time the algorithm exits. In "the literature," this most basic property is often called **Agreement**. When we say all nodes should agree "by the time the algorithm exits," we're also assuming the algorithm should exit. That requirement is called **Termination**.
+To start, the basic purpose of a consensus algorithm is to ensure all nodes agree on the value of the variable by the time the algorithm exits. In *the literature*, this most basic property is often called **Agreement**. When we say all nodes should agree "by the time the algorithm exits," we're also assuming the algorithm should exit in the first place. That requirement is called **Termination**.
 
-Putting on our rules-lawyer hats for a minute, there's a way to achieve Agreement and Termination without really solving the problem: you just hardcode an answer. For example, if you're trying to write a consensus algorithm for integers, "always return 4" is technically a valid consensus algorithm according to the definition above. But algorithms like this are useless for the distributed variable problem; we'd end up with a distribute constant instead!
+Putting on our rules-lawyer hats for a minute, there's a way to achieve Agreement and Termination without really solving the problem: you just hardcode an answer. For example, if you're trying to write a consensus algorithm for integers, "always return 4" is technically a valid consensus algorithm according to the definition above. All nodes will agree the value is 4, and the algorithm will terminate very quickly. But algorithms like this are useless for the distributed variable problem; we'd end up with a distribute constant instead!
 
-We want the value of the variable to always be the one specified in the most recent call to set(). If two nodes call set() at the same time with different values, the nodes should end up agreeing  on one of those two values. If both set() calls specify the same value, the nodes should always agree on that value. This idea is called **Integrity**. (Sometimes integrity is defined an alternate way, by saying the value the nodes agree upon should be the value some node proposed. Either definition works for our needs.)
+We want the value of the variable to always be the one specified in the most recent call to set(). If two nodes call set() at the same time with different values, the nodes should end up picking one of those two values. If both set() calls specify the same value, the nodes should always agree on that value. This idea is called **Integrity**. (Sometimes integrity is defined an alternate way, by saying the value the nodes agree upon should be the value some node proposed. Either definition works for our needs.)
 
 And, of course, we can't forget how important it is to make every algorithm **Fault Tolerant**. 
 
@@ -271,13 +271,13 @@ In conclusion, a consensus algorithm should provide:
 >
 > **Integrity**: That value is one somebody wanted.
 >
-> **Fault Tolerance**: No single fault can violate any of the above.
+> **Fault Tolerance**: A single fault cannot violate any of the properties above.
 
-Although it's not a *property* of consensus algorithms per se, we already know something about the solution we're looking for: it ought to be **leaderless**. We have discovered already that any consensus algorithm which involves a leader must also implement leader failover, and doing so safely is itself a consensus problem &mdash; one that has to be solved without a leader, since the leader already crashed. So any leader-based consensus algorithm itself contains a leaderless consensus algorithm, and the latter is the thing we now need to build.
+Although it's not a *property* of consensus algorithms per se, we already know something about the solution we're looking for: it ought to be **leaderless**. We have discovered already that any consensus algorithm which involves a leader must also implement leader failover, and doing so safely is itself a consensus problem &mdash; one that has to be solved without a leader. So any leader-based consensus algorithm itself contains a leaderless consensus algorithm internally, and the latter is the thing we now need to build.
 
-Do you know of any real-life algorithms for a group of people to come to an agreement, without someone to boss everyone around and tell us what to do?
+Do you know of any real-life algorithms for a group of people to come to an agreement, without someone to boss everyone around and tell people what to do?
 
-For example, think of a group of friends that want to out to eat somewhere. In order to go somewhere, they need to pick a place to eat; that's an agreement problem. What might happen next? Maybe someone throws out an idea, someone throws out another idea, some people agree, some disagree, eventually a group opinion starts to form. The tide starts to turn when someone finally says
+For example, think of a group of friends that want to out to eat somewhere. In order to go somewhere, they need to pick where to go first; that's an agreement problem. What might happen next? Maybe someone throws out an idea, someone throws out another idea, some people agree, some disagree, eventually a group opinion starts to form. The tide starts to turn when someone finally says
 
 <center>"I vote we (blah blah blah . . .)"</center>
 
@@ -285,19 +285,19 @@ Oh yeah, voting! Majority-rules voting is a leaderless algorithm that results in
 
 ## Majority-Rules Voting
 
-Let's code up an algorithm where nodes throw out proposals and vote on them, just like in the restaurant example above. However, in real life, people  have preferences, we'll code an algorithm where nodes have no preferences whatsoever. Each node will vote for whichever option it heard about first, and never changes its mind.
+Let's code up an algorithm where nodes throw out proposals and vote on them, just like in the restaurant example above. However, unlike in real life where people  have preferences, we'll code an algorithm where each node has no preference whatsoever. Each node will vote for whichever option it heard about first, and never change its mind.
 
-To keep things as simpile as possible (for now), let's only allow two values to be proposed. We'll call those options <span style="color:red">red</span> and <span style="color:blue">blue</span>, but they can , these options can stand in for anything: 0 and 1, yes and no, apples and oranges, etc. Supporting only two options is too simplistic to implement distributed variables, but in most of computing, you end up being able to have exactly zero of something, exactly one of something, or $N$ of something. If we can figure out how to have exactly two options, there's probably a way to extend it from 2 to $N$​ options.
+To keep things as simpile as possible (for now), let's only allow two values to be proposed. Since I’m American, we'll call those options <span style="color:red">red</span> and <span style="color:blue">blue</span>; but these options can stand in for anything: 0 and 1, yes and no, apples and oranges, etc. Supporting only two options is too simplistic to implement real distributed variables, but most of the time in computing, you end up being able to have exactly zero of something, exactly one of something, or any number $N$ of something. If we can figure out how to have exactly two options, there's probably a way to extend it from 2 to $N$​ options.
 
 With that, let's start by having each node track its own vote, initially null:
 
 DIAGRAM
 
-To get things started, let's have a node throw out a proposal. We'll implement proposals by broadcasting a message to all other nodes, telling them all to vote for either <span style="color:red">red</span> or <span style="color:blue">blue</span>.
+To get things going, some client of our system needs to throw out a proposal. We'll implement proposals by broadcasting a message to all other nodes, telling them all to vote for a specific proposed value, which can either be <span style="color:red">red</span> or <span style="color:blue">blue</span>.
 
 DIAGRAM one proposal
 
-Then we'll have each node vote for the first proposal it hears about. Since there is only one proposal, every node hears about the same proposal first, so they all end up in agreement immediately:
+Then we'll have each node vote for the first proposal it hears about. Since there is only one proposal in this example, every node hears about the same proposal first, so they all end up in agreement immediately:
 
 DIAGRAM all nodes colored in the same color
 
@@ -313,7 +313,7 @@ Now the votes don't agree. But that's okay, we don't need the votes to agree. Re
 
 DIAGRAM
 
-Once every node knows what the final votes were, they can each run the same deterministic rule to pick the winner: "pick the value that received a majority of the votes."
+Once every node knows what the final votes were, they can each run the same deterministic rule to pick the winner. For us, that rule will be: "pick the value that received a majority of the votes."
 
 DIAGRAM
 
@@ -384,41 +384,41 @@ Great, let's assume an odd number of nodes and check again:
 * **Termination**: ✅ &mdash; with only two values and an odd number of nodes, some value will have reached a majority once all votes are in
 * **Fault Tolerance**: hmm . . . we might have a problem here
 
-In a fault tolerant algorithm, it should be okay for one node to crash. But we just said it was really important for us to have an odd number of nodes . . . if a node crashes, we're left with an even number of nodes again, and split votes become a concern again:
+In a fault tolerant algorithm, it should be okay for one node to crash. But we just said it was really important for us to have an odd number of nodes . . . if a node crashes, we're left with an even number of nodes again, and split votes become possible again:
 
 DIAGRAM
 
-Man, the wheels are really starting to fall off again, aren't they? Having an odd number of nodes isn't sufficient to protect from split votes; we need to find another solution.
+Uh oh, the wheels are really starting to fall off again, aren't they? Having an odd number of nodes isn't sufficient to protect from split votes; we need to find another solution.
 
 ## Tiebreaks and Takebacks
 
-Okay, there's no way to prevent split votes, so there's no way to ensure some value always reaches a majority. Maybe it's not as bad as it sounds. Remember, our consensus algorithm rests on a deterministic rule that every node runs on the same information, and that information is the set of votes. If we can't prevent the vote from splitting, maybe we can tweak the rule to fix it.
+Okay, there's no way to prevent split votes, so there's no way to ensure some value always reaches a majority. Maybe it's not as bad as it sounds. Remember, our consensus algorithm rests on a deterministic rule that takes the final votes as input. If we can't prevent the vote from splitting, maybe we can tweak the rule to handle split votes gracefully.
 
-Let's add a tiebreak rule: if a color has a majority of the votes, we pick that color, but in the event of a tie, we pick red (chosen fairly by asking my 4-year-old his favorite color). Now if there's a split vote, we still get an answer:
-
-DIAGRAM
-
-But, but .. . no wait, hold on now, we can't do this. We're making a decision before all the votes are in! Right now we have a tie vote and we picked red, but how do we know that last node is actually offline? What if it's completely healthy, and just happens to be the last node to vote? What if it comes back and votes blue?
+Let's add this tiebreak rule: if a color has a majority of the votes, we pick that color, but in the event of a tie, we pick red (chosen fairly by asking my 4-year-old his favorite color). Now if there's a split vote, we still get an answer:
 
 DIAGRAM
 
-Well, this is kind of a disaster! We violated Agreement, the most sacred of all the consensus properties. At one point in the system, we had a 3v3 split vote, and all nodes agreed on red. But then that last vote came in, and everybody changed their mind to blue. You can't change your mind! Agreement is agreement.
+But, but .. . no wait, hold on now, we can't do this. We're making a decision before all the votes are in! Right now we have a tie vote and we picked red, but how do we know that last node is actually offline? What if it's completely healthy, and just happens to be the last node to vote? What if it comes back later and votes blue?
 
-It gets worse. This isn't a problem with the tiebreaking rule we chose; it's going to be a problem with any tiebreaking rule. Using a tiebreaker is totally fine *if* the final node is offline and is guaranteed never to come back. But how do we know the final node is offline and not coming back? No matter how much time has passed, it is always still possible for the final node to come back and enter the final vote; so no matter how much time has passed, it's never safe to run the tiebreaker rule. Ergo, we simply can't have one.
+DIAGRAM
+
+Well, this is kind of a disaster! We violated Agreement, the most sacred of all the consensus properties. At one point in time, we had a 3v3 split vote, and all nodes agreed on red, per the tiebreak rule. But then that last vote came in, and everybody changed their mind to blue. You can't change your mind! Agreement is total; it requires all nodes to always agree on the same value.
+
+Things get worse. The problem we just uncovered isn't a problem with the specific tiebreaking rule we chose; it's going to be a problem with any tiebreaking rule. Using a tiebreaker is totally fine *if* the final node is offline and is guaranteed never to come back. But how do we know the final node is offline and not coming back? No matter how long we wait for the last node to enter its vote, it is always still possible for it to do so some time in the future. That means, no matter how much time has passed, it's never safe to run the tiebreaker rule. If it’s never safe to run the tiebreaker rule, we simply can't have one.
 
 So we can't prevent split votes, and we can't run tiebreaking rules either.
 
-Okay, that's it. I'm all out of ideas.
+Okay, “uncle.” I'm all out of ideas.
 
 ## Something Has Gone Very Wrong
 
 Let's step back for a minute.
 
-We started out with such a simple goal: all we wanted was one distributed variable, and it only took us about 30 seconds to come up with a simple and pretty robust algorithm. The one little thing our first draft was missing was fault tolerance. But as soon as we started trying to make our variable fault-tolerant, all of a sudden everything was like "heartbeat this," "split brain that," broken failover algorithms, broken tiebreaking rules . . . we ended up in a labrynth of dead ends in a sea of ever-growing complexity, and now we're walking away with almost nothing to show for it all.
+We started out with such a simple goal: all we wanted was one distributed variable, and it only took us about 30 seconds to come up with a simple and pretty robust algorithm. The one measly thing our first draft was missing was fault tolerance. But as soon as we started trying to make our variable fault-tolerant, all of a sudden everything was like "heartbeat this," "split brain that," broken failover algorithms, split votes, broken tiebreaking rules . . . we ended up in a labrynth of dead ends in a sea of ever-growing complexity, and now we're walking away with almost nothing to show for it all.
 
-This seemed so very straightforward at the beginning. What *happened?*
+This seemed so very straightforward at the beginning. How did we get so stuck?
 
-An entire generation of distributed systems researchers got nerd-sniped answering that question. Lots of pretty smart people put an awful lot of thought into it, and were able to answer lots of related questions: what doesn't work, properties any solution must have, different ways of simplifying the problem to something we can solve. But, years later, nobody had an answer to the main question.
+An entire generation of distributed systems researchers got nerd-sniped answering that question. Lots of pretty smart people put an awful lot of thought into it, and were able to answer lots of related questions: what doesn't work, properties any solution must have, different ways of simplifying the problem to something we can solve. But for years, nobody had an answer to the main question.
 
 At this point I would like to invite you to join in the tradition, by mulling over the problem for yourself. What is wrong with the approaches we've tried so far? Can we fix them? If not, what's going wrong?
 

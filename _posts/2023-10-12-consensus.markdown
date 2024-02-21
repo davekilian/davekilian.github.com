@@ -437,47 +437,63 @@ Protip: if you repeatedly find yourself unable to solve a problem, and you ask y
 
 In their paper *Impossibility of Distributed Consensus with One Faulty Process*, Fischer, Lynch and Paterson (the "FLP" in what later became known as the "FLP result") explained exactly why nobody could come up with a fault-tolerant consensus algorithm. It turns out we chose the wrong consensus properties earlier: it's impossible for a single algorithm to provide Agreement, Termination, Integrity and Fault Tolerance all at the same time, specifically because Termination and Fault Tolerance are at odds with one another. We'll have to compromise one or the other if we plan to ever solve the problem.
 
-## FLP
-
-The basic result of FLP is a consensus algorithm with provides Agreement, Integrity and Fault Tolerance does not Terminate.
-
-<div class="overflows" markdown="block"><center>
 
 
-Agreement + Integrity + Fault Tolerance = Non-Termination
 
-</center></div>
 
-To show that's true, we need to talk abstractly about all possible consensus algorithms at the same time. If things ever start to get too abstract and your heads starts spinning, try applying what we're saying to one of the two consensus algorithms you already know &mdash; majority-rules voting and single-leader replication. Those are consensus algorithms, so anything we say about all consensus algorithms in the bastract had better apply to those consensus algorithms specifically.
 
-### How Consensus Algorithms Decide
 
-TODO the system goes as a whole from undecided to decided, once, in a single step, as a result of some message being processed, and the relative order messages are processed on some node determines the outcome for the entire system. Need to decide how much of this to give as observations vs justify. I don't remember how well justified these observations are in the FLP proof, for them it might fall out of parts of the system design.
 
-### The "Terminator"
 
-TODO any algorithm that guarantees termination has a "final" message we can call *the terminator*. The key property of a terminator: once the message has been processed, the system will have reached a decision. Practically, that means one of two things happens: either the system has already decided and the message does nothing, or the system has not yet decided and the message causes a decision to be reached.
+<!--
 
-### *I'll Be Back . . . Maybe*
+TODO basically how I want to tackle FLP:
 
-TODO but once the terminator has been sent, what happens if the receiving node crashes? No decision will be made. We can run more code afterward that makes a decision, but when is it okay to run it? The failed vs slow dillemma. We've created a situation with two parallel execution threads: one is the terminator being processed on that node (may never finish) and the other is the sigma process making a compensating decision. But if you run both of these, you get two decisions &mdash; agreement is now violated.
+First, give a set of examples we can use to play "find the pattern." The examples are:
 
-### TODO
+* Majority voting: 1 red, 1 blue, 5 undecided. All 5 undecided nodes have a "vote red" and a "vote blue" message pending. No one node crash can deadlock the algorithm at this point.
+* Majority voting: 1 red, 3 blue, 3 undecided. All three undecided nodes still havea a "vote red" and a "vote blue" message pending. No one crash can deadlock the algorithm here either
+* Majority voting: 3 red, 3 blue, 1 undecided. The last node has a "vote red" and a "vote blue" message pending. One crash will deadlock the algorithm, it's now guaranteed.
+* Single-leader replication: one leader, one client proposing red, one client proposing blue. If the leader crashes now, the algorithm is guaranteed deadlocked
 
-TODO this is a good time to stop and show this playing out on both of our consensus algorithms, and reiterating that we're saying this is going to happen *no matter what* the algorithm is. The only thing we required is the existence of a terminator
+Then reveal the rule as "you cannot lose a node that is about to decide red vs blue."
 
-### TODO
+Note the fact that the decision is a single step on a single node, and show that the decision is driven by the relative order of messages delivered to that node. We might need to expand on this a bit, I had some prevous ideas here, including
 
-TODO finish off by showing an algorithm with no terminator doesn't terminate, by definition. But what good is a consensus algorithm that doesn't terminate (segue alert)
+* Diagram: A timeline with "undecided" at origin and "decided" on right hand side
+* The same, with a single "deciding step" identified at some point in the middle
+* Noting that every step happens on some node
+* Noting that 
 
-## *Lateralus*
+Anyways, once this is set up we're looking at the relative delivery order of pairs of messages being delivered to each node individually in the algorithm. If we revisit the diagrams, we'll see
 
-TODO the takeaway, you can't guarantee agreement, integrity, fault tolerance and termination. We're at a dead end. We need a lateral move. Actually, there's one readily available in the FLP paper. Pull the quote:
+* The first diagram (1 red, 1 blue, 5 undecided) results in "undecided" either way, and is not a problem
+* The second diagram (1 red, 3 blue, 3 undecided) results in "undecided" or "decided blue" and is not a problem
+* The third diagram (3 red, 3 blue, 1 undecided) results in "decided blue" or "decided red" and is indeed problematic
+* The fourth diagram (single leader) results in "decided blue" or "decided red" and is also problematic
+* Draw conclusion that the rule is: any time the relative order of a pair of messages causes the system to make one of two different decisions, we are le screwed
+
+Once we have drawn that rule, we can basically repeat the FLP lemma 3 argument almost directly (with the wording and terminology fixed up) to show what goes wrong in the "decide X vs decide Y" situation.
+
+Then we ask how we did this by accident, and forgive ourselves when we realize this is a direct result of creating an algorithm that terminates.
+
+TODO kids are home, see paper notes
+
+
+
+
+
+
+
+
+
+Here's the pull quote from the paper mentioning the idea of moving to an algorithm with randomized termination.
 
 <div style="margin-left: 1em; margin-right: 1em; padding-left: 1em; padding-top: .1em; padding-bottom: .1em; border-left: .3em solid #eee; color: #333" markdown="1">
 These results do not show that such problems cannot be “solved” in practice; rather, they point up the need for more refined models of distributed computing that better reflect realistic assumptionsabout processor and communication timings, and for less stringent requirements on the solution to such problems. (For example, **termination might be required only with probability 1**.)
-
 </div>
+
+-->
 
 
 

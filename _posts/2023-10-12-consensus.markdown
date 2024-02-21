@@ -449,7 +449,7 @@ In their paper *Impossibility of Distributed Consensus with One Faulty Process*,
 
 TODO basically how I want to tackle FLP:
 
-First, give a set of examples we can use to play "find the pattern." The examples are:
+First, give a set of examples we can use to play "find the pattern." Perhaps even reference noticings and wonderings. The examples are:
 
 * Majority voting: 1 red, 1 blue, 5 undecided. All 5 undecided nodes have a "vote red" and a "vote blue" message pending. No one node crash can deadlock the algorithm at this point.
 * Majority voting: 1 red, 3 blue, 3 undecided. All three undecided nodes still havea a "vote red" and a "vote blue" message pending. No one crash can deadlock the algorithm here either
@@ -473,19 +473,30 @@ Anyways, once this is set up we're looking at the relative delivery order of pai
 * The fourth diagram (single leader) results in "decided blue" or "decided red" and is also problematic
 * Draw conclusion that the rule is: any time the relative order of a pair of messages causes the system to make one of two different decisions, we are le screwed
 
-One tricky thing here is the non-problematic cases contain the problematic case down the line, so you can’t exactly say “not problematic.” But they’re usually able to recover just fine, whereas the problematic cases can never recover. Perhaps you start by listing the problematic case and then show the non-problematic cases are non-problematic except when that specific case occurs.
+One tricky thing here is the non-problematic cases contain the problematic case down the line, so you can’t exactly say “not problematic.” But they’re usually able to recover just fine, whereas the problematic cases can never recover. Perhaps you start by listing the problematic case and then show the non-problematic cases are non-problematic except when that specific case occurs. Or maybe you define the bad thing as “deadlocks on this step.” After, if we can fix each individual step that results in deadlock then the resulting algorithm will be deadlock free. Ask the questions “can the algorithm progress?” and “can the algorithm complete?” 
 
-Once we have drawn that rule, we can basically repeat the FLP lemma 3 argument almost directly (with the wording and terminology fixed up) to show what goes wrong in the "decide X vs decide Y" situation.
+Once we have drawn that rule, we can basically repeat the FLP lemma 3 argument almost directly (with the wording and terminology fixed up) to show what goes wrong in the "decide X vs decide Y" situation. Start with the obvious case, where if you do nothing more and the node is crashed for good then obviously you will never finish. Then show the thing where, if you do more steps and come to a decision, you have a race in your non-faulted case where two parallel threads are going to reach a decision and there’s no reason to assume they will reach the same result, violating agreement.
 
-Then we ask how we did this by accident, and forgive ourselves when we realize this is a direct result of creating an algorithm that terminates. If every decision is “X vs undecided” and which case you end up in depends on nondeterministic network message ordering, then there exists a total ordering of network messages in which you happen to always hit the undecided case and don’t terminate. So we didn’t try to design an algorithm like this because our initial set of requirements precluded this approach entirely. Oops
+Now is a good time to link back to “isn’t it weird this happened twice?” Of course it did, this is always what happens!
 
-Conclude we cannot make a fault tolerant consensus algorithm that guarantees termination. Clarify however that we are talking about non-guaranteed termination, not a non-termination guarantee. Pull the FLP quote that suggests a solution out:
+Then we ask how we keep creating this “decide X vs decide Y” thing by accident, and immediately forgive ourselves when we realize this is a direct result of requiring an algorithm that terminates. If every decision is “X vs undecided” and which case you end up in depends on nondeterministic network message ordering, then there exists a total ordering of network messages in which you happen to always hit the undecided case and don’t terminate. In other words, never having a decide X vs Y step results in an algorithm which is prone to livelock. So we didn’t try to design an algorithm like this because our initial set of requirements precluded this approach entirely.
+
+Conclude we cannot make a fault tolerant consensus algorithm that guarantees termination. 
+
+1. If there is an X-vs-Y decision, the algorithm deadlocks with just one fault
+2. If there is no X-vs-Y decision, the algorithm can livelock
+
+Clarify however that we are talking about non-guaranteed termination, not a non-termination guarantee. Pull the FLP quote that suggests a solution out:
 
 <div style="margin-left: 1em; margin-right: 1em; padding-left: 1em; padding-top: .1em; padding-bottom: .1em; border-left: .3em solid #eee; color: #333" markdown="1">
 These results do not show that such problems cannot be “solved” in practice; rather, they point up the need for more refined models of distributed computing that better reflect realistic assumptionsabout processor and communication timings, and for less stringent requirements on the solution to such problems. (For example, **termination might be required only with probability 1**.)
 </div>
 
-Suggest that we try to find an algorithm where each node local decision is between deciding one thing or staying undecided. Such a thing will not guarantee termination, so it will need to be structured as some kind of infinite retry loop that keeps going until a decision has been made. Suggest we try to have an infinite number of “voting rounds,” where during each round we pick one proposal to vote on. The result of a round can either be voting in that proposal (thereby terminating the algorithm), or ending the round with the system still undecided.
+Suggest that we try to find an algorithm where each node local decision is between deciding one thing or staying undecided. Such a thing will not guarantee termination, so it will need to be structured as some kind of infinite retry loop that keeps going until a decision has been made. We just need to make sure the probability of terminating on this round is independent of what happened on previous rounds, so we can show the probability of running N rounds without terminating falls exponentially as a function if N.
+
+Suggest we try to have an infinite number of “voting rounds,” where during each round we pick one proposal to vote on. The result of a round can either be voting in that proposal (thereby terminating the algorithm), or ending the round with the system still undecided. Preview we actually don’t know this route works; but we know the other route definitely doesn’t, so if there’s any hope of inventing a fault tolerant consensus algorithm, this must be the way to do it.
+
+That sets up nicely for the segue where Paxos is borne of a failed impossibility proof, and the idea of eliminating all but one result from the previous rounds
 
 -->
 

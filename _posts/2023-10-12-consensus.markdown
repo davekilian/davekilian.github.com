@@ -458,7 +458,7 @@ TODO the system goes as a whole from undecided to decided, once, in a single ste
 
 TODO any algorithm that guarantees termination has a "final" message we can call *the terminator*. The key property of a terminator: once the message has been processed, the system will have reached a decision. Practically, that means one of two things happens: either the system has already decided and the message does nothing, or the system has not yet decided and the message causes a decision to be reached.
 
-### *I'll Be Back ... Maybe*
+### *I'll Be Back . . . Maybe*
 
 TODO but once the terminator has been sent, what happens if the receiving node crashes? No decision will be made. We can run more code afterward that makes a decision, but when is it okay to run it? The failed vs slow dillemma. We've created a situation with two parallel execution threads: one is the terminator being processed on that node (may never finish) and the other is the sigma process making a compensating decision. But if you run both of these, you get two decisions &mdash; agreement is now violated.
 

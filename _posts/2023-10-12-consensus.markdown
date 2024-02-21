@@ -473,25 +473,19 @@ Anyways, once this is set up we're looking at the relative delivery order of pai
 * The fourth diagram (single leader) results in "decided blue" or "decided red" and is also problematic
 * Draw conclusion that the rule is: any time the relative order of a pair of messages causes the system to make one of two different decisions, we are le screwed
 
+One tricky thing here is the non-problematic cases contain the problematic case down the line, so you can’t exactly say “not problematic.” But they’re usually able to recover just fine, whereas the problematic cases can never recover. Perhaps you start by listing the problematic case and then show the non-problematic cases are non-problematic except when that specific case occurs.
+
 Once we have drawn that rule, we can basically repeat the FLP lemma 3 argument almost directly (with the wording and terminology fixed up) to show what goes wrong in the "decide X vs decide Y" situation.
 
-Then we ask how we did this by accident, and forgive ourselves when we realize this is a direct result of creating an algorithm that terminates.
+Then we ask how we did this by accident, and forgive ourselves when we realize this is a direct result of creating an algorithm that terminates. If every decision is “X vs undecided” and which case you end up in depends on nondeterministic network message ordering, then there exists a total ordering of network messages in which you happen to always hit the undecided case and don’t terminate. So we didn’t try to design an algorithm like this because our initial set of requirements precluded this approach entirely. Oops
 
-TODO kids are home, see paper notes
-
-
-
-
-
-
-
-
-
-Here's the pull quote from the paper mentioning the idea of moving to an algorithm with randomized termination.
+Conclude we cannot make a fault tolerant consensus algorithm that guarantees termination. Clarify however that we are talking about non-guaranteed termination, not a non-termination guarantee. Pull the FLP quote that suggests a solution out:
 
 <div style="margin-left: 1em; margin-right: 1em; padding-left: 1em; padding-top: .1em; padding-bottom: .1em; border-left: .3em solid #eee; color: #333" markdown="1">
 These results do not show that such problems cannot be “solved” in practice; rather, they point up the need for more refined models of distributed computing that better reflect realistic assumptionsabout processor and communication timings, and for less stringent requirements on the solution to such problems. (For example, **termination might be required only with probability 1**.)
 </div>
+
+Suggest that we try to find an algorithm where each node local decision is between deciding one thing or staying undecided. Such a thing will not guarantee termination, so it will need to be structured as some kind of infinite retry loop that keeps going until a decision has been made. Suggest we try to have an infinite number of “voting rounds,” where during each round we pick one proposal to vote on. The result of a round can either be voting in that proposal (thereby terminating the algorithm), or ending the round with the system still undecided.
 
 -->
 
@@ -505,7 +499,7 @@ These results do not show that such problems cannot be “solved” in practice;
 
 <!--
 
-TODO here's what I had in my phone notes
+TODO here's what I had in my phone notes. This is probably all superseded by the new notes above however.
 
 1. We want to terminate, so design the an algorithm that has a finite number of messages and always makes a decision, thereby terminating
 2. By induction, one such message must be the “terminator” which has the “decide-if-not-already-decided” semantic we called the one weird property

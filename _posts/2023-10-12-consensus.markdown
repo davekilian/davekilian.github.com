@@ -13,15 +13,13 @@ How can we make a "distributed variable" that any of these nodes can get and set
 
 DIAGRAM: nodes a network, thought bubble question mark in the middle for a variable
 
-Well, we know how to make regular (non-distributed) variables, and we know how to pass messages between nodes using the network, so how about this: we pick a node, put a regular old variable on it, and set up an RPC server so other nodes can access that variable remotely:
+Well, we know how to make regular (non-distributed) variables, and we know how to pass messages between nodes using the network, so how about this: we'll pick a node, put a regular old variable on it, and set up an RPC server so other nodes can access that variable remotely.
 
 DIAGRAM
 
-The node we picked to store the variable is now special; let's call it the **leader**. The other nodes, we'll call **followers**.
+The node we picked to store the variable is now special; let's call it the **leader**. The other nodes, we'll call **followers**. The leader can access the variable directly, just like any other variable; followers access it indirectly by making RPC calls to the leader. In the end, we have one variable that every node can access, one way or another. That was the goal we set out to achieve, so it would appear we are already done.
 
-We now have a variable any node on the network can get and set: the leader treats the variable like any other local variable, and the followers can access the variable by sending RPCs to the leader. Sounds to me like we’ve just about solved the problem.
-
-And one of the best things about this design is how simple it is. The leader's logic is roughly this:
+The great thing abut the approach we've come up with here is that it's so very simple. The leader's logic is roughly this:
 
 ```
 leader {
@@ -91,15 +89,9 @@ As software people, it's tempting to write code that assumes the underlying plat
 
 (Besides, it's never a good idea to yell at the ops people. Make friends with your ops people. They have the best stories.)
 
-Anyways, fault tolerance is the major aspect of the problem that we were missing before. It's not enough to just want "distributed variables that any node can get or set," we also need fault tolerance: the variable should keep working even if a node crashes, or a network connection goes down.
-
-## The Fault in Our Algorithm
-
-Let's think about our leader-follower distributed variable algorithm again:
+Anyways, fault tolerance is the major aspect of the problem that we were missing before. It's not enough to just want "distributed variables that any node can get or set," we also need fault tolerance: the variable should keep working even if a node crashes, or a network connection goes down. What happens to our algorithm if a node crashes? Maybe the operating system crashed, or its network cable wiggled loose, or someone powered down the wrong node while trying to fix some other problem. 
 
 DIAGRAM: another copy of the RPC diagram, last one in the previous section
-
-What happens if a random node goes offline? Maybe the operating system crashed, or its network cable wiggled loose, or someone powered down the wrong node while trying to fix some other problem. 
 
 If a random node crashes, most likely that node will be a follower, since there are so many followers and only one leader. If a follower goes offline, the variable should be safe and sound: it's stored on the leader, which is still online, and all the other followers are still in contact with the leader:
 
@@ -113,6 +105,8 @@ Now we have a problem. With the leader gone, so is the variable. All the followe
 
 Oftentimes the way to achieve fault tolerance is **redundancy**. In our case, since the leader can crash, let's set up some backups, and **fail over** to new leader when the current leader fails.
 
+## Single-Leader Replication
+
 To begin, we'll put a copy of our distributed variable on every node:
 
 DIAGRAM
@@ -125,9 +119,9 @@ Now, however, any time the leader sets the variable, it also sends an updated co
 
 DIAGRAM
 
-The process of updating all the replicas this way is called **replication**.
+The process of updating all the replicas this way is called **replication**. Since we have a single leader node which coordinates the process of replicating updates, let's call this algorithm the **single-leader replication** algorithm.
 
-This is a good enough starting point for a design sketch, although we're still missing some of the details. Next, let's switch focus and consider how to fail over.
+Of course, single-leader replication alone doesn't solve the problem. It's not enough to have backup copies of the variable, we also need to switch over to a new leader when the existing leader crashes. Switching to a new leader on failure is called a **failover**.
 
 ## Leader Failover
 

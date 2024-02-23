@@ -431,11 +431,17 @@ Think about it! This page will still be here when you get back.
 
 <center>* * *</center>
 
-Welcome back! How did it go? I'm guessing you're still stuck, but don't worry &mdash; I think know what the problem is.
+Welcome back! How did it go? I'm guessing you're still stuck, but don't worry &mdash; we'll figure out what the problem is soon enough.
 
 Protip: if you repeatedly find yourself unable to solve a problem, and you ask your smartest friends and they can't solve it either, you think really, really hard and, nada, the next thing to do is see if you can prove impossibility. Maybe the reason you can't solve the problem is because no solution exists! When the going gets tough, the tough give up (but only after formally proving how tough the going really is). This is exactly what three researchers managed to do in the mid-1980s.
 
-In their paper *Impossibility of Distributed Consensus with One Faulty Process*, Fischer, Lynch and Paterson (the "FLP" in what later became known as the "FLP result") explained exactly why nobody could come up with a fault-tolerant consensus algorithm. It turns out we chose the wrong consensus properties earlier: it's impossible for a single algorithm to provide Agreement, Termination, Integrity and Fault Tolerance all at the same time, specifically because Termination and Fault Tolerance are at odds with one another. We'll have to compromise one or the other if we plan to ever solve the problem.
+In their paper *Impossibility of Distributed Consensus with One Faulty Process*, Fischer, Lynch and Paterson (the "FLP" in what later became known as the "FLP result") explained exactly why nobody could come up with a fault-tolerant consensus algorithm. The short story is: we chose the wrong consensus properties earlier. It's impossible for a sigle algorithm to provide Agreement, Termination, Integrity and Fault Tolerance all at the same time. For the long story, let's look at a few examples.
+
+## Noticings and Wonderings
+
+
+
+
 
 
 
@@ -446,6 +452,8 @@ In their paper *Impossibility of Distributed Consensus with One Faulty Process*,
 
 
 <!--
+
+TODO before we tackle FLP, let's go back and try to more formally define the single-leader-replication-without-failover algorithm since it ends up getting referenced several times later.
 
 TODO basically how I want to tackle FLP:
 

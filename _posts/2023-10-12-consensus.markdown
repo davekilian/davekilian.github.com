@@ -9,17 +9,23 @@ Say we have a network of computers. Call each of the computers a **node**. We mi
 
 DIAGRAM
 
-How can we make a "distributed variable" that any of these nodes can get and set?
+I want to make a “distributed variable.” All I mean by this is
+
+* I there to be one variable
+* Any node can get it
+* Any node can set it
 
 DIAGRAM: nodes a network, thought bubble question mark in the middle for a variable
 
-Well, we know how to make regular (non-distributed) variables, and we know how to pass messages between nodes using the network, so how about this: we'll pick a node, put a regular old variable on it, and set up an RPC server so other nodes can access that variable remotely.
+How could we make such a thing? Well, we know how to make regular, non-distributed variables; so let’s make a plain old variable on one of our nodes, and set up an RPC server on that node so other nodes can get and set the variable remotely.
 
 DIAGRAM
 
-The node we picked to store the variable is now special; let's call it the **leader**. The other nodes, we'll call **followers**. The leader can access the variable directly, just like any other variable; followers access it indirectly by making RPC calls to the leader. In the end, we have one variable that every node can access, one way or another. That was the goal we set out to achieve, so it would appear we are already done.
+The node we picked to store the variable is now special; let's call it the **leader**. The other nodes, we'll call **followers**. 
 
-The great thing abut the approach we've come up with here is that it's so very simple. The leader's logic is roughly this:
+Now we have one variable any node can get or set. We’re done!
+
+The great thing abut the approach is its simplicity. The leader's logic is roughly . . .
 
 ```
 leader {
@@ -57,7 +63,7 @@ client {
 }
 ```
 
-We're off to a great start, but I'm afraid we're not quite done. We have a design that meets our specification, but we didn't think hard enough about what the specification should have been. As is sadly so often the case, things have been simple thus far only because we missed a major aspect of the problem.
+We're off to a great start, but we're not quite done. We have a design that meets our spec, but we didn't think hard enough about what the spec should have been in the first place. As is sadly so often the case, things have been simple thus far only because we missed a major aspect of the problem.
 
 ## Whose Fault is it Anyways?
 
@@ -65,11 +71,11 @@ We're off to a great start, but I'm afraid we're not quite done. We have a desig
 *"How can you make a reliable computer service?” the presenter will ask in an innocent voice before continuing, “It may be difficult if you can’t trust anything and the entire concept of happiness is a lie designed by unseen overlords of [endless deceptive power](https://scholar.harvard.edu/files/mickens/files/thesaddestmoment.pdf)."*
 </div>
 
-You're reading this page on a computing device of some kind. Have you ever had problems with it? Does this thing ever freeze up, crash, overheat, disconnect randomly from the network for no discernible reason? The kind of problems I'm asking about here are what distributed systems people call **faults**. So how often does your device fault? It hopefully doesn't happen often enough to be a major day-to-day disruption, but I'm still betting it happens. How often what you say it does &mdash; on the order hours, days, weeks?
+Look at the device you’re using to read this page. Have you ever had problems with this thing? Does it freeze up, crash, overheat, disconnect randomly from the network for no discernible reason? In distributed systems, these kinds of problems are called **faults**. So how often does your device fault? It hopefully doesn't happen often enough to be a major day-to-day disruption, but I'm still betting it does happen. How often what you say it does &mdash; on the order hours, days, weeks?
 
 Well, that's just with one device. What if you had to manage two thousand of them? What if you had to keep all of them working all the time?
 
-Let's say your device normally glitches out once every two weeks. (I'd say that's on the conservative end of normal.) Then we’d be going a smidge over 1 million seconds between faults:
+Let's say your device normally glitches out once every two weeks. Then we’d be going a smidge over 1 million seconds between faults:
 
 <div class="overflows" markdown="block"><center>
 
@@ -83,13 +89,15 @@ $$1,209,600 \div 2,000 = 604.8 \; seconds$$
 
 That's one new fault every 10 minutes . . . 24 hours a day, 7 days a week, until the day we decommision the system. This is going to be a problem! By this estimate, even if we do ever manage to get on top of all the weird nonsense going on in our network, we'll never be done for more than 10 minutes at a time. 
 
-It's kind of funny how the random crashes, freezes, disconnects that don't seem like a big problem day to day become insurmountable sources of endless problems at scale. It makes distributed systems a kind of funny environment to work in. The platform running our code provides fewer guarantees than we might expect, and even the guarantees we get on paper don't always hold up in practice. Distributed systems is a world where anything that can go wrong will go wrong, is going wrong, and has been going wrong for weeks unnoticed. It's like playing a perverse game of Simon Says, where you think you've checked your assumptions and covered your bases, only to find out &mdash; Simon didn't say! &mdash; there's one more thing that can break in a way you didn't realize.
+The random crashes, freezes, disconnects that don't seem like a big problem day to day become insurmountable sources of endless problems at scale. This makes distributed systems a kind of funny environment to work in. The platform running our code provides fewer guarantees than we might expect, and even the guarantees we get on paper don't always hold up in practice. Distributed systems is a world where anything that can go wrong will go wrong, is going wrong, and has been going wrong for weeks unnoticed. It's like playing a perverse game of Simon Says, where you think you've checked your assumptions and covered your bases, only to find out &mdash; Simon didn't say! &mdash; there's one more thing that can break in a way you didn't realize.
 
 As software people, it's tempting to write code that assumes the underlying platforms and systems always work, and when they inevitably break, it's tempting to just tell the ops people it's their problem &mdash; just fix the hardware! But the ops people are managing a huge fleet, and they're being inundated by problem after unexplainable problem day in and day out. They're never going to catch up, and neither would you in their shoes. The best way forward is to code around the problems instead of asserting they shouldn't happen; that is, we ought to make our code **fault tolerant**. It's that, or frequent downtime, outages, and unhappy users!
 
 (Besides, it's never a good idea to yell at the ops people. Make friends with your ops people. They have the best stories.)
 
-Anyways, fault tolerance is the major aspect of the problem that we were missing before. It's not enough to just want "distributed variables that any node can get or set," we also need fault tolerance: the variable should keep working even if a node crashes, or a network connection goes down. What happens to our algorithm if a node crashes? Maybe the operating system crashed, or its network cable wiggled loose, or someone powered down the wrong node while trying to fix some other problem. 
+Anyways, fault tolerance is the major aspect of the problem that we were missing before. It's not enough to just want "distributed variables that any node can get or set," we also need fault tolerance: the variable should keep working even if a node crashes, or a network connection goes down.
+
+So what happens to our algorithm if a node crashes? Maybe the operating system crashed, or its network cable wiggled loose, or someone powered down the wrong node while trying to fix some other problem. 
 
 DIAGRAM: another copy of the RPC diagram, last one in the previous section
 
@@ -97,7 +105,7 @@ If a random node crashes, most likely that node will be a follower, since there 
 
 DIAGRAM: same diagram with a random follower Xed out
 
-But the leader has no special immunity here. If a random node crashes, it very well could be the leader. What if it's the leader that goes down?
+But the leader is not immune to problems. If a random node crashes, it very well could be the leader. So what if it's the leader that goes down?
 
 DIAGRAM: same diagram, but with the leader Xed out
 

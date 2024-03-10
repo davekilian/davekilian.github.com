@@ -9,7 +9,7 @@ Say we have a network of computers. Call each computer a **node**. We might pict
 
 DIAGRAM
 
-On this network, I would like a “distributed variable.” What I mean by that is:
+On this network, I would like a “distributed variable.” By that I mean:
 
 * There should be one variable
 * Any node can get it

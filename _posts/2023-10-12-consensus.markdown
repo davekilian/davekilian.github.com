@@ -5,27 +5,25 @@ author: Dave
 draft: true
 ---
 
-Say we have a network of computers. Call each of the computers a **node**. We might picture the network of nodes like this:
+Say we have a network of computers. Call each computer a **node**. We might picture the network of nodes like this:
 
 DIAGRAM
 
-I want to make a “distributed variable.” All I mean by this is
+On this network, I would like a “distributed variable.” What I mean by that is:
 
-* I there to be one variable
+* There should be one variable
 * Any node can get it
 * Any node can set it
 
 DIAGRAM: nodes a network, thought bubble question mark in the middle for a variable
 
-How could we make such a thing? Well, we know how to make regular, non-distributed variables; so let’s make a plain old variable on one of our nodes, and set up an RPC server on that node so other nodes can get and set the variable remotely.
+How could we make such a thing? Well, we know how to make regular, non-distributed variables; so let’s make a plain old variable on one of our nodes, and set up an RPC server on that node so the other nodes can get and set the variable remotely.
 
 DIAGRAM
 
-The node we picked to store the variable is now special; let's call it the **leader**. The other nodes, we'll call **followers**. 
+The node we picked to store the variable is now special; let's call it the **leader**. For the leader, the variable is just a plain old local variable like any other. The other nodes, we'll call **followers**. The followers access the variable by sending RPC messages to the leader.
 
-Now we have one variable any node can get or set. We’re done!
-
-The great thing abut the approach is its simplicity. The leader's logic is roughly . . .
+To put it a little more formally, the leader's logic is roughly . . .
 
 ```
 leader {
@@ -49,7 +47,7 @@ leader {
 }
 ```
 
-The followers are just:
+The followers are:
 
 ```
 client {
@@ -63,7 +61,9 @@ client {
 }
 ```
 
-We're off to a great start, but we're not quite done. We have a design that meets our spec, but we didn't think hard enough about what the spec should have been in the first place. As is sadly so often the case, things have been simple thus far only because we missed a major aspect of the problem.
+Now we have one variable any node can get or set. That was easy! But, alas, we are not done. 
+
+Although we have a design that meets our spec, we might not have thought hard enough about what the spec should have been in the first place. As is sadly so often the case in life, things have been simple thus far only because we missed a major aspect of the problem.
 
 ## Whose Fault is it Anyways?
 
@@ -75,7 +75,7 @@ Look at the device you’re using to read this page. Have you ever had problems 
 
 Well, that's just with one device. What if you had to manage two thousand of them? What if you had to keep all of them working all the time?
 
-Let's say your device normally glitches out once every two weeks. Then we’d be going a smidge over 1 million seconds between faults:
+Let's say your device normally glitches out on you once every two weeks. Then we’re going a smidge over 1 million seconds between faults:
 
 <div class="overflows" markdown="block"><center>
 
@@ -83,7 +83,7 @@ $$2 \; weeks \times 7 \; \dfrac{days}{week} \times 24 \; \dfrac{hours}{day} \tim
 
 </center></div>
 
-Not too bad. But if we now have 2,000 devices to manage, we're going to hit random device faults about 2,000 times more often. Then our average time between faults drops to:
+Not too bad. But now let’s say we have 2,000 devices to manage. We’re going to start seeing random device faults about 2,000 times more often, reducing the average time between faults to:
 
 $$1,209,600 \div 2,000 = 604.8 \; seconds$$
 
@@ -91,13 +91,13 @@ That's one new fault every 10 minutes . . . 24 hours a day, 7 days a week, until
 
 The random crashes, freezes, disconnects that don't seem like a big problem day to day become insurmountable sources of endless problems at scale. This makes distributed systems a kind of funny environment to work in. The platform running our code provides fewer guarantees than we might expect, and even the guarantees we get on paper don't always hold up in practice. Distributed systems is a world where anything that can go wrong will go wrong, is going wrong, and has been going wrong for weeks unnoticed. It's like playing a perverse game of Simon Says, where you think you've checked your assumptions and covered your bases, only to find out &mdash; Simon didn't say! &mdash; there's one more thing that can break in a way you didn't realize.
 
-As software people, it's tempting to write code that assumes the underlying platforms and systems always work, and when they inevitably break, it's tempting to just tell the ops people it's their problem &mdash; just fix the hardware! But the ops people are managing a huge fleet, and they're being inundated by problem after unexplainable problem day in and day out. They're never going to catch up, and neither would you in their shoes. The best way forward is to code around the problems instead of asserting they shouldn't happen; that is, we ought to make our code **fault tolerant**. It's that, or frequent downtime, outages, and unhappy users!
+As software people, it's tempting to write code that assumes the underlying platforms and systems always work, and when they inevitably break, it's tempting to just tell the ops people it's their problem &mdash; just fix the hardware! But the ops people are managing a huge fleet, and they're being inundated by problem after unexplainable problem day in and day out. They're never going to catch up, and neither would you in their shoes. The best way forward is for us to code around the problems instead of asserting they shouldn't happen. To say the same thing in other words, we ought to make our code **fault tolerant**. It's that, or frequent downtime, outages, and unhappy users!
 
 (Besides, it's never a good idea to yell at the ops people. Make friends with your ops people. They have the best stories.)
 
-Anyways, fault tolerance is the major aspect of the problem that we were missing before. It's not enough to just want "distributed variables that any node can get or set," we also need fault tolerance: the variable should keep working even if a node crashes, or a network connection goes down.
+Fault tolerance is the major aspect of the problem that we were missing before. It's not enough to just want "distributed variables that any node can get or set," we also need fault tolerance: the variable should keep working even if a node crashes, or a network connection goes down.
 
-So what happens to our algorithm if a node crashes? Maybe the operating system crashed, or its network cable wiggled loose, or someone powered down the wrong node while trying to fix some other problem. 
+So what happens to our algorithm if a node crashes?
 
 DIAGRAM: another copy of the RPC diagram, last one in the previous section
 
@@ -109,9 +109,9 @@ But the leader is not immune to problems. If a random node crashes, it very well
 
 DIAGRAM: same diagram, but with the leader Xed out
 
-Now we have a problem. With the leader gone, so is the variable. All the follower nodes are still up and running, but they're only programmed to send RPCs to the leader, and the leader isn’t going to respond now that it’s offline. Our distributed variable is now offline! And since a single node crash was enough to bring down the variable too, we have to admit that our variable was not fault tolerant. That's no good; we need to fix this.
+Now we have a problem. With the leader gone, so is the variable. All the follower nodes are still up and running, but they're only programmed to send RPCs to the leader, and the leader isn’t going to respond now that it’s offline. Our entire distributed variable is now offline! And since a single node crash was enough to bring down the variable too, we have to admit that our variable was not fault tolerant. That's no good; we need to fix this.
 
-Oftentimes the way to achieve fault tolerance is **redundancy**. In our case, since the leader can crash, let's set up some backups, and **fail over** to new leader when the current leader fails.
+Oftentimes the way to achieve fault tolerance is **redundancy**. In our case, since the leader can crash, let's set up some backups.
 
 ## Single-Leader Replication
 
@@ -129,11 +129,11 @@ DIAGRAM
 
 The process of updating all the replicas this way is called **replication**. Since we have a single leader node which coordinates the process of replicating updates, let's call this algorithm the **single-leader replication** algorithm.
 
-Of course, single-leader replication alone doesn't solve the problem. It's not enough to have backup copies of the variable, we also need to switch over to a new leader when the existing leader crashes. Switching to a new leader on failure is called a **failover**.
+This is a step in the right direction for sure, but single-leader replication alone doesn't make the algorithm fault-tolerant. Now that we have backup copies of the variable, we need a way to switch over to a new leader when the current leader crashes. Switching to a new leader on failure is called a **failover**.
 
 ## Leader Failover
 
-Up until now, our the answer to the question "which node is the leader?" was a constant we could hardcode, or provide via a config file. Now that we support failover, the leader can change at runtime, so we need a runtime algorithm for determining who is currently the leader. Whatever scheme we come up with cannot itself rely on some kind of leader, because that leader could also crash, leaving us leaderless once again. We'd do best to design a failover scheme that's leaderless in the first place.
+Up until now, our the answer to the question "which node is the leader?" was a constant we could hardcode, or provide via a config file. Now that we support failover, the leader can change at runtime, so we need a runtime algorithm for determining which node is currently the leader. Whatever scheme we come up with cannot itself rely on some kind of leader, because the whole problem here is that a leader can crash. So how can we fail over without relying on a leader to coordinate the failover process?
 
 Here's a basic plan: we come up with a scheme where each node independently makes a decision who the leader should be, and set it up so that all nodes end up making the same decision independently. In principle, if we can make it so every node has the same local information and runs the same deterministic algorithm on that information as input, they should also independently pick the same leader.
 

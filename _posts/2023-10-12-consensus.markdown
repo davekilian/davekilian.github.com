@@ -113,12 +113,16 @@ Now we have a problem. With the leader gone, so is the variable. All the followe
 
 <!--
 
-This needs a rework
+This needs a rework so we introduce consensus earlier and make it clear from the start that single-leader replication is supposed to be an attempt at solving consensus 
 
-1. Introduce replication
+Like this:
+
+1. Introduce replication here
 2. Keeping replicas in sync
 3. Define consensus
 4. Single-leader as initial implementation of consensus
+
+I’m on the fence what we do about properties. We probably need to state them in step 3 but it’s easier to see where they come from if we explore the problem domain a little first
 
 -->
 

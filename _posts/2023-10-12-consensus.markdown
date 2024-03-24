@@ -71,7 +71,7 @@ Although we have a design that meets our requirements, we might not have thought
 *"How can you make a reliable computer service?” the presenter will ask in an innocent voice before continuing, “It may be difficult if you can’t trust anything and the entire concept of happiness is a lie designed by unseen overlords of [endless deceptive power](https://scholar.harvard.edu/files/mickens/files/thesaddestmoment.pdf)."*
 </div>
 
-Look at the device you’re using to read this page. Have you ever had problems with this thing? Does it freeze up, crash, overheat, disconnect randomly from the network for no discernible reason? In distributed systems, these kinds of problems are called **faults**. So how often does your device fault? It hopefully doesn't happen often enough to be a major day-to-day disruption, but I'm still betting it does happen. How often what you say it does &mdash; on the order hours, days, weeks?
+Look at the device you’re using to read this page. Have you ever had problems with this thing? Does it freeze up, crash, overheat, disconnect randomly from the network for no discernible reason? In distributed systems, these kinds of problems are called **faults**. So how often does your device fault? It hopefully doesn't happen often enough to be a major day-to-day disruption, but I'm still betting it happens. How often what you say it does &mdash; on the order hours, days, weeks?
 
 Well, that's just with one device. What if you had to manage two thousand of them? What if you had to keep all of them working all the time?
 
@@ -87,15 +87,15 @@ Not too bad. But now let’s say we have 2,000 devices to manage. We’re going 
 
 $$1,209,600 \div 2,000 = 604.8 \; seconds$$
 
-That's one new fault every 10 minutes . . . 24 hours a day, 7 days a week, until the day we decommision the system. This is going to be a problem! By this estimate, even if we do ever manage to get on top of all the weird nonsense going on in our network, we'll never be done for more than 10 minutes at a time. 
+That's one new fault every 10 minutes . . . 24 hours a day, 7 days a week, until the day we decommision the system. This is going to be a problem! By this estimate, even if we do ever manage to get on top of all the weird stuff going wrong in our network, we'll never be done for more than 10 minutes at a time. 
 
-The random crashes, freezes, disconnects that don't seem like a big problem day to day become insurmountable sources of endless problems at scale. This makes distributed systems a kind of funny environment to work in. The platform running our code provides fewer guarantees than we might expect, and even the guarantees we get on paper don't always hold up in practice. Distributed systems is a world where anything that can go wrong will go wrong, is going wrong, and has been going wrong for weeks unnoticed. It's like playing a perverse game of Simon Says, where you think you've checked your assumptions and covered your bases, only to find out &mdash; Simon didn't say! &mdash; there's one more thing that can break in a way you didn't realize.
+So the random crashes, freezes, disconnects that didn't seem like a big deal before are now insurmountable thanks to scale. This is what makes distributed systems kind of an odd environment to work in. The platform running our code provides fewer guarantees than a reasonable person would expect, and even the guarantees we get on paper don't always hold up in practice. Distributed systems is a world where anything that can go wrong will go wrong, is going wrong, and has been going wrong for weeks unnoticed. It's like playing a perverse game of Simon Says, where you think you've checked your assumptions and covered your bases, only to find out &mdash; Simon didn't say! &mdash; there's one more thing you didn’t realize can break.
 
-As software people, it's tempting to write code that assumes the underlying platforms and systems always work, and when they inevitably break, it's tempting to just tell the ops people it's their problem &mdash; just fix the hardware! But the ops people are managing a huge fleet, and they're being inundated by problem after unexplainable problem day in and day out. They're never going to catch up, and neither would you in their shoes. The best way forward is for us to code around the problems instead of asserting they shouldn't happen. To say the same thing in other words, we ought to make our code **fault tolerant**. It's that, or frequent downtime, outages, and unhappy users!
+As software people, it's tempting to write code that assumes the underlying platforms and systems always work, and when things break, it's tempting to just tell the ops people it's their problem &mdash; just fix the hardware! But the ops people are managing a huge fleet, and they're being inundated by problem after unexplainable problem. They're never going to catch up, and neither would you in their shoes. The best way forward for everyone is for us to code around the problems instead of asserting they shouldn't happen. In other words, we ought to make our code **fault tolerant**: it should tolerate faults in the underlying system. It's that, or frequent downtime, outages, and unhappy users!
 
-(Besides, it's never a good idea to yell at the ops people. Make friends with your ops people. They have the best stories.)
+(Besides, it's never a good idea to yell at the ops people. Make friends with your ops people. They have the best war stories.)
 
-Fault tolerance is the major aspect of the problem that we were missing before. It's not enough to just want "distributed variables that any node can get or set," we also need fault tolerance: the variable should keep working even if a node crashes, or a network connection goes down.
+Fault tolerance is the major aspect of the problem that we were missing before. It's not enough to just want "distributed variables that any node can get or set," we also need fault tolerance: the variable should keep working even if a node crashes, or a network connection goes down, and so on.
 
 So what happens to our algorithm if a node crashes?
 
@@ -110,6 +110,17 @@ But the leader is not immune to problems. If a random node crashes, it very well
 DIAGRAM: same diagram, but with the leader Xed out
 
 Now we have a problem. With the leader gone, so is the variable. All the follower nodes are still up and running, but they're only programmed to send RPCs to the leader, and the leader isn’t going to respond now that it’s offline. Our entire distributed variable is now offline! And since a single node crash was enough to bring down the variable too, we have to admit that our variable was not fault tolerant. That's no good; we need to fix this.
+
+<!--
+
+This needs a rework
+
+1. Introduce replication
+2. Keeping replicas in sync
+3. Define consensus
+4. Single-leader as initial implementation of consensus
+
+-->
 
 Oftentimes the way to achieve fault tolerance is **redundancy**. In our case, since the leader can crash, let's set up some backups.
 

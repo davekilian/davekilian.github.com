@@ -9,7 +9,7 @@ Say we have a network of computers. Call each computer a **node**. We might pict
 
 DIAGRAM
 
-On this network, I would like a “distributed variable.” By that I mean:
+Let’s build ourselves a little software abstraction to support programs running on these nodes. The one I have in mind is something you might call a “distributed variable.” Basically, 
 
 * There should be one variable
 * Any node can get it
@@ -17,7 +17,7 @@ On this network, I would like a “distributed variable.” By that I mean:
 
 DIAGRAM: nodes a network, thought bubble question mark in the middle for a variable
 
-How could we make such a thing? Well, we know how to make regular, non-distributed variables; so let’s make a plain old variable on one of our nodes, and set up an RPC server on that node so the other nodes can get and set the variable remotely.
+How could we make such a thing? Well, we already know how to make regular, non-distributed variables; so let’s make a plain old variable on one of our nodes, and set up an RPC server on that node so the other nodes can get and set the variable remotely.
 
 DIAGRAM
 
@@ -63,7 +63,7 @@ client {
 
 Now we have one variable any node can get or set. That was easy! But, alas, we are not done. 
 
-Although we have a design that meets our spec, we might not have thought hard enough about what the spec should have been in the first place. As is sadly so often the case in life, things have been simple thus far only because we missed a major aspect of the problem.
+Although we have a design that meets our requirements, we might not have thought hard enough about what the requirements should have been in the first place. As is sadly so often the case in life, things have been simple thus far only because we missed a major aspect of the problem.
 
 ## Whose Fault is it Anyways?
 

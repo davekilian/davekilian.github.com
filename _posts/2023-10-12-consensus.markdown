@@ -192,7 +192,7 @@ Let’s start with the first subproblem.
 
 If you've ever ued the `ping` command to check if you're online, heartbeating is pretty much the same concept. A heartbeat is a request/response pair. To start a heartbeat, one node sends a request, asking "Are you still online?" As soon as it can, the other node responds, "Yes, I am!" If a node has gone offline, it will not have the opportunity to send a response to the heartbeat request, so getting a response to your heartbeat request is pretty strong evidence the other node is still online.
 
-By having each node periodically send heartbeats to all other nodes and track who did and did not respond, we can build local information on each node tracking which peers are online or offline. Assuming each node either is online and responding to all heartbeats, or offline and not responding to any heartbeats, all nodes should end up with an identical faulted/non-faulted map in local memory. That's one subproblem checked off.
+By having each node periodically send heartbeats to all other nodes and track who did and did not respond, we can build local information on each node tracking which peers are online or offline. Assuming each node either is online and responding to all heartbeats, or offline and not responding to any heartbeats, all nodes should end up with an identical faulted/non-faulted map in local memory. So that's one subproblem checked off.
 
 ### Selecting a Leader
 
@@ -228,7 +228,7 @@ All nodes start exchanging heartbeats with one another. Say at this point no nod
 > 2. **Eliminate any peer which isn't responding to heartbeat requests.** All nodes are online and heartbeat requests, so no IDs are eliminated; every node finishes this step with the full original list: $(1, 2, 3, 4, 5)$
 > 3. **Pick the lowest remaining node ID.** Every node picks $1$
 
-Now node 1 is the leader. The RPC algorithm begins running as we described previously:
+Now node 1 is the leader. It will manage all get and set calls and take care of replicating the variable to all followers:
 
 DIAGRAM
 
@@ -250,7 +250,7 @@ This is looking pretty good! But does it really always work?
 
 ## Split-Brain
 
-Alas, outright crashes are not the only way nodes in a distributed system can fail. In the grand scheme of things, crashes are actually some of the cleanest, most clear-cut problems we need to worry about: a node is either alive or it is not. Other kinds of faults are more insidious.
+Alas, outright crashes are not the only way nodes in a distributed system can fail. In the grand scheme of things, crashes are some of the cleaner, clear-cut problems we need to worry about: a node is either alive or it is not. Other kinds of faults are more insidious.
 
 Wind back to the point where every node was healthy and node $1$ was still the leader:
 
@@ -280,15 +280,17 @@ DIAGRAM
 
 This situation, where the system is only supposed to have one leader but accidentally now has two, is called **split-brain**. 
 
-With two distinct subnetworks and two distinct leaders, we have the potential for different values to be replicated:
+With two distinct subnetworks following two different leaders, we have the potential for each subnetwork to replicate a different value:
 
 DIAGRAM
 
-Now we have violated the Agreement property; what we have is not a consensus algorithm.
+We have violated the Agreement property, so what we have is not a consensus algorithm.
 
-It might still be possible to salvage this approach, but in retrospect we have a really big problem on our hands: safe failover itself is a consensus problem. Every node needs to agree on who is the leader. We can't use single-leader replication to solve consensus in this situation, because the whole point of a failover is that the current leader has already failed. We need a **peer-to-peer** consensus algorithm after all; that is, one that never relies on a leader.
+It might still be possible to salvage this approach, but it seems we have a really big problem on our hands: safe failover itself is a consensus problem. Every node needs to agree on who is the leader. To implement safe failover, we need a consensus algorithm. Single-leader replication was supposed to itself be a consensus algorithm, but we can’t use it to implement failover, since we don’t have a leader during failover. Whatever algorithm we use to implement safe failover, would have to itself be a leaderless consensus algorithm; if we had that, we’d also have a working consensus algorithm, so we probably wouldn’t need single-leader replication at all.
 
-Do you know of any real-life algorithms for a group of people to come to an agreement, without someone to boss everyone around and tell people what to do?
+So let’s abandon single-leader replication. It doesn’t work, but it taught us something important: a workable solution to the consensus algorithm must be **leaderless**. There cannot be any one special mode coordinating the algorithm.
+
+Do you know of any real-life algorithms for a group of people to come to an agreement, even without someone being in charge?
 
 For example, think of a group of friends that want to out to eat somewhere. In order to go somewhere, they need to pick where to go first; that's an agreement problem. What might happen next? Maybe someone throws out an idea, someone throws out another idea, some people agree, some disagree, eventually a group opinion starts to form. The tide starts to turn when someone finally says
 

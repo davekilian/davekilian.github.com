@@ -125,6 +125,8 @@ DIAGRAM
 
 Does this work? Well, this scheme certainly is fault tolerant: each node has its own replica of the variable, so as long as we have at least one live node which has not faulted, we also have a live replica of the variable, so the variable is never lost. Even if a node crashes, the remaining nodes can still broadcast updates to one another and read their local replicas.
 
+So, now we have a variable that we can get and set from any node, and it's fault-tolerant.
+
 Here's a problem, though: even with fast computers and fast networks, it still takes some amount of time for a broadcast to reach every node. What if two nodes do an update at the same time?
 
 DIAGRAM
@@ -137,11 +139,9 @@ Once all updates have been processed, these different nodes can end up with diff
 
 DIAGRAM
 
+This is kind of terrible! Now the different nodes in our network disagree as to the current variable of our variable &mdash; something that certainly could never happen with a "normal," non-distributed variable. This is yet another thing we will need to fix. How can we make sure, if two conflicting broadcasts happen at the same time, the nodes end up agreeing on which value should be stored? This question is known as **the consensus problem**.
 
-
-
-
-
+## Consensus 
 
 
 

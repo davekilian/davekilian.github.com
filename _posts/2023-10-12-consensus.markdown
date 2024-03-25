@@ -454,15 +454,41 @@ Think about it! This page will still be here when you get back.
 
 Welcome back! How did it go? I'm guessing you're still stuck, but don't worry &mdash; we'll figure out what the problem is soon enough.
 
-Protip: if you repeatedly find yourself unable to solve a problem, and you ask your smartest friends and they can't solve it either, you think really, really hard and, nada, the next thing to do is see if you can prove impossibility. Maybe the reason you can't solve the problem is because no solution exists! When the going gets tough, the tough give up (but only after formally proving how tough the going really is). This is exactly what three researchers managed to do in the mid-1980s.
+If you repeatedly find yourself unable to solve a problem, and especially if all your solutions keep hitting the same set of dead ends, the next thing to do is to try proving the problem is impossible to solve in the first place. This is exactly what three researchers managed to do in the mid-1980s. In their paper *Impossibility of Distributed Consensus with One Faulty Process*, Fischer, Lynch and Paterson (the "FLP" in what later became known as the "FLP result") explained exactly why nobody could come up with a fault-tolerant consensus algorithm.
 
-In their paper *Impossibility of Distributed Consensus with One Faulty Process*, Fischer, Lynch and Paterson (the "FLP" in what later became known as the "FLP result") explained exactly why nobody could come up with a fault-tolerant consensus algorithm. The short story is: we chose the wrong consensus properties earlier. It's impossible for a sigle algorithm to provide Agreement, Termination, Integrity and Fault Tolerance all at the same time. 
+Let's go see what they saw.
+
+## The FLP Model
+
+Big breakthroughts in hard problems often involve finding the right way to look at the problem. To understand FLP, we first need to be able to look at the consensus problem the way they do.
 
 
 
 
 
 
+
+<!--
+
+From my phone notes on 3/22:
+
+1. A lot of the time, insights are from finding a new angle to view a problem
+2. Observe that each algorithm has a decision point where we go from bivalent to univalent and never go back. Observe that happens on one node because every step happens on a single node
+3. Observe so far our algorithms are all deterministic, yet behave non-deterministically. This is because message delivery order is the source of nondeterminism. 
+4. Suggest therefore we look at the problem from the point of view of the decision step and how it relates to nondeterministic message delivery order
+5. Now we’re in a good place to show a few diagrams and play spot the pattern
+6. The end of this section is a new term: one-way decisions either decide on a specific value or don’t make a decision. Two-way decisions either decide on one value or another. Note all of our problem cases are two-way decisions
+7. Revisit the problems from before as two-way decisions. This rehashes lemma 3
+8. First: if you have a two-way decision and the node crashes, and you don’t do any further work, then the algorithm is dead. Duh. But think about the case where we do more work
+9. Second: whatever steps we include in the algorithm to deal with a crashed two-way decider, have to also work when it doesn’t crash
+10. The parallelism argument: no ordering constraint between the two, ergo it runs in parallel, we have two decisions which may not match, violating agreement
+11. Ergo we cannot run additional steps if there is a node which is potentially a two-way decider. 
+12. But that means we cannot sustain the loss of a two-way decider.
+13. Therefore we cannot have two-way deciders
+14. Main proof: but if there’s never a two-way decider, well, all one-way decisions have a “remain undecided” case, so it is possible to keep on hitting the remain undecided case forever
+15. Therefore we have lost termination. And, termination is why we kept ending up with two-way deciders
+
+-->
 
 
 

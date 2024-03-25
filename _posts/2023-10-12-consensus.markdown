@@ -167,59 +167,15 @@ In conclusion, a consensus algorithm should provide:
 
 Let's get cracking!
 
-
-
-
-
-
-
-
-
-
-
-<!--
-
-Finish the rework. We want to introduce consensus before single-leader replicaion so we can frame single-leader as an attempt at a consensus protocol, and be able to critique it as one.
-
-Do it like this:
-
-1. Introduce replication - done
-2. Try a horribly broken "broadcast" protocol that results in conflits/disagreement - done
-3. Use that framing to introduce the consensus problem - done
-4. Pull the consensus properties discussion we already had - done
-5. Springboard off the broken broadcast protocol by going back to a single leader
-6. Pull the single-leader discussion and the exploration of failover
-7. Segue into majority voting by thinking again about the metaphor of "consensus"
-
-Note also we could include this new broadcast protocol in the prelude to FLP. Basically that prelude should drop the idea that "every time we try to make it fault tolerant, we violate agreement" and instead state it like, "every attempt we have made falls neatly into one of two buckets: either isn't fault tolerant or violates agreement"
-
--->
-
-Oftentimes the way to achieve fault tolerance is **redundancy**. In our case, since the leader can crash, let's set up some backups.
-
 ## Single-Leader Replication
 
-To begin, we'll put a copy of our distributed variable on every node:
+The easiest way to resolve conflicts during replication is to pass all set() calls through a single node; that node decides the order the set() calls should take effect, and coordinates the work of replicating the results to all other nodes:
 
 DIAGRAM
 
-Each copy of the variable is called a **replica** of that variable. As before, we'll still implement our distributed variable by having the followers send get() and set() RPCs to the leader:
+This works, but we once again have a leader node and follower nodes, this scheme isn't fault tolerant on its own. We will have to add some kind of **failover** mechanism, so that if the current leader faults, a new leader takes its place. Whatever mechanism we invent cannot itself rely on a leader, because the whole point is that the leader might be offline.
 
-DIAGRAM
-
-Now, however, any time the leader sets the variable, it also sends an updated copy to all followers, telling each of the followers to update its backup copy of the variable to the new value:
-
-DIAGRAM
-
-The process of updating all the replicas this way is called **replication**. Since we have a single leader node which coordinates the process of replicating updates, let's call this algorithm the **single-leader replication** algorithm.
-
-This is a step in the right direction for sure, but single-leader replication alone doesn't make the algorithm fault-tolerant. Now that we have backup copies of the variable, we need a way to switch over to a new leader when the current leader crashes. Switching to a new leader on failure is called a **failover**.
-
-## Leader Failover
-
-Up until now, our the answer to the question "which node is the leader?" was a constant we could hardcode, or provide via a config file. Now that we support failover, the leader can change at runtime, so we need a runtime algorithm for determining which node is currently the leader. Whatever scheme we come up with cannot itself rely on some kind of leader, because the whole problem here is that a leader can crash. So how can we fail over without relying on a leader to coordinate the failover process?
-
-Here's a basic plan: we come up with a scheme where each node independently makes a decision who the leader should be, and set it up so that all nodes end up making the same decision independently. In principle, if we can make it so every node has the same local information and runs the same deterministic algorithm on that information as input, they should also independently pick the same leader.
+Here's a plan: we come up with a scheme where each node independently makes a decision who the leader should be, and set it up so that all nodes end up making the same decision independently. In principle, if we can make it so every node has the same local information and runs the same deterministic algorithm on that information as input, they should also independently pick the same leader.
 
 To get there, we have to solve two problems:
 
@@ -234,13 +190,13 @@ We'll go one step at a time.
 
 If you've ever ued the `ping` command to check if you're online, heartbeating is pretty much the same concept. A heartbeat is a request/response pair. To start a heartbeat, one node sends a request, asking "Are you still online?" As soon as it can, the other node responds, "Yes, I am!" If a node has gone offline, it will not have the opportunity to send a response to the heartbeat request, so getting a response to your heartbeat request is pretty strong evidence the other node is still online.
 
-By having each node periodically send heartbeats to all other nodes and track who did and did not respond, we can build local information on each node tracking which peers are online or offline. Assuming each node either is online and responding to all heartbeats, or offline and not responding to any heartbeats, all nodes should end up with an identical faulted/non-faulted map in local memory. Problem 1 solved.
+By having each node periodically send heartbeats to all other nodes and track who did and did not respond, we can build local information on each node tracking which peers are online or offline. Assuming each node either is online and responding to all heartbeats, or offline and not responding to any heartbeats, all nodes should end up with an identical faulted/non-faulted map in local memory. That's one subproblem checked off.
 
 ### Selecting a Leader
 
 Once every node has built an identical map of online vs faulted nodes using the heartbeating system, we just need a deterministic rule every node can run on that map to pick a leader.
 
-The simplest approach is to use some kind of **bully algorithm**. Bully algorithms follow the principle, "the biggest guy wins" &mdash; you come up with a sort order of some kind, and then pick the element that's first or last in the sorted list. If every node starts with same list, they'll all come up with the same sort order, and so they'll all pick the same element out of that list.
+The simplest approach is to use some kind of **bully algorithm**. Bully algorithms follow the principle, "the biggest guy wins" &mdash; you sort the list of candidates by some metric, and then pick the element that's first or last in the sorted list. If every node starts with same list, they'll all come up with the same sort order, and so they'll all pick the same element out of that list.
 
 To apply that idea here, we start by assigning every node a numerical ID:
 
@@ -288,13 +244,11 @@ And just like that, every node has switched over to node 2 as the leader:
 
 DIAGRAM
 
-This is looking pretty good! This whole failover thing was quite the diversion, but now that we have a working failover scheme, we have managed to fix our distributed variable algorithm, and finally invented fault-tolerant distributed variables.
-
-Hang on. If that's true, why is there so much more text in this post?
+This is looking pretty good! But does it really always work?
 
 ## Split-Brain
 
-Alas, outright crashes are not the only way nodes in a distributed system can fail. In the grand scheme of things, crashes are actually some of the least scary problems we have to worry about. Crashes are simple and clear-cut; a node is either alive or it is not. Other kinds of faults are much more insidious.
+Alas, outright crashes are not the only way nodes in a distributed system can fail. In the grand scheme of things, crashes are actually some of the cleanest, most clear-cut problems we need to worry about: a node is either alive or it is not. Other kinds of faults are more insidious.
 
 Wind back to the point where every node was healthy and node $1$ was still the leader:
 
@@ -322,41 +276,41 @@ That's right &mdash; our system has two leaders!
 
 DIAGRAM
 
-That's certainly not right. Our distributed variable seems to have accidentally forked into two. If anyone has written code that calls set() on the variable and assumes all other nodes will see the result of that set() the next time they call get(), well, we didn't manage to provide that guarantee, and their code is now broken. Remember when we were being so hard on other people before for not providing their stated guarantees? Here we are now breaking our promises too. Being fallible sucks.
+This situation, where the system is only supposed to have one leader but accidentally now has two, is called **split-brain**. 
 
-This situation, where the system is only supposed to have one leader but accidentally now has two, is called **split-brain**. We cannot ship a distributed variable that is prone to split-brain. We need a "safe" failover algorithm that guarantees all nodes always agree who is the leader. Getting nodes to "always agree" on something is a problem called **consensus**.
+With two distinct subnetworks and two distinct leaders, we have the potential for different values to be replicated:
 
-## Consensus
+DIAGRAM
 
-Consensus is the problem of getting all nodes in a network to agree on the value of some variable. It's not a new problem for us; we've been trying to solve it for a while now!
+Now we have violated the Agreement property; what we have is not a consensus algorithm.
 
-We decided a while back that having only one copy of our distributed variable wouldn't be fault-tolerant, so we decided to make replicas of that variable on every node. As soon as we did that, we had a consensus problem on our hands: we needed to keep those replicas in sync. Our strategy for that was to pass all get and set requests through a single leader node, and have the leader manage the replication process. This is a perfectly valid consensus algorithm; our only problem was figuring out how to survive a leader-node fault.
+It might still be possible to salvage this approach, but in retrospect we have a really big problem on our hands: safe failover itself is a consensus problem. Every node needs to agree on who is the leader. We can't use single-leader replication to solve consensus in this situation, because the whole point of a failover is that the current leader has already failed. We need a **peer-to-peer** consensus algorithm after all; that is, one that never relies on a leader.
 
-How could we try to solve the distributed variable problem and end up solving consensus instead? These problem are in fact two sides of the same coin. If you have a consensus algorithm, you can implement distributed variables by storing a replica of that variable on every node, then running the consensus algorithm each time someone sets the variable, to keep the replicas in sync. If you have a distributed variable, you can implement consensus by storing the data in a distributed variable and setting it once. Each problem can be reduced to the other.
+How do we do that?
 
-Unfortunately, since the two problems are one and the same, discovering a link between them doesn't tell us anything new about how to solve either. Still, recasting the distributed variable problem as consensus might yield new insight. Let's learn more about consensus
 
-### Properties of a Consensus Algorithm
 
-Say we planned to implement distributed variables by storing a replica of the variable on every node, and then using a consensus algorithm to keep them in sync. What would we need that consensus algorithm to do?
 
-To start, the basic purpose of a consensus algorithm is to ensure all nodes agree on the value of the variable by the time the algorithm exits. In *the literature*, this most basic property is often called **Agreement**. When we say all nodes should agree "by the time the algorithm exits," we're also assuming the algorithm should exit in the first place. That requirement is called **Termination**.
 
-Putting on our rules-lawyer hats for a minute, there's a way to achieve Agreement and Termination without really solving the problem: you just hardcode an answer. For example, if you're trying to write a consensus algorithm for integers, "always return 4" is technically a valid consensus algorithm according to the definition above. All nodes will agree the value is 4, and the algorithm will terminate very quickly. But algorithms like this are useless for the distributed variable problem; we'd end up with a distribute constant instead!
 
-We want the value of the variable to always be the one specified in the most recent call to set(). If two nodes call set() at the same time with different values, the nodes should end up picking one of those two values. If both set() calls specify the same value, the nodes should always agree on that value. This idea is called **Integrity**. (Sometimes integrity is defined an alternate way, by saying the value the nodes agree upon should be the value some node proposed. Either definition works for our needs.)
 
-And, of course, we can't forget how important it is to make every algorithm **Fault Tolerant**. 
 
-In conclusion, a consensus algorithm should provide:
 
-> **Termination**: The algorithm exits.
->
-> **Agreement**: When the algorithm exits, all replicas agree on a value.
->
-> **Integrity**: That value is one somebody wanted.
->
-> **Fault Tolerance**: A single fault cannot violate any of the properties above.
+<!--
+
+Finish the rework. We want to introduce consensus before single-leader replicaion so we can frame single-leader as an attempt at a consensus protocol, and be able to critique it as one.
+
+Do it like this:
+
+1. Introduce replication - done
+2. Try a horribly broken "broadcast" protocol that results in conflits/disagreement - done
+3. Use that framing to introduce the consensus problem - done
+4. Pull the consensus properties discussion we already had - done
+5. Springboard off the broken broadcast protocol by going back to a single leader - done
+6. Pull the single-leader discussion and the exploration of failover - done
+7. Segue into majority voting by thinking again about the metaphor of "consensus"
+
+
 
 Although it's not a *property* of consensus algorithms per se, we already know something about the solution we're looking for: it ought to be **leaderless**. We have discovered already that any consensus algorithm which involves a leader must also implement leader failover, and doing so safely is itself a consensus problem &mdash; one that has to be solved without a leader. So any leader-based consensus algorithm itself contains a leaderless consensus algorithm internally, and the latter is the thing we now need to build.
 
@@ -497,6 +451,14 @@ Okay, “uncle.” I'm all out of ideas.
 
 ## Something Has Gone Very Wrong
 
+<!--
+
+Since this was written, I've also added the broadcast algorithm to our list of ptoential consensus algorithms. 
+
+This should be slightly rewritten to instead categorize every approach we have tried so far into one of two buckets: either we have an algorithm that isn't fault tolerant, or we have something that violates agreement. This could be e.g. a two-column table or two bulleted lists. Each item could link back to the point in the post where we discussed the algorithm.
+
+-->
+
 Let's step back for a minute.
 
 We started out with such a simple goal: all we wanted was to make a distributed variable, and it only took us about 30 seconds to come up with first stab at a design. Our first try was simple and pretty robust; the one measly thing it was missing was fault tolerance. But as soon as we started trying to make our variable fault-tolerant, all of a sudden everything was like "heartbeat this," "split brain that," broken failover algorithms, split votes, broken tiebreaking rules . . . we ended up in a labrynth of dead ends in a sea of ever-growing complexity, and now we're walking away with almost nothing to show for it all.
@@ -521,11 +483,7 @@ Welcome back! How did it go? I'm guessing you're still stuck, but don't worry &m
 
 Protip: if you repeatedly find yourself unable to solve a problem, and you ask your smartest friends and they can't solve it either, you think really, really hard and, nada, the next thing to do is see if you can prove impossibility. Maybe the reason you can't solve the problem is because no solution exists! When the going gets tough, the tough give up (but only after formally proving how tough the going really is). This is exactly what three researchers managed to do in the mid-1980s.
 
-In their paper *Impossibility of Distributed Consensus with One Faulty Process*, Fischer, Lynch and Paterson (the "FLP" in what later became known as the "FLP result") explained exactly why nobody could come up with a fault-tolerant consensus algorithm. The short story is: we chose the wrong consensus properties earlier. It's impossible for a sigle algorithm to provide Agreement, Termination, Integrity and Fault Tolerance all at the same time. For the long story, let's look at a few examples.
-
-## Noticings and Wonderings
-
-
+In their paper *Impossibility of Distributed Consensus with One Faulty Process*, Fischer, Lynch and Paterson (the "FLP" in what later became known as the "FLP result") explained exactly why nobody could come up with a fault-tolerant consensus algorithm. The short story is: we chose the wrong consensus properties earlier. It's impossible for a sigle algorithm to provide Agreement, Termination, Integrity and Fault Tolerance all at the same time. 
 
 
 

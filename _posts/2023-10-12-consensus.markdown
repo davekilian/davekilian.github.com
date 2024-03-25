@@ -111,19 +111,21 @@ DIAGRAM: same diagram, but with the leader Xed out
 
 Now we have a problem. With the leader gone, so is the variable. All the follower nodes are still up and running, but they're only programmed to send RPCs to the leader, and the leader isn’t going to respond now that it’s offline. Our entire distributed variable is now offline! And since a single node crash was enough to bring down the variable too, we have to admit that our variable was not fault tolerant. That's no good; we need to fix this.
 
-Whatever we do next, the solution will involve **redundancy**. We can't get by with just one copy of our variable, because any node we put it on could crash, and then we'd lose the variable. We need to put copies of our variables on multiple nodes, so we have backups even if one of the nodes fails. So let's try that: let's put a copy of our variable on every node:
+There is no safe quarter for our variable: no matter what node we put it on, it's possible we could lose that node, along with the variable. The only way to definitely survive a node crash is to have live backups on other nodes. So let's put a copy of the variable, called a **replica**, on every node:
 
 DIAGRAM
 
-Each copy of the variable is called a **replica** of that variable. So how do we keep the replicas in sync? That problem is called **consensus**.
+Since every node has a local copy of the variable, getting the variable is as simply as reading the local copy of the variable. But how do we set this variable?
 
----
+## A Broadcast Protocol
 
-TODO I don't like this, we're back to accidentally implying consensus works over multiple writes, really we need to imply it's a one-shot ordeal
 
----
 
-## The Consensus Problem
+
+
+
+
+
 
 
 
@@ -133,40 +135,17 @@ TODO I don't like this, we're back to accidentally implying consensus works over
 
 <!--
 
-Say we planned to implement distributed variables by storing a replica of the variable on every node, and then using a consensus algorithm to keep them in sync. What would we need that consensus algorithm to do?
+Finish the rework. We want to introduce consensus before single-leader replicaion so we can frame single-leader as an attempt at a consensus protocol, and be able to critique it as one.
 
-To start, the basic purpose of a consensus algorithm is to ensure all nodes agree on the value of the variable by the time the algorithm exits. In *the literature*, this most basic property is often called **Agreement**. When we say all nodes should agree "by the time the algorithm exits," we're also assuming the algorithm should exit in the first place. That requirement is called **Termination**.
+Do it like this:
 
-Putting on our rules-lawyer hats for a minute, there's a way to achieve Agreement and Termination without really solving the problem: you just hardcode an answer. For example, if you're trying to write a consensus algorithm for integers, "always return 4" is technically a valid consensus algorithm according to the definition above. All nodes will agree the value is 4, and the algorithm will terminate very quickly. But algorithms like this are useless for the distributed variable problem; we'd end up with a distribute constant instead!
-
-We want the value of the variable to always be the one specified in the most recent call to set(). If two nodes call set() at the same time with different values, the nodes should end up picking one of those two values. If both set() calls specify the same value, the nodes should always agree on that value. This idea is called **Integrity**. (Sometimes integrity is defined an alternate way, by saying the value the nodes agree upon should be the value some node proposed. Either definition works for our needs.)
-
-And, of course, we can't forget how important it is to make every algorithm **Fault Tolerant**. 
-
-In conclusion, a consensus algorithm should provide:
-
-> **Termination**: The algorithm exits.
->
-> **Agreement**: When the algorithm exits, all replicas agree on a value.
->
-> **Integrity**: That value is one somebody wanted.
->
-> **Fault Tolerance**: A single fault cannot violate any of the properties above.
-
-
-
----
-
-This needs a rework so we introduce consensus earlier and make it clear from the start that single-leader replication is supposed to be an attempt at solving consensus 
-
-Like this:
-
-1. Introduce replication here
-2. Keeping replicas in sync
-3. Define consensus
-4. Single-leader as initial implementation of consensus
-
-I’m on the fence what we do about properties. We probably need to state them in step 3 but it’s easier to see where they come from if we explore the problem domain a little first
+1. Introduce replication - done
+2. Try a horribly broken "broadcast" protocol that results in conflits/disagreement
+3. Use that framing to introduce the consensus problem
+4. Pull the consensus properties discussion we already had
+5. Springboard off the broken broadcast protocol by going back to a single leader
+6. Pull the single-leader discussion and the exploration of failover
+7. Segue into majority voting by thinking again about the metaphor of "consensus"
 
 -->
 

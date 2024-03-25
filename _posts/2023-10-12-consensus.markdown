@@ -300,9 +300,9 @@ Oh yeah, voting! Majority-rules voting is a leaderless algorithm that results in
 
 ## Majority-Rules Voting
 
-Let's code up an algorithm where nodes throw out proposals and vote on them, just like in the restaurant example above. However, unlike in real life where people  have preferences, we'll code an algorithm where each node has no preference whatsoever. Each node will vote for whichever option it heard about first, and never change its mind.
+Let's code up an algorithm where nodes throw out proposals and vote on them, just like in the restaurant example above. However, unlike in real life where people  have preferences, we'll make it so  each node has no preference whatsoever. Each node will vote for whichever option it heard about first, and never change its mind.
 
-To keep things as simpile as possible (for now), let's only allow two values to be proposed. Since I’m American, we'll call those options <span style="color:red">red</span> and <span style="color:blue">blue</span>; but these options can stand in for anything: 0 and 1, yes and no, apples and oranges, etc. Supporting only two options is too simplistic to implement real distributed variables, but most of the time in computing, you end up being able to have exactly zero of something, exactly one of something, or any number $N$ of something. If we can figure out how to have exactly two options, there's probably a way to extend it from 2 to $N$​ options.
+To keep things as simpile as possible (for now), let's only allow two values to be proposed. Since I’m American, we'll call those options <span style="color:red">red</span> and <span style="color:blue">blue</span>; but these options can stand in for anything: 0 and 1, yes and no, apples and oranges, etc. Supporting only two options is too simplistic to implement a real consensus algorithm, but in computing you usually end up being able to have exactly zero of something, exactly one of something, or any number $N$ of something. If we can figure out how to have exactly two options, there's probably a way to extend it from 2 to $N$​ options.
 
 With that, let's start by having each node track its own vote, initially null:
 
@@ -407,21 +407,21 @@ Uh oh, the wheels are really starting to fall off again, aren't they? Having an 
 
 ## Tiebreaks and Takebacks
 
-Okay, there's no way to prevent split votes, so there's no way to ensure some value always reaches a majority. Maybe it's not as bad as it sounds. Remember, our consensus algorithm rests on a deterministic rule that takes the final votes as input. If we can't prevent the vote from splitting, maybe we can tweak the rule to handle split votes gracefully.
+Okay, there's no way to prevent split votes, so there's no way to ensure some value always reaches a majority. Maybe it's not as bad as it sounds. Remember, our consensus algorithm rests on a deterministic rule that takes the final vote counts as input. If we can't prevent the vote from splitting, maybe we can tweak the rule to handle split votes gracefully.
 
 Let's add this tiebreak rule: if a color has a majority of the votes, we pick that color, but in the event of a tie, we pick red (chosen fairly by asking my 4-year-old his favorite color). Now if there's a split vote, we still get an answer:
 
 DIAGRAM
 
-But, but .. . no wait, hold on now, we can't do this. We're making a decision before all the votes are in! Right now we have a tie vote and we picked red, but how do we know that last node is actually offline? What if it's completely healthy, and just happens to be the last node to vote? What if it comes back later and votes blue?
+But . . . no, wait, hold on now, we can't do this. We're making a decision before all the votes are in! Right now we have a tie vote and we picked red, but how do we know that last node is actually offline? What if it's completely healthy, and just happens to be the last node to vote? What if it comes back later and votes blue?
 
 DIAGRAM
 
-Well, this is kind of a disaster! We violated Agreement, the most sacred of all the consensus properties. At one point in time, we had a 3v3 split vote, and all nodes agreed on red, per the tiebreak rule. But then that last vote came in, and everybody changed their mind to blue. You can't change your mind! Agreement is total; it requires all nodes to always agree on the same value.
+Well, this is kind of a disaster! We have violated Agreement once again. At one point in time, we had a 3v3 split vote, and all nodes agreed on red, per the tiebreak rule. But then that last vote came in, and everybody changed their mind to blue. You can't change your mind! Agreement is total; it requires all nodes to always agree on the same value.
 
 Things get worse. The problem we just uncovered isn't a problem with the specific tiebreaking rule we chose; it's going to be a problem with any tiebreaking rule. Using a tiebreaker is totally fine *if* the final node is offline and is guaranteed never to come back. But how do we know the final node is offline and not coming back? No matter how long we wait for the last node to enter its vote, it is always still possible for it to do so some time in the future. That means, no matter how much time has passed, it's never safe to run the tiebreaker rule. If it’s never safe to run the tiebreaker rule, we simply can't have one.
 
-So we can't prevent split votes, and we can't run tiebreaking rules either.
+So we can't prevent split votes, and we can't run tiebreaking rules for split votes either.
 
 Another dead end.
 
@@ -435,15 +435,15 @@ This seemed so very straightforward at the beginning. How did we get so stuck?
 
 A generation of distributed systems researchers put an awful lot of thought into this problem. They were able to answer lots of related questions: things that don't work work, properties any solution must have, different ways of simplifying the problem and then solving the simplified problem. But for years, nobody had an answer to the main question. How does one design a fault-tolerant consensus algorithm?
 
-At this point I would like to invite you to join in the tradition by mulling this over yourself. What is wrong with the approaches we've tried so far? Can we fix them? If not, why not?
+At this point I would like to invite you to join in the tradition by mulling it over yourself. What is wrong with the approaches we've tried so far? Can we fix them? If not, why not?
 
-If you need some food for thought, here's some:
+If you want some food for thought, here's some:
 
 We've come up with quite a few attempts at a consensus algorithm. None of them works fully, but each of them does fit neatly into one of two buckets. Some of our approaches were Fault-Tolerant, but can violate Agreement even in cases where no node has failed:
 
 * Our 'broadcast replication' algorithm
-* Single-leader replication, with our failover scheme
-* Majority-rules voting with our tiebreak
+* Single-leader replication, with failover
+* Majority-rules voting with tiebreaking
 
 Other approaches did not violate Agreement, but also were not Fault Tolerant:
 

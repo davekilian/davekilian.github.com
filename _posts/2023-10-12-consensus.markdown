@@ -17,7 +17,7 @@ Let’s build ourselves a little software abstraction to support programs runnin
 
 DIAGRAM: nodes a network, thought bubble question mark in the middle for a variable
 
-Such a thing seems rather useful, don’t you think? If we want to make our pile of nodes act like a single cohesive service for users, at some point we’ll probably need to share state across the nodes somehow. Distributed variables would be a straightforward way to accomplish that.
+Such a thing seems rather useful, don’t you think? If we want to make our pile of nodes act like a single cohesive service for users, at some point we’ll probably need to share state across the nodes somehow. Distributed variables would be a straightforward way to do that.
 
 So how do we make a distributed variable? Well, we already know how to make regular, non-distributed variables; so let’s make a plain old variable on one of our nodes, and set up an RPC server on that node so the other nodes can get and set the variable remotely.
 
@@ -73,7 +73,7 @@ Although we have a design that meets our requirements, we might not have thought
 *"How can you make a reliable computer service?” the presenter will ask in an innocent voice before continuing, “It may be difficult if you can’t trust anything and the entire concept of happiness is a lie designed by unseen overlords of [endless deceptive power](https://scholar.harvard.edu/files/mickens/files/thesaddestmoment.pdf)."*
 </div>
 
-Look at the device you’re using to read this page. Have you ever had problems with this thing? Does it freeze up, crash, overheat, disconnect randomly from the network for no discernible reason? In distributed systems, these kinds of problems are called **faults**. So how often does your device fault? It hopefully doesn't happen often enough to be a major day-to-day disruption, but I'm still betting it happens. How often what you say it does &mdash; on the order hours, days, weeks?
+Look at the device you’re using to read this page. Have you ever had problems with this thing? Does it freeze up, crash, overheat, disconnect randomly from the network for no discernible reason? In distributed systems, these kinds of problems are called **faults**. So how often does your device fault? It hopefully doesn't happen often enough to be a major day-to-day disruption, but I'm still betting it happens. How often would you say it does &mdash; on the order hours, days, weeks?
 
 Well, that's just with one device. What if you had to manage two thousand of them? What if you had to keep all of them working all the time?
 
@@ -91,7 +91,7 @@ $$1,209,600 \div 2,000 = 604.8 \; seconds$$
 
 That's one new fault every 10 minutes . . . 24 hours a day, 7 days a week, until the day we decommision the system. This is going to be a problem! By this estimate, even if we do ever manage to get on top of all the weird stuff going wrong in our network, we'll never be done for more than 10 minutes at a time. 
 
-So the random crashes, freezes, disconnects that didn't seem like a big deal before are now insurmountable thanks to scale. This is what makes distributed systems kind of an odd environment to work in. The platform running our code provides fewer guarantees than a reasonable person would expect, and even the guarantees we get on paper don't always hold up in practice. Distributed systems is a world where anything that can go wrong will go wrong, is going wrong, and has been going wrong for weeks unnoticed. It's like playing a perverse game of Simon Says, where you think you've checked your assumptions and covered your bases, only to find out &mdash; Simon didn't say! &mdash; there's one more thing you didn’t realize can break.
+So the random crashes, freezes and disconnects that didn't seem like a big deal before are now insurmountable thanks to scale. This is what makes distributed systems kind of an odd environment to work in. The platform running our code provides fewer guarantees than a reasonable person would expect, and even the guarantees we get on paper don't always hold up in practice. Distributed systems is a world where anything that can go wrong will go wrong, is going wrong, and has been going wrong for weeks unnoticed. It's like playing a perverse game of Simon Says, where you think you've checked your assumptions and covered your bases, only to find out &mdash; Simon didn't say! &mdash; there's one more thing you didn’t realize can break.
 
 As software people, it's tempting to write code that assumes the underlying platforms and systems always work, and when things break, it's tempting to just tell the ops people it's their problem &mdash; just fix the hardware! But the ops people are managing a huge fleet, and they're being inundated by problem after unexplainable problem. They're never going to catch up, and neither would you in their shoes. The best way forward for everyone is for us to code around the problems instead of asserting they shouldn't happen. In other words, we ought to make our code **fault tolerant**: it should tolerate (continue working despite) faults in the underlying system.
 
@@ -111,11 +111,11 @@ But the leader is not immune to problems. If a random node crashes, it very well
 
 DIAGRAM: same diagram, but with the leader Xed out
 
-Now we have a problem. With the leader gone, so is the variable. All the follower nodes are still up and running, but they're only programmed to send RPCs to the leader, and the leader isn’t going to respond now that it’s offline. Our entire distributed variable is now offline! And since a single node crash was enough to bring down the variable too, we have to admit that our variable was not fault tolerant. That's no good; we need to fix this.
+Now we have a problem. With the leader gone, so is the variable. All the follower nodes are still up and running, but they're only programmed to send RPCs to the leader, and the leader isn’t going to respond now that it’s offline. Our entire distributed variable is now offline! And since a single node crash was enough to bring down the variable, we have to admit that our variable was not fault tolerant. That's no good; we need to fix this.
 
 ## Broadcast Replication
 
-There is no safe quarter for our variable: no matter what node we put the variable on, it's possible we could lose that node, and the variable with it. The only way to definitely survive a node crash is to have live backups of the variable on other nodes. So, to be maximally safe, let's put a copy of the variable on every node:
+There is no safe quarter for our variable: no matter what node we put the variable on, it's possible we could lose that node, and the variable with it. The only way to definitely survive a node crash is to have copies of the variable on multiple nodes. To be maximally safe, let's put a copy of the variable on every node:
 
 DIAGRAM
 
@@ -464,7 +464,7 @@ Let's go see what they saw.
 
 ## The FLP Model
 
-Big breakthroughts in hard problems often involve finding the right way to look at the problem. To understand FLP, we first need to be able to look at the consensus problem the way they do.
+Much of the time, big breakthroughs in hard problems come from finding an interesting new way to look at and analyze the problem. Let’s take a fresh look at consensus algorithms through an FLP lens.
 
 
 

@@ -17,7 +17,9 @@ Let’s build ourselves a little software abstraction to support programs runnin
 
 DIAGRAM: nodes a network, thought bubble question mark in the middle for a variable
 
-How could we make such a thing? Well, we already know how to make regular, non-distributed variables; so let’s make a plain old variable on one of our nodes, and set up an RPC server on that node so the other nodes can get and set the variable remotely.
+Such a thing seems rather useful, don’t you think? If we want to make our pile of nodes act like a single cohesive service for users, at some point we’ll probably need to share state across the nodes somehow. Distributed variables would be a straightforward way to accomplish that.
+
+So how do we make a distributed variable? Well, we already know how to make regular, non-distributed variables; so let’s make a plain old variable on one of our nodes, and set up an RPC server on that node so the other nodes can get and set the variable remotely.
 
 DIAGRAM
 
@@ -63,7 +65,7 @@ client {
 
 Now we have one variable any node can get or set. That was easy! But, alas, we are not done. 
 
-Although we have a design that meets our requirements, we might not have thought hard enough about what the requirements should have been in the first place. As is sadly so often the case in life, things have been simple thus far only because we missed a major aspect of the problem.
+Although we have a design that meets our requirements, we might not have thought hard enough about those requirements in the first place. As is sadly so often the case in life, things have been simple thus far only because we missed a major aspect of the problem.
 
 ## Whose Fault is it Anyways?
 
@@ -91,9 +93,9 @@ That's one new fault every 10 minutes . . . 24 hours a day, 7 days a week, until
 
 So the random crashes, freezes, disconnects that didn't seem like a big deal before are now insurmountable thanks to scale. This is what makes distributed systems kind of an odd environment to work in. The platform running our code provides fewer guarantees than a reasonable person would expect, and even the guarantees we get on paper don't always hold up in practice. Distributed systems is a world where anything that can go wrong will go wrong, is going wrong, and has been going wrong for weeks unnoticed. It's like playing a perverse game of Simon Says, where you think you've checked your assumptions and covered your bases, only to find out &mdash; Simon didn't say! &mdash; there's one more thing you didn’t realize can break.
 
-As software people, it's tempting to write code that assumes the underlying platforms and systems always work, and when things break, it's tempting to just tell the ops people it's their problem &mdash; just fix the hardware! But the ops people are managing a huge fleet, and they're being inundated by problem after unexplainable problem. They're never going to catch up, and neither would you in their shoes. The best way forward for everyone is for us to code around the problems instead of asserting they shouldn't happen. In other words, we ought to make our code **fault tolerant**: it should tolerate faults in the underlying system. It's that, or frequent downtime, outages, and unhappy users!
+As software people, it's tempting to write code that assumes the underlying platforms and systems always work, and when things break, it's tempting to just tell the ops people it's their problem &mdash; just fix the hardware! But the ops people are managing a huge fleet, and they're being inundated by problem after unexplainable problem. They're never going to catch up, and neither would you in their shoes. The best way forward for everyone is for us to code around the problems instead of asserting they shouldn't happen. In other words, we ought to make our code **fault tolerant**: it should tolerate (continue working despite) faults in the underlying system.
 
-(Besides, it's never a good idea to yell at the ops people. Make friends with your ops people. They have the best war stories.)
+(Besides, it's never a good idea to yell at the ops people. Make friends with your ops people. They tell the best war stories.)
 
 Fault tolerance is the major aspect of the problem that we were missing before. It's not enough to just want "distributed variables that any node can get or set," we also need fault tolerance: the variable should keep working even if a node crashes, or a network connection goes down, and so on.
 
@@ -113,21 +115,21 @@ Now we have a problem. With the leader gone, so is the variable. All the followe
 
 ## Broadcast Replication
 
-There is no safe quarter for our variable: no matter what node we put it on, it's possible we could lose that node, and the variable with it. The only way to definitely survive a node crash is to have live backups of the variable on other nodes. So, to be maximally safe, let's put a copy of the variable on every node:
+There is no safe quarter for our variable: no matter what node we put the variable on, it's possible we could lose that node, and the variable with it. The only way to definitely survive a node crash is to have live backups of the variable on other nodes. So, to be maximally safe, let's put a copy of the variable on every node:
 
 DIAGRAM
 
 Every copy of the variable is called a **replica**. The process of creating and updating replicas is called **replication**.
 
-In this new setup, getting a variable is simple: every node already has its own local replica of the variable, so to get the variable, just read the local replica like any other variable. To set the variable, let's use a **broadcast** protocol: the node that wants to update the variable sends a "set" RPC to every other node; each node in turn updates its local replica to reflect the update it just received:
+In this new setup, getting a variable is simple: every node already has its own local replica of the variable, so to get the variable, just read the local replica like any other variable. To set the variable, let's use a **broadcast** protocol: the node that wants to update the variable sends a "set" RPC to every other node, and each other node in turn updates its local replica to reflect the update it just received:
 
 DIAGRAM
 
-Does this work? Well, this scheme certainly is fault tolerant: each node has its own replica of the variable, so as long as we have at least one live node which has not faulted, we also have a live replica of the variable, so the variable is never lost. Even if a node crashes, the remaining nodes can still broadcast updates to one another and read their local replicas.
+We’ve definitely managed to create something fault-tolerant this time: each node has its own replica of the variable, so as long as we have at least one live node which has not faulted, we also have a live replica of the variable, so the variable is never lost. Even if a node crashes, the remaining nodes can still broadcast updates to one another and read their local replicas. So we can still get and set the variable any time we have at least one node online.
 
-So, now we have a variable that we can get and set from any node, and it's fault-tolerant.
+So, now we have a variable that we can get and set from any node, and it's fault-tolerant. What’s not to love?
 
-Here's a problem, though: even with fast computers and fast networks, it still takes some amount of time for a broadcast to reach every node. What if two nodes do an update at the same time?
+Here's a problem: even with fast computers and fast networks, it still takes some amount of time for a broadcast to reach every node. What if two nodes do an update at the same time?
 
 DIAGRAM
 
@@ -135,23 +137,23 @@ Now it's possible for the two broadcasts to arrive in different orders on differ
 
 DIAGRAM
 
-Once all updates have been processed, these different nodes can end up with different values for their respective replicas of the variable:
+Once all updates have been processed, we’ll end up with different values for different replicas of the variable:
 
 DIAGRAM
 
-This is kind of terrible! Now the different nodes in our network disagree as to the current variable of our variable &mdash; something that certainly could never happen with a "normal," non-distributed variable. This is yet another thing we will need to fix. How can we make sure, if two conflicting broadcasts happen at the same time, the nodes come to an agreement on the final value of the variable? This question is known as **the consensus problem**.
+That’s kind of terrible! Now the different nodes in our network disagree as to the current variable of our variable &mdash; something that certainly could never happen with a "normal," non-distributed variable. We have to fix this. How can we make sure, if two conflicting broadcasts happen at the same time, the nodes come to an agreement on what the final value of the variable should be? This question is called **the consensus problem**.
 
 ## Consensus 
 
-Consensus is the problem of getting a group of nodes to agree on the value of some variable. In our case, the thing we're trying to agree on is the next value our distributed variable should be set to. To make our distributed variable, it would seem consensus is the next problem we need to tackle.
+Consensus is the problem of getting a group of nodes to agree on the value of some variable. In our case, the value we're trying to agree on is the next value our distributed variable should be set to. To make our distributed variable, it would seem consensus is the next problem we need to tackle.
 
 So, what do we need a consensus algorithm to do?
 
-To start, the basic purpose of a consensus algorithm is to ensure all nodes agree on the value of the variable by the time the algorithm exits. This most basic property is often called **Agreement**. When we say all nodes should agree "by the time the algorithm exits," we're also assuming the algorithm should exit in the first place. That is called **Termination**.
+To start, the basic purpose of a consensus algorithm is to ensure all nodes agree on the value of the variable by the time the algorithm exits. This most basic property is sometimes called **Agreement**. When we say all nodes should agree "by the time the algorithm exits," we're also assuming the algorithm should exit in the first place. That is called **Termination**.
 
 Putting on our rules-lawyer hats for a minute, there's a way to achieve Agreement and Termination without really solving the problem: you just hardcode an answer. For example, if you're trying to write a consensus algorithm for integers, "always return 4" is technically a valid consensus algorithm according to our definition so far: all nodes will agree the value is 4, and the algorithm will terminate very quickly. But algorithms like this are useless for the distributed variable problem; we'd end up with a distributed constant instead!
 
-We want the value of the variable to always be the one specified in the most recent call to set(). If two nodes call set() at the same time with different values, the nodes should end up picking one of those two values. If both set() calls specify the same value, the nodes should always agree on that value. This idea is called **Integrity**. (Sometimes integrity is defined an alternate way, by saying the value the nodes agree upon should be the value some node proposed. Either definition works for our needs.)
+We want the value of the variable to always be the one proposed in a recent set() call. If two nodes call set() at the same time with different values, the algorithm should end up picking one of those two values. If both set() calls specify the same value, the algorithm should always pick that value. This idea is called **Integrity**.
 
 And, of course, we can't forget how important it is to make every algorithm **Fault Tolerant**. 
 
@@ -165,24 +167,24 @@ In conclusion, a consensus algorithm should provide:
 >
 > **Fault Tolerance**: A single fault cannot violate any of the properties above.
 
-Let's get cracking!
+Let's try to invent an algorithm that accomplishes all of this.
 
 ## Single-Leader Replication
 
-The easiest way to resolve conflicts during replication is to pass all set() calls through a single node; that node decides the order the set() calls should take effect, and coordinates the work of replicating the results to all other nodes:
+The easiest way to resolve conflicts during replication, and thereby solve the consensus problem, is to pass all set() calls through a single node. That node decides the order the set() calls should take effect, and coordinates the work of replicating the results to all other nodes:
 
 DIAGRAM
 
-This works, but we once again have a leader node and follower nodes, this scheme isn't fault tolerant on its own. We will have to add some kind of **failover** mechanism, so that if the current leader faults, a new leader takes its place. Whatever mechanism we invent cannot itself rely on a leader, because the whole point is that the leader might be offline.
+This works, but we once again have a leader node and follower nodes, so we know this scheme isn't fault tolerant on its own. We will have to add some kind of **failover** mechanism, so that if the current leader faults, a new leader takes its place. 
 
-Here's a plan: we come up with a scheme where each node independently makes a decision who the leader should be, and set it up so that all nodes end up making the same decision independently. In principle, if we can make it so every node has the same local information and runs the same deterministic algorithm on that information as input, they should also independently pick the same leader.
+Whatever failover mechanism we invent cannot itself rely on a leader, because the whole point is that the leader might be offline. Instead, let’s come up with a scheme where each node independently makes a decision who the leader should be, and set things up so that all nodes independently end up making the same leader decision. In principle, if we can make it so every node has the same local information and runs the same deterministic algorithm on that information as input, they should end up choosing the same leader.
 
-To get there, we have to solve two problems:
+To get there, we have to solve two subproblems:
 
 1. We need a way for each node to determine which other nodes are still online
 2. We need a deterministic rule for deciding which of those nodes should be leader
 
-We'll go one step at a time.
+Let’s start with the first subproblem.
 
 ### Detecting Node Faults
 

@@ -286,34 +286,6 @@ Now we have violated the Agreement property; what we have is not a consensus alg
 
 It might still be possible to salvage this approach, but in retrospect we have a really big problem on our hands: safe failover itself is a consensus problem. Every node needs to agree on who is the leader. We can't use single-leader replication to solve consensus in this situation, because the whole point of a failover is that the current leader has already failed. We need a **peer-to-peer** consensus algorithm after all; that is, one that never relies on a leader.
 
-How do we do that?
-
-
-
-
-
-
-
-
-
-<!--
-
-Finish the rework. We want to introduce consensus before single-leader replicaion so we can frame single-leader as an attempt at a consensus protocol, and be able to critique it as one.
-
-Do it like this:
-
-1. Introduce replication - done
-2. Try a horribly broken "broadcast" protocol that results in conflits/disagreement - done
-3. Use that framing to introduce the consensus problem - done
-4. Pull the consensus properties discussion we already had - done
-5. Springboard off the broken broadcast protocol by going back to a single leader - done
-6. Pull the single-leader discussion and the exploration of failover - done
-7. Segue into majority voting by thinking again about the metaphor of "consensus"
-
-
-
-Although it's not a *property* of consensus algorithms per se, we already know something about the solution we're looking for: it ought to be **leaderless**. We have discovered already that any consensus algorithm which involves a leader must also implement leader failover, and doing so safely is itself a consensus problem &mdash; one that has to be solved without a leader. So any leader-based consensus algorithm itself contains a leaderless consensus algorithm internally, and the latter is the thing we now need to build.
-
 Do you know of any real-life algorithms for a group of people to come to an agreement, without someone to boss everyone around and tell people what to do?
 
 For example, think of a group of friends that want to out to eat somewhere. In order to go somewhere, they need to pick where to go first; that's an agreement problem. What might happen next? Maybe someone throws out an idea, someone throws out another idea, some people agree, some disagree, eventually a group opinion starts to form. The tide starts to turn when someone finally says
@@ -447,33 +419,34 @@ Things get worse. The problem we just uncovered isn't a problem with the specifi
 
 So we can't prevent split votes, and we can't run tiebreaking rules either.
 
-Okay, “uncle.” I'm all out of ideas.
+Another dead end.
 
 ## Something Has Gone Very Wrong
 
-<!--
-
-Since this was written, I've also added the broadcast algorithm to our list of ptoential consensus algorithms. 
-
-This should be slightly rewritten to instead categorize every approach we have tried so far into one of two buckets: either we have an algorithm that isn't fault tolerant, or we have something that violates agreement. This could be e.g. a two-column table or two bulleted lists. Each item could link back to the point in the post where we discussed the algorithm.
-
--->
-
 Let's step back for a minute.
 
-We started out with such a simple goal: all we wanted was to make a distributed variable, and it only took us about 30 seconds to come up with first stab at a design. Our first try was simple and pretty robust; the one measly thing it was missing was fault tolerance. But as soon as we started trying to make our variable fault-tolerant, all of a sudden everything was like "heartbeat this," "split brain that," broken failover algorithms, split votes, broken tiebreaking rules . . . we ended up in a labrynth of dead ends in a sea of ever-growing complexity, and now we're walking away with almost nothing to show for it all.
+We started out with such a simple goal: all we wanted was to make a distributed variable, and it only took us about 30 seconds to come up with first stab at a design. Our first try was simple and pretty robust; the one measly thing it was missing was fault tolerance. But as soon as we started trying to make our variable fault-tolerant, all of a sudden everything was like "heartbeat this," "split brain that," broken failover algorithms, split votes, broken tiebreaking rules . . . we ended up in a labrynth of dead ends in a sea of ever-growing complexity, and yet we still don't have a solve.
 
 This seemed so very straightforward at the beginning. How did we get so stuck?
 
-A generation of distributed systems researchers got nerd-sniped answering that question. Lots of pretty smart people put an awful lot of thought into it, and were able to answer lots of related questions: things that don't work work, properties any solution must have, different ways of simplifying the problem and then solving the simplified problem. But for years, nobody had an answer to the main question. How does one design a fault-tolerant consensus algorithm?
+A generation of distributed systems researchers put an awful lot of thought into this problem. They were able to answer lots of related questions: things that don't work work, properties any solution must have, different ways of simplifying the problem and then solving the simplified problem. But for years, nobody had an answer to the main question. How does one design a fault-tolerant consensus algorithm?
 
-At this point I would like to invite you to join in the tradition, by mulling over the problem for yourself. What is wrong with the approaches we've tried so far? Can we fix them? If not, why not?
+At this point I would like to invite you to join in the tradition by mulling this over yourself. What is wrong with the approaches we've tried so far? Can we fix them? If not, why not?
 
-Here’s a specific question worth pondering:
+If you need some food for thought, here's some:
 
-We have now come up with two different consensus algorithms. The first algorithm was the single-leader replication algorithm, where we passed all proposals through a leader, and the leader replicated its decision to all followers. The base algorithm worked, but it wasn’t fault tolerant; in trying to add fault tolerance by failing over, we ended up with Agreement violations in the form of split-brain. Then we built a second algorithm based on the idea of voting and majority-rules. The base algorithm worked, but it wasn’t fault tolerant; in trying to add fault tolerance by tiebreaking, we ended up with Agreement violations when the last node enters its vote. Two completely consensus algorithms, neither turned out to be fault tolerant, and both times we tried to ‘fix’ that by adding fault tolerance, we violated Agreement.
+We've come up with quite a few attempts at a consensus algorithm. None of them works fully, but each of them does fit neatly into one of two buckets. Some of our approaches were Fault-Tolerant, but can violate Agreement even in cases where no node has failed:
 
-Isn’t it weird that happened twice?
+* Our 'broadcast replication' algorithm
+* Single-leader replication, with our failover scheme
+* Majority-rules voting with our tiebreak
+
+Other approaches did not violate Agreement, but also were not Fault Tolerant:
+
+* Single-leader replication, before we added failover
+* Majority rules voting, before we added the tiebreak
+
+Isn't it weird that we keep hitting the same two dead ends? Why does it seem Agreement and Fault Tolerant don't want to coexist?
 
 Think about it! This page will still be here when you get back.
 

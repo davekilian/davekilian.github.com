@@ -111,13 +111,33 @@ DIAGRAM: same diagram, but with the leader Xed out
 
 Now we have a problem. With the leader gone, so is the variable. All the follower nodes are still up and running, but they're only programmed to send RPCs to the leader, and the leader isn’t going to respond now that it’s offline. Our entire distributed variable is now offline! And since a single node crash was enough to bring down the variable too, we have to admit that our variable was not fault tolerant. That's no good; we need to fix this.
 
-There is no safe quarter for our variable: no matter what node we put it on, it's possible we could lose that node, along with the variable. The only way to definitely survive a node crash is to have live backups on other nodes. So let's put a copy of the variable, called a **replica**, on every node:
+## Broadcast Replication
+
+There is no safe quarter for our variable: no matter what node we put it on, it's possible we could lose that node, and the variable with it. The only way to definitely survive a node crash is to have live backups of the variable on other nodes. So, to be maximally safe, let's put a copy of the variable on every node:
 
 DIAGRAM
 
-Since every node has a local copy of the variable, getting the variable is as simply as reading the local copy of the variable. But how do we set this variable?
+Every copy of the variable is called a **replica**. The process of creating and updating replicas is called **replication**.
 
-## A Broadcast Protocol
+In this new setup, getting a variable is simple: every node already has its own local replica of the variable, so to get the variable, just read the local replica like any other variable. To set the variable, let's use a **broadcast** protocol: the node that wants to update the variable sends a "set" RPC to every other node; each node in turn updates its local replica to reflect the update it just received:
+
+DIAGRAM
+
+Does this work? Well, this scheme certainly is fault tolerant: each node has its own replica of the variable, so as long as we have at least one live node which has not faulted, we also have a live replica of the variable, so the variable is never lost. Even if a node crashes, the remaining nodes can still broadcast updates to one another and read their local replicas.
+
+Here's a problem, though: even with fast computers and fast networks, it still takes some amount of time for a broadcast to reach every node. What if two nodes do an update at the same time?
+
+DIAGRAM
+
+Now it's possible for the two broadcasts to arrive in different orders on different nodes:
+
+DIAGRAM
+
+Once all updates have been processed, these different nodes can end up with different values for their respective replicas of the variable:
+
+DIAGRAM
+
+
 
 
 
@@ -140,12 +160,14 @@ Finish the rework. We want to introduce consensus before single-leader replicaio
 Do it like this:
 
 1. Introduce replication - done
-2. Try a horribly broken "broadcast" protocol that results in conflits/disagreement
+2. Try a horribly broken "broadcast" protocol that results in conflits/disagreement - done
 3. Use that framing to introduce the consensus problem
 4. Pull the consensus properties discussion we already had
 5. Springboard off the broken broadcast protocol by going back to a single leader
 6. Pull the single-leader discussion and the exploration of failover
 7. Segue into majority voting by thinking again about the metaphor of "consensus"
+
+Note also we could include this new broadcast protocol in the prelude to FLP. Basically that prelude should drop the idea that "every time we try to make it fault tolerant, we violate agreement" and instead state it like, "every attempt we have made falls neatly into one of two buckets: either isn't fault tolerant or violates agreement"
 
 -->
 

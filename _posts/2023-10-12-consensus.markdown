@@ -139,9 +139,33 @@ Once all updates have been processed, these different nodes can end up with diff
 
 DIAGRAM
 
-This is kind of terrible! Now the different nodes in our network disagree as to the current variable of our variable &mdash; something that certainly could never happen with a "normal," non-distributed variable. This is yet another thing we will need to fix. How can we make sure, if two conflicting broadcasts happen at the same time, the nodes end up agreeing on which value should be stored? This question is known as **the consensus problem**.
+This is kind of terrible! Now the different nodes in our network disagree as to the current variable of our variable &mdash; something that certainly could never happen with a "normal," non-distributed variable. This is yet another thing we will need to fix. How can we make sure, if two conflicting broadcasts happen at the same time, the nodes come to an agreement on the final value of the variable? This question is known as **the consensus problem**.
 
 ## Consensus 
+
+Consensus is the problem of getting a group of nodes to agree on the value of some variable. In our case, the thing we're trying to agree on is the next value our distributed variable should be set to. To make our distributed variable, it would seem consensus is the next problem we need to tackle.
+
+So, what do we need a consensus algorithm to do?
+
+To start, the basic purpose of a consensus algorithm is to ensure all nodes agree on the value of the variable by the time the algorithm exits. This most basic property is often called **Agreement**. When we say all nodes should agree "by the time the algorithm exits," we're also assuming the algorithm should exit in the first place. That is called **Termination**.
+
+Putting on our rules-lawyer hats for a minute, there's a way to achieve Agreement and Termination without really solving the problem: you just hardcode an answer. For example, if you're trying to write a consensus algorithm for integers, "always return 4" is technically a valid consensus algorithm according to our definition so far: all nodes will agree the value is 4, and the algorithm will terminate very quickly. But algorithms like this are useless for the distributed variable problem; we'd end up with a distributed constant instead!
+
+We want the value of the variable to always be the one specified in the most recent call to set(). If two nodes call set() at the same time with different values, the nodes should end up picking one of those two values. If both set() calls specify the same value, the nodes should always agree on that value. This idea is called **Integrity**. (Sometimes integrity is defined an alternate way, by saying the value the nodes agree upon should be the value some node proposed. Either definition works for our needs.)
+
+And, of course, we can't forget how important it is to make every algorithm **Fault Tolerant**. 
+
+In conclusion, a consensus algorithm should provide:
+
+> **Termination**: The algorithm exits.
+>
+> **Agreement**: When the algorithm exits, all replicas agree on a value.
+>
+> **Integrity**: That value is one somebody wanted.
+>
+> **Fault Tolerance**: A single fault cannot violate any of the properties above.
+
+Let's get cracking!
 
 
 
@@ -161,8 +185,8 @@ Do it like this:
 
 1. Introduce replication - done
 2. Try a horribly broken "broadcast" protocol that results in conflits/disagreement - done
-3. Use that framing to introduce the consensus problem
-4. Pull the consensus properties discussion we already had
+3. Use that framing to introduce the consensus problem - done
+4. Pull the consensus properties discussion we already had - done
 5. Springboard off the broken broadcast protocol by going back to a single leader
 6. Pull the single-leader discussion and the exploration of failover
 7. Segue into majority voting by thinking again about the metaphor of "consensus"

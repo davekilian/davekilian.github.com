@@ -460,10 +460,48 @@ Welcome back! How did it go? I'm guessing you're still stuck, but don't worry &m
 
 If you repeatedly find yourself unable to solve a problem, and especially if all your solutions keep hitting the same set of dead ends, the next thing to do is to try proving the problem is impossible to solve in the first place. This is exactly what three researchers managed to do in the mid-1980s. In their paper *Impossibility of Distributed Consensus with One Faulty Process*, Fischer, Lynch and Paterson (the "FLP" in what later became known as the "FLP result") explained exactly why nobody could come up with a fault-tolerant consensus algorithm.
 
-Much of the time, big breakthroughs in hard problems come from finding an interesting new way to look at and analyze the problem. Let’s take a fresh look at consensus algorithms through an FLP lens.
+Much of the time, big breakthroughs in hard problems come from finding an interesting new way to look at and analyze the problem; FLP is an example of this. Let’s see how they look at consensus algorithms:
+
+## Decisions, Decisions
+
+Consensus is easy when only one value is proposed. The hard part is resolving conflicts: if one node proposes red and the other blue, only one of those can end up being the agreed-upon value. How does an algorithm decide between them?
+
+Forget the mechanics of how the algorithm makes the decision; after all, every algorithm can have a different rule. But there’s still a general, overall shape to how these decisions get made.
+
+Say we’re at the start of a consensus algorithm &mdash; any consensus algorithm &mdash; and say one node is proposing red and another is proposing blue:
+
+DIAGRAM
+
+I claim it is possible for the algorithm to pick either red or blue at this point. This is because the algorithm needs to be fault tolerant, and so it’s possible for either the red proposer or the blue proposer to crash without compromising the algorithm. If the red proposer crashes at this point, for example, it dies being the only node that ever knew red had been proposed. The remaining nodes only know that blue was proposed, so by Integrity the algorithm must decide blue:
+
+DIAGRAM - red proposer X’ed out, all other nodes blue
+
+But if the blue proposer crashes without getting the word out, the rest of the system will only see that red was proposed, and therefore the algorithm must both decide red:
+
+DIAGRAM - blue proposer X’ed out, all other nodes red
+
+So at the beginning of the algorithm, both proposed values were still on the table. Let’s draw a timeline of the algorithm’s execution:
+
+DIAGRAM - timeline, with “both still possible” pencilled in at the start
+
+What else can we add to the timeline? Well, we know by the end of the algorithm we must reach agreement, so at the end we must have picked either red or blue, and eliminated the other:
+
+DIAGRAM - same timeline, with end pencilled in “only one outcome”
+
+Somewhere in the middle, there must have been a decision, taking us from “all values are still on the table” to “one and only one value has been chosen.” And since the agreement property requires us to never change our minds after deciding upon a value, the decision must be a single step, one which starts with multiple values still possible and ends up with a single value having been decided. We can draw this step a single point in time on our timeline:
+
+DIAGRAM complete timeline with start, decision step, end as points which create two line segments labeled “both values possible” and “one value chosen”
+
+Thing is, every step of a distributed algorithm runs on a single node. So the decision step must happen on one, and only one node
+
+DIAGRAM
 
 
 
+
+
+
+> There is a **decision step**, running on a single node, that decides on the final value on behalf of the entire system
 
 
 

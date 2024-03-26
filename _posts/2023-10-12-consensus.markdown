@@ -129,7 +129,7 @@ We’ve definitely managed to create something fault-tolerant this time: each no
 
 So, now we have a variable that we can get and set from any node, and it's fault-tolerant. What’s not to love?
 
-Here's a problem: even with fast computers and fast networks, it still takes some amount of time for a broadcast to reach every node. What if two nodes do an update at the same time?
+Here's a problem: even with fast computers and fast networks, it still takes some amount of time for a broadcast to reach every node. What if two nodes do an update in parallel?
 
 DIAGRAM
 
@@ -459,10 +459,6 @@ Think about it! This page will still be here when you get back.
 Welcome back! How did it go? I'm guessing you're still stuck, but don't worry &mdash; we'll figure out what the problem is soon enough.
 
 If you repeatedly find yourself unable to solve a problem, and especially if all your solutions keep hitting the same set of dead ends, the next thing to do is to try proving the problem is impossible to solve in the first place. This is exactly what three researchers managed to do in the mid-1980s. In their paper *Impossibility of Distributed Consensus with One Faulty Process*, Fischer, Lynch and Paterson (the "FLP" in what later became known as the "FLP result") explained exactly why nobody could come up with a fault-tolerant consensus algorithm.
-
-Let's go see what they saw.
-
-## The FLP Model
 
 Much of the time, big breakthroughs in hard problems come from finding an interesting new way to look at and analyze the problem. Let’s take a fresh look at consensus algorithms through an FLP lens.
 

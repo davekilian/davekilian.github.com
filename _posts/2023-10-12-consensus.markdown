@@ -528,6 +528,10 @@ Let’s play spot the pattern.
 
 
 
+
+## One-Way, Two-Way, Red-Way, Blue-Way
+
+
 <!--
 
 From my phone notes on 3/22:

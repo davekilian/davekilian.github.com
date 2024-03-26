@@ -494,11 +494,7 @@ Somewhere in the middle, there must have been a decision, taking us from “all 
 
 DIAGRAM complete timeline with start, decision step, end as points which create two line segments labeled “both values possible” and “one value chosen”
 
-Thing is, every step of a distributed algorithm runs on a single node. So the decision step must happen on one, and only one node:
-
-DIAGRAM
-
-This is interesting, don’t you think? The algorithm must have a critical step, which must happen on exactly one node, yet that node could potentially crash before, during or after that step. 
+Note that every step of a distributed algorithm runs on a single nod, and as a step of the algorithm, the decision step too must happen on one, and only one node. This is interesting, don’t you think? The algorithm must include a critical step, which must happen on exactly one node, yet that node could potentially crash before, during or after that critical step. 
 
 Anyways, we may not have the whole story here, but we learned something interesting:
 
@@ -508,11 +504,11 @@ What else can we say about every consensus algorithm?
 
 ## Nondeterministically Yours
 
-By our own analysts, both red and blue are still options at the beginning of any consensus algorithm’s execution. That means two runs of the same algorithm, starting in the same initial state, can still have different outcomes. So consensus algorithms are **nondeterministic**. All of the algorithms we have drafted so far are indeed nondeterministic. 
+By our own analysis, both red and blue are still options at the beginning of any consensus algorithm’s execution. That means two runs of the same algorithm, starting in the same initial state, do not always have the same outcome. So consensus algorithms are **nondeterministic**. All of the algorithms we have drafted so far are indeed nondeterministic. 
 
 What’s weird is, all of our draft algorithms so far consist entirely of deterministic steps. We don’t generate random numbers, start timers or spin up racing threads. So where is the nondeterminism coming from? 
 
-It’s coming from the network. Variances in exact timings and other factors means that, even if it’s the same algorithm sending the same network messages in the same order, nodes can receive the messages in different orders. That results in nondeterministic behavior.
+It’s coming from the network. Variances in exact timings and other factors mean that the set of messages being received by a node can arrive in any order. That results in nondeterministic behavior in the overall algorithm.
 
 And since the decision step picks red or blue nondeterministically, the delivery order in network messages must somehow influence what value the decision step chooses &mdash; in every consensus algorithm!
 
@@ -521,6 +517,8 @@ Now we know enough to analyze consensus algorithms the FLP way: we simply ask ou
 1. What is the decision step?
 2. How is it influenced by the order network messages are processed?
 3. What happens if a node running the decision step fails?
+
+We can try this out on a few of the example algorithms we already came up with before. Then maybe we can spot the reason we kept running into dead ends.
 
 ## Our Examples, Revisited
 

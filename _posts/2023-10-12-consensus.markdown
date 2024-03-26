@@ -502,8 +502,29 @@ This is interesting, don’t you think? The algorithm must have a critical step,
 
 Anyways, we may not have the whole story here, but we learned something interesting:
 
-> In every consensus algorithm, there is a **decision step**: running on a single node, that decides on the final value on behalf of the entire system
+> In every consensus algorithm, there is a **decision step**: a single operation, running on a single node, that decides the final value on behalf of the entire system
 
+What else can we say about every consensus algorithm?
+
+## Nondeterministically Yours
+
+By our own analysts, both red and blue are still options at the beginning of any consensus algorithm’s execution. That means two runs of the same algorithm, starting in the same initial state, can still have different outcomes. So consensus algorithms are **nondeterministic**. All of the algorithms we have drafted so far are indeed nondeterministic. 
+
+What’s weird is, all of our draft algorithms so far consist entirely of deterministic steps. We don’t generate random numbers, start timers or spin up racing threads. So where is the nondeterminism coming from? 
+
+It’s coming from the network. Variances in exact timings and other factors means that, even if it’s the same algorithm sending the same network messages in the same order, nodes can receive the messages in different orders. That results in nondeterministic behavior.
+
+And since the decision step picks red or blue nondeterministically, the delivery order in network messages must somehow influence what value the decision step chooses &mdash; in every consensus algorithm!
+
+Now we know enough to analyze consensus algorithms the FLP way: we simply ask ourselves
+
+1. What is the decision step?
+2. How is it influenced by the order network messages are processed?
+3. What happens if a node running the decision step fails?
+
+## Our Examples, Revisited
+
+Let’s play spot the pattern.
 
 
 

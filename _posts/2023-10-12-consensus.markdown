@@ -439,16 +439,16 @@ At this point I would like to invite you to join in the tradition by mulling it 
 
 If you want some food for thought, here's some:
 
-We've come up with quite a few attempts at a consensus algorithm. None of them works fully, but each of them does fit neatly into one of two buckets. Some of our approaches were Fault-Tolerant, but can violate Agreement even in cases where no node has failed:
+We've come up with quite a few attempts at a consensus algorithm.  None of them worked, but looking at what didn’t work, a pattern is starting to emerge. Some of our algorithms are perfectly workable consensus algorithms, but aren’t fault tolerant; examples include . . .
 
-* Our 'broadcast replication' algorithm
-* Single-leader replication, with failover
-* Majority-rules voting with tiebreaking
+* Our “single leader replication” algorithm, before we added failover
+* Our “majority rules voting” algorithm, before we added a tiebreak
 
-Other approaches did not violate Agreement, but also were not Fault Tolerant:
+Other attempts were fault tolerant, but could violate the Agreement property in some cases:
 
-* Single-leader replication, before we added failover
-* Majority rules voting, before we added the tiebreak
+* Single-leader replication, once we added our failover algorithm
+* Majority-rules voting, after we added our tiebreaking rule
+* While it wasn’t meant to be a consensus algorithm in the first place, our “broadcast replication” algorithm fits into this bucket
 
 Isn't it weird that we keep hitting the same two dead ends? Why does it seem Agreement and Fault Tolerant don't want to coexist?
 

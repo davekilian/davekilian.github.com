@@ -502,7 +502,7 @@ This is interesting, don’t you think? The algorithm must have a critical step,
 
 Anyways, we may not have the whole story here, but we learned something interesting:
 
-> In every consensus algorithm, there is a **decision step**: a single operation, running on a single node, that decides the final value on behalf of the entire system
+> In every consensus algorithm, there is a **decision step**, running on a single node, that decides the final value on behalf of the entire system
 
 What else can we say about every consensus algorithm?
 

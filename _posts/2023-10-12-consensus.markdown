@@ -11,11 +11,11 @@ draft: true
 
 Building distributed systems requires a kind of zen mindset. You build on a platform made up of hardware and other people’s software, and those things don’t work &mdash; not always, anyways. That’s kind of the point of SLAs: we need to set expectations of how much the service should work, how much of the time, because it won’t be working 100% of the time. And even then, reducing our reliability goals isn’t enough: systems are out of SLA all the time.
 
-And you know what? I still think we’re doing amazingly well on making systems reliable.
+And you know what? I still think we’re doing an amazing job making systems reliable.
 
 A thought experiment:
 
-Look at the device you’re using to read this page. Does it always work? I’m sure it usually does what you want, but *always*? Sometimes, doesn’t it freeze up, crash, overheat, power down, disconnect randomly from the network for no discernible reason? 
+Look at the device you’re using to read this page. Does it always work? I’m sure it usually does what you want, but *always*? Sometimes, doesn’t it freeze up, crash, overheat, lose power, disconnect randomly from the network for no discernible reason? 
 
 In distributed systems, these kinds of problems are called **faults**. So how often does your device fault? It hopefully doesn't happen often enough to be a major day-to-day disruption, but I'm still betting it happens. How often would you say it does &mdash; on the order hours, days, weeks?
 
@@ -37,21 +37,21 @@ That's one new fault every 10 minutes . . . 24 hours a day, 7 days a week, until
 
 So the random crashes, freezes and disconnects that didn't seem like a big deal before are now insurmountable thanks to scale. Cloud providers have this problem times 100: they operate huge networks with many thousands of computers distributed all across the planet. Every minute, there’s bound to be new nonsense cropping up somewhere in the network; it happens so much because the network is so large. They can spend as much money and hire as many people to maintain the system as they like, and still never get ahead of all the problems constantly starting up.
 
-To say it again, in no uncertain terms: the hardware running your code is not 100% reliable, the network is not 100% reliable, operating systems are not 100% reliable, and we have no path to making any of these things 100% reliable.
+To say it again in no uncertain terms: the hardware running your code is not 100% reliable, the network is not 100% reliable, operating systems are not 100% reliable, and we have no path to 100% reliability for any of these things.
 
-But you know what?
+Does that sound terrible? Because distributed systems people know all this and they’re cool with it. Distributed systems people always end up like this:
 
 [ this is fine dog meme ]
 
-It took the entire field of distributed systems working together for many years, but in the end we figured out how to write software that papers over these reliability problems. Today, large distributed systems everywhere are underpinned by **fault-tolerant** software algorithms, which (magically) work even when the infrastructure they run on doesn’t.
+You see, it took the entire field of distributed systems many years, but in the end we figured out how to write software that papers over these reliability problems. Today, large distributed systems everywhere are underpinned by **fault-tolerant** software algorithms, which (magically) work even when the infrastructure they run on doesn’t.
 
-How can this be? It turns out when stuff fails in a distributed system, it fails in predictable ways. Any time your code asks the system to do something, one of three things happens:
+How can this be? It turns out when stuff fails in a distributed system, it fails in predictable ways. Any time your code asks the system to do something, one of three things will happen:
 
-* It does what you asked it to do
+* The system does what you asked it to do
 * It does what you asked, but it takes a really long time to do it
 * Nothing happens at all
 
-One thing you do not need to worry about: the system will not go rogue and start doing random things you didn’t ask it to. All the things that will happen are things you coded to happen ... you just can’t be sure how soon anything will happen, or which things won’t end up happening at all. We can handle these problems with two basic strategies:
+One thing you do not need to worry about: the system will not go rogue and start doing random things you didn’t ask it to. All the things that will happen are things you coded to happen ... you just can’t be sure how soon anything will happen, or which things might end up not happening at all. It turns out we can handle these problems with two basic strategies:
 
 * Keep backup copies of all data, in case any of the machines storing that data crashes
 * Keep retrying things until they happen, to deal with delays and dropped requests
@@ -76,7 +76,7 @@ In this post we’re going to take the first baby step on our journey writing fa
 
 New plan
 
-* Cold open with need for fault tolerance and redundancy
+* Cold open with need for fault tolerance and redundancy ✅
 * Try to sidestep the need to discuss single leader failover and go straight to voting
 * FLP is a discussion of “wayness” followed by the proof
 

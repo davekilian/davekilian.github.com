@@ -9,13 +9,13 @@ draft: true
 *"How can you make a reliable computer service?” the presenter will ask in an innocent voice before continuing, “It may be difficult if you can’t trust anything and the entire concept of happiness is a lie designed by unseen overlords of [endless deceptive power](https://scholar.harvard.edu/files/mickens/files/thesaddestmoment.pdf)."*
 </div>
 
-Working on distributed systems requires a kind of zen mindset. Your code depends on a platform made up of hardware and other people’s software, and that platform doesn’t work &mdash; at least, not always. After all, that’s kind of the point of SLAs: to set expectations of how much the service should work, how often. And even then, systems fail to meet their SLAs all the time; even our reduced goals pan out to be unrealistic.
+Working on distributed systems requires a kind of zen mindset. Your code depends on a platform made up of hardware and other people’s software, and that platform doesn’t work &mdash; at least, not always. After all, that’s kind of the point of SLAs: to set expectations of how much the service should work, how much of the time. And even then, systems fail to meet their SLAs all the time; even our reduced goals pan out to be unrealistic.
 
-And you know what? Despite that, we’re actually doing pretty amazingly well on making platforms reliable.
+And you know what? In spite of all that, we’re actually doing amazingly well on making platforms reliable.
 
 A thought experiment:
 
-Look at the device you’re using to read this page. Does it always work? I’m sure it usually does what you want, but *always*? Sometimes, doesn’t it freeze up, crash, overheat, power down, disconnect randomly from the network for no discernible reason?
+Look at the device you’re using to read this page. Does it always work? I’m sure it usually does what you want, but *always*? Sometimes, doesn’t it freeze up, crash, overheat, power down, disconnect randomly from the network for no discernible reason? 
 
 In distributed systems, these kinds of problems are called **faults**. So how often does your device fault? It hopefully doesn't happen often enough to be a major day-to-day disruption, but I'm still betting it happens. How often would you say it does &mdash; on the order hours, days, weeks?
 
@@ -35,15 +35,28 @@ $$1,209,600 \div 2,000 = 604.8 \; seconds$$
 
 That's one new fault every 10 minutes . . . 24 hours a day, 7 days a week, until the day we decommision the system. This is going to be a problem! By this estimate, even if we do ever manage to get on top of all the weird stuff going wrong in our network, we'll never be done for more than 10 minutes at a time. 
 
-So the random crashes, freezes and disconnects that didn't seem like a big deal before are now insurmountable thanks to scale. Cloud providers have this problem times 100: they operate huge networks with many thousands of computers distributed all across the planet. Every minute, there’s bound to be new nonsense cropping up somewhere in the network; the network is just that large. They can spend as much money and hire as many people to operate the system as they like, and still never get ahead of all the problems constantly starting up.
+So the random crashes, freezes and disconnects that didn't seem like a big deal before are now insurmountable thanks to scale. Cloud providers have this problem times 100: they operate huge networks with many thousands of computers distributed all across the planet. Every minute, there’s bound to be new nonsense cropping up somewhere in the network; it happens so much because the network is so large. They can spend as much money and hire as many people to maintain the system as they like, and still never get ahead of all the problems constantly starting up.
 
 But you know what?
 
 [ this is fine dog meme ]
 
-This is actually, totally, completely fine! It took the entire field of distributed systems many years and a lot of effort, but in the end we figured out how to paper over the reliability problems in software. Today, large distributed systems everywhere are underpinned by **fault-tolerant** software algorithms, which (seemingly magically) work even when the infrastructure they run on doesn’t.
+It took the entire field of distributed systems many years and a lot of effort, but in the end we figured out how to write software that papers over these reliability problems. Today, large distributed systems everywhere are underpinned by **fault-tolerant** software algorithms, which (seemingly magically) work even when the infrastructure they run on doesn’t.
 
-How can this be? TODO: simple, most of the infrastructure works and the remaining infrastructure fails in somewhat predictable ways: crashes and delays, flapping and brownouts, not random misbehavior.
+How can this be? It’s surprisingly simple: most of the infrastructure works at any given point of time, and when stuff fails, it fails in predictable ways. Any time you ask the platform to do something, one of three things happens:
+
+* The platform does what you asked it to do
+* It does what you asked, but it takes a long time to do it
+* Nothing happens at all
+
+One thing you do not need to worry about: the system will not go rogue and start doing things other than what you asked it to. All the things that will happen are things you coded to happen ... you just can’t be sure how soon anything happen, or which of the actions you requested won’t even happen at all. We can handle basically all of these problems with two basic strategies:
+
+* Keep backup copies of all data, in case the machine storing it crashes
+* Keep retrying things until they happen, to deal with delays and drops
+
+Let’s see how this actually works!
+
+## Fault Tolerant Variables
 
 
 

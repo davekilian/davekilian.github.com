@@ -9,9 +9,9 @@ draft: true
 *"How can you make a reliable computer service?” the presenter will ask in an innocent voice before continuing, “It may be difficult if you can’t trust anything and the entire concept of happiness is a lie designed by unseen overlords of [endless deceptive power](https://scholar.harvard.edu/files/mickens/files/thesaddestmoment.pdf)."*
 </div>
 
-Working on distributed systems requires a kind of zen mindset. Your code depends on a platform made up of hardware and other people’s software, and that platform doesn’t work &mdash; at least, not always. After all, that’s kind of the point of SLAs: to set expectations of how much the service should work, how much of the time. And even then, systems fail to meet their SLAs all the time; even our reduced goals pan out to be unrealistic.
+Building distributed systems requires a kind of zen mindset. You build on a platform made up of hardware and other people’s software, and those things don’t work &mdash; not always, anyways. That’s kind of the point of SLAs: we need to set expectations of how much the service should work, how much of the time, because it won’t be working 100% of the time. And even then, reducing our reliability goals isn’t enough: systems are out of SLA all the time.
 
-And you know what? In spite of all that, we’re actually doing amazingly well on making platforms reliable.
+And you know what? I still think we’re doing amazingly well on making systems reliable.
 
 A thought experiment:
 
@@ -21,7 +21,7 @@ In distributed systems, these kinds of problems are called **faults**. So how of
 
 Well, that's just with one device. What if you had to manage two thousand of them? What if you had to keep all of them working all the time?
 
-Say you get hit by one of these little snags once every two weeks. Then we’re going a smidge over 1 million seconds between faults:
+Let’s say you get hit by one of these little snags once every two weeks. Then we’re going a smidge over 1 million seconds between faults:
 
 <div class="overflows" markdown="block"><center>
 
@@ -33,28 +33,30 @@ Not too bad. But now let’s say we have 2,000 devices to manage. We’re going 
 
 $$1,209,600 \div 2,000 = 604.8 \; seconds$$
 
-That's one new fault every 10 minutes . . . 24 hours a day, 7 days a week, until the day we decommision the system. This is going to be a problem! By this estimate, even if we do ever manage to get on top of all the weird stuff going wrong in our network, we'll never be done for more than 10 minutes at a time. 
+That's one new fault every 10 minutes . . . 24 hours a day, 7 days a week, until the day we decommision the system. This is going to be a problem! By this estimate, even if we do ever manage to get on top of all the weird stuff going on in our network, we'll never be done for more than 10 minutes at a time. 
 
 So the random crashes, freezes and disconnects that didn't seem like a big deal before are now insurmountable thanks to scale. Cloud providers have this problem times 100: they operate huge networks with many thousands of computers distributed all across the planet. Every minute, there’s bound to be new nonsense cropping up somewhere in the network; it happens so much because the network is so large. They can spend as much money and hire as many people to maintain the system as they like, and still never get ahead of all the problems constantly starting up.
+
+To say it again, in no uncertain terms: the hardware running your code is not 100% reliable, the network is not 100% reliable, operating systems are not 100% reliable, and we have no path to making any of these things 100% reliable.
 
 But you know what?
 
 [ this is fine dog meme ]
 
-It took the entire field of distributed systems many years and a lot of effort, but in the end we figured out how to write software that papers over these reliability problems. Today, large distributed systems everywhere are underpinned by **fault-tolerant** software algorithms, which (seemingly magically) work even when the infrastructure they run on doesn’t.
+It took the entire field of distributed systems working together for many years, but in the end we figured out how to write software that papers over these reliability problems. Today, large distributed systems everywhere are underpinned by **fault-tolerant** software algorithms, which (magically) work even when the infrastructure they run on doesn’t.
 
-How can this be? It’s surprisingly simple: most of the infrastructure works at any given point of time, and when stuff fails, it fails in predictable ways. Any time you ask the platform to do something, one of three things happens:
+How can this be? It turns out when stuff fails in a distributed system, it fails in predictable ways. Any time your code asks the system to do something, one of three things happens:
 
-* The platform does what you asked it to do
-* It does what you asked, but it takes a long time to do it
+* It does what you asked it to do
+* It does what you asked, but it takes a really long time to do it
 * Nothing happens at all
 
-One thing you do not need to worry about: the system will not go rogue and start doing things other than what you asked it to. All the things that will happen are things you coded to happen ... you just can’t be sure how soon anything happen, or which of the actions you requested won’t even happen at all. We can handle basically all of these problems with two basic strategies:
+One thing you do not need to worry about: the system will not go rogue and start doing random things you didn’t ask it to. All the things that will happen are things you coded to happen ... you just can’t be sure how soon anything will happen, or which things won’t end up happening at all. We can handle these problems with two basic strategies:
 
-* Keep backup copies of all data, in case the machine storing it crashes
-* Keep retrying things until they happen, to deal with delays and drops
+* Keep backup copies of all data, in case any of the machines storing that data crashes
+* Keep retrying things until they happen, to deal with delays and dropped requests
 
-Let’s see how this actually works!
+In this post we’re going to take the first baby step on our journey writing fault tolerant code: we are going to reinvent variables for the fault-tolerant world.
 
 ## Fault Tolerant Variables
 

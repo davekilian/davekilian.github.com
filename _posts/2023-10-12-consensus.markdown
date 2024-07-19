@@ -60,10 +60,87 @@ In this post we’re going to take the first baby step on our journey writing fa
 
 ## Fault Tolerant Variables
 
+---
 
+TODO old content to massage back together:
 
+---
 
+Say we have a network of computers. Call each computer a **node**. We might picture the network of nodes like this:
 
+DIAGRAM
+
+Let’s build ourselves a little software abstraction to support programs running on these nodes. The one I have in mind is something you might call a “distributed variable.” Basically, 
+
+* There should be one variable
+* Any node can get it
+* Any node can set it
+
+DIAGRAM: nodes a network, thought bubble question mark in the middle for a variable
+
+So how do we make a distributed variable? Well, we already know how to make regular, non-distributed variables; so let’s make a plain old variable on one of our nodes, and set up an RPC server on that node so the other nodes can get and set the variable remotely.
+
+DIAGRAM
+
+The node we picked to store the variable is now special; let's call it the **leader**. For the leader, the variable is just a plain old local variable like any other. The other nodes, we'll call **followers**. The followers access the variable by sending RPC messages to the leader.
+
+To put it a little more formally, the leader's logic is roughly . . .
+
+```
+leader {
+  variable := null;
+  
+  get {
+    return variable;
+  }
+  
+  set(value) {
+    variable := value;
+  }
+  
+  on client get(request) {
+    request.respond(variable);
+  }
+  
+  on client set(request) {
+    variable := request.value;
+  }
+}
+```
+
+The followers are:
+
+```
+client {
+  get {
+    return leader.rpc(get);
+  }
+  
+  set(value) {
+    leader.rpc(set, value);
+  }
+}
+```
+
+Now we have one variable any node can get or set. That was easy! But, alas, we are not done. 
+
+Although we have a design that meets our requirements, we might not have thought hard enough about those requirements in the first place. As is sadly so often the case in life, things have been simple thus far only because we missed a major aspect of the problem.
+
+Fault tolerance is the major aspect of the problem that we were missing before. It's not enough to just want "distributed variables that any node can get or set," we also need fault tolerance: the variable should keep working even if a node crashes, or a network connection goes down, and so on.
+
+So what happens to our algorithm if a node crashes?
+
+DIAGRAM: another copy of the RPC diagram, last one in the previous section
+
+If a random node crashes, most likely that node will be a follower, since there are so many followers and only one leader. If a follower goes offline, the variable should be safe and sound: it's stored on the leader, which is still online, and all the other followers are still in contact with the leader:
+
+DIAGRAM: same diagram with a random follower Xed out
+
+But the leader is not immune to problems. If a random node crashes, it very well could be the leader. So what if it's the leader that goes down?
+
+DIAGRAM: same diagram, but with the leader Xed out
+
+Now we have a problem. With the leader gone, so is the variable. All the follower nodes are still up and running, but they're only programmed to send RPCs to the leader, and the leader isn’t going to respond now that it’s offline. Our entire distributed variable is now offline! And since a single node crash was enough to bring down the variable, we have to admit that our variable was not fault tolerant. That's no good; we need to fix this.
 
 
 

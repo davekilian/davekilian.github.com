@@ -5,6 +5,70 @@ author: Dave
 draft: true
 ---
 
+<div style="margin-left: 1em; margin-right: 1em; padding-left: 1em; padding-top: .1em; padding-bottom: .1em; border-left: .3em solid #eee; color: #333" markdown="1">
+*"How can you make a reliable computer service?” the presenter will ask in an innocent voice before continuing, “It may be difficult if you can’t trust anything and the entire concept of happiness is a lie designed by unseen overlords of [endless deceptive power](https://scholar.harvard.edu/files/mickens/files/thesaddestmoment.pdf)."*
+</div>
+
+Working on distributed systems requires a kind of zen mindset. Your code depends on a platform made up of hardware and other people’s software, and that platform doesn’t work &mdash; at least, not always. After all, that’s kind of the point of SLAs: to set expectations of how much the service should work, how often. And even then, systems fail to meet their SLAs all the time; even our reduced goals pan out to be unrealistic.
+
+And you know what? Despite that, we’re actually doing pretty amazingly well on making platforms reliable.
+
+A thought experiment:
+
+Look at the device you’re using to read this page. Does it always work? I’m sure it usually does what you want, but *always*? Sometimes, doesn’t it freeze up, crash, overheat, power down, disconnect randomly from the network for no discernible reason?
+
+In distributed systems, these kinds of problems are called **faults**. So how often does your device fault? It hopefully doesn't happen often enough to be a major day-to-day disruption, but I'm still betting it happens. How often would you say it does &mdash; on the order hours, days, weeks?
+
+Well, that's just with one device. What if you had to manage two thousand of them? What if you had to keep all of them working all the time?
+
+Say you get hit by one of these little snags once every two weeks. Then we’re going a smidge over 1 million seconds between faults:
+
+<div class="overflows" markdown="block"><center>
+
+$$2 \; weeks \times 7 \; \dfrac{days}{week} \times 24 \; \dfrac{hours}{day} \times 60 \; \dfrac{minutes}{hour} \times 60 \; \dfrac{seconds}{minute} = 1,209,600 \; seconds$$​
+
+</center></div>
+
+Not too bad. But now let’s say we have 2,000 devices to manage. We’re going to start seeing random device faults about 2,000 times more often, reducing the average time between faults to:
+
+$$1,209,600 \div 2,000 = 604.8 \; seconds$$
+
+That's one new fault every 10 minutes . . . 24 hours a day, 7 days a week, until the day we decommision the system. This is going to be a problem! By this estimate, even if we do ever manage to get on top of all the weird stuff going wrong in our network, we'll never be done for more than 10 minutes at a time. 
+
+So the random crashes, freezes and disconnects that didn't seem like a big deal before are now insurmountable thanks to scale. Cloud providers have this problem times 100: they operate huge networks with many thousands of computers distributed all across the planet. Every minute, there’s bound to be new nonsense cropping up somewhere in the network; the network is just that large. They can spend as much money and hire as many people to operate the system as they like, and still never get ahead of all the problems constantly starting up.
+
+But you know what?
+
+[ this is fine dog meme ]
+
+This is actually, totally, completely fine! It took the entire field of distributed systems many years and a lot of effort, but in the end we figured out how to paper over the reliability problems in software. Today, large distributed systems everywhere are underpinned by **fault-tolerant** software algorithms, which (seemingly magically) work even when the infrastructure they run on doesn’t.
+
+How can this be? TODO: simple, most of the infrastructure works and the remaining infrastructure fails in somewhat predictable ways: crashes and delays, flapping and brownouts, not random misbehavior.
+
+
+
+
+
+
+
+
+
+
+
+
+
+<!--
+
+New plan
+
+* Cold open with need for fault tolerance and redundancy
+* Try to sidestep the need to discuss single leader failover and go straight to voting
+* FLP is a discussion of “wayness” followed by the proof
+
+
+
+--
+
 Say we have a network of computers. Call each computer a **node**. We might picture the network of nodes like this:
 
 DIAGRAM

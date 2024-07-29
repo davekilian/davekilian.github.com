@@ -37,7 +37,7 @@ So that’s that: the hardware running your code is not 100% reliable, the netwo
 
 It was a long journey, but in the end we figured out how to write software that papers over these reliability problems. Today, large systems everywhere are underpinned by **fault-tolerant** software algorithms, which work even when the infrastructure they run on doesn’t. 
 
-Does that sound like magic? It seems less amazing once you realize when stuff fails in a distributed system, it fails in predictable ways. Any time your code asks the system to do something, one of three basic things will happen:
+Does that sound like magic? It seems less amazing once you realize distributed systems fail in predictable ways. Any time your code asks the system to do something, one of three basic things will happen:
 
 * The system does what you asked it to do
 * It does what you asked, but it takes a really long time to do it
@@ -45,7 +45,7 @@ Does that sound like magic? It seems less amazing once you realize when stuff fa
 
 However, it’s generally safe to assume the system will not go rogue and start doing random things you didn’t ask it to. All the things that will happen are things you coded to happen ... you just can’t be sure how soon anything will happen, if at all. 
 
-It’s also safe to assume faults aren’t very widespread and don’t correlate with one another: obviously if all computers in the network crash simultaneously, there’s nothing our code can do because it’s not running anywhere anymore. But if just a few machines are having problems, the other computers can compensate for faults with two basic strategies:
+It’s also safe to assume faults aren’t very widespread: obviously if all computers in the network crash simultaneously, there’s nothing our code can do about it, but if just a few machines are having problems, the other computers can compensate via two basic strategies:
 
 * **Keep backup copies** of all data, in case a machine storing it crashes
 * **Keep retrying things** until they happen, to deal with delays and dropped requests
@@ -140,7 +140,7 @@ That’s fine, this was the plan all along: now that we have a basic sketch of a
 
 ## Broadcast Replication
 
-Our current design doesn’t work because there is no safe quarter for our variable: no matter what node we put the variable on, it's possible we could lose that node, and the variable with it. The only way to definitely survive one node crash is to have at least two copies of the variable on different nodes. If any one node crashes, we’ll definitely have one more back up copy we can switch over to. But what if two nodes crash? Or three?
+Our current design doesn’t work because there is no safe quarter for our variable: no matter what node we put the variable on, it's possible we could lose that node, and the variable with it. The only way to definitely survive one node crash is to have at least two copies of the variable on different nodes. If any one node crashes, we’ll definitely have one more backup copy we can switch over to. But what if two nodes crash? Or three?
 
 Heck, to be maximally safe, let's just put a copy of the variable on every node:
 
@@ -335,36 +335,32 @@ Well, this is kind of a disaster! We have violated Agreement once again. At one 
 
 Things get worse. The problem we just uncovered isn't a problem with the specific tiebreaking rule we chose; it's going to be a problem with any tiebreaking rule. Using a tiebreaker is totally fine *if* the final node is offline and is guaranteed never to come back. But how do we know the final node is offline and not coming back? No matter how long we wait for the last node to enter its vote, it is always still possible for it to do so some time in the future. That means, no matter how much time has passed, it's never safe to run the tiebreaker rule. If it’s never safe to run the tiebreaker rule, we simply can't have one.
 
-So we can't prevent split votes, and we can't run tiebreaking rules for split votes either.
-
-Another dead end.
+So we can't prevent split votes, and we can't resolve split votes with a tie-breaking rule either. This is looking an awful lot like a dead end.
 
 ## Something Has Gone Very Wrong
 
-Let's step back for a minute.
+It would seem we have jumped down a rabbit hole much deeper than we at. First imagined.
 
-We started out with such a simple goal: all we wanted was to make a distributed variable, and it only took us about 30 seconds to come up with first stab at a design. Our first try was simple and pretty robust; the one measly thing it was missing was fault tolerance. But as soon as we started trying to make our variable fault-tolerant, all of a sudden everything was like "heartbeat this," "split brain that," broken failover algorithms, split votes, broken tiebreaking rules . . . we ended up in a labrynth of dead ends in a sea of ever-growing complexity, and yet we still don't have a solve.
+Lets recap:
 
-This seemed so very straightforward at the beginning. How did we get so stuck?
+We started with the simple goal of inventing a fault tolerant variable &mdash; kind of the most basic thing you would need if you intend to write fault tolerant software. 
 
-A generation of distributed systems researchers put an awful lot of thought into this problem. They were able to answer lots of related questions: things that don't work work, properties any solution must have, different ways of simplifying the problem and then solving the simplified problem. But for years, nobody had an answer to the main question. How does one design a fault-tolerant consensus algorithm?
+Then, in about 30 seconds, we invented a single-leader algorithm that worked, except it made no attempt whatsoever at fault tolerant. To add fault tolerance, we then added backup copies of our variable: more leaders, more replicas. But that lead to the problem of keeping all those replicas in sync: that’s how we got started talking about consensus.
+
+We came up with a pretty good base idea for consensus, one even rooted in metaphor for consensus in real life. But it turned out to be a dead end.
+
+The complexity here is starting to spiral out of control, and still we don’t really have a solution in sight. Did we do something wrong? This seemed so simple at the start; how did we get so stuck?
+
+At least we’re in good company. A generation of distributed systems researchers put an awful lot of thought into this problem, and were able to answer lots of related questions: things that don't work work, properties any solution must have, different ways of simplifying the problem and then solving the simplified problem. But for years, nobody had an answer to the main question. How does one design a fault-tolerant consensus algorithm?
 
 At this point I would like to invite you to join in the tradition by mulling it over yourself. What is wrong with the approaches we've tried so far? Can we fix them? If not, why not?
 
-If you want some food for thought, here's some:
+If you want a little bit of direction to guide you, consider the dead end we just ran into with split votes: we were left with two unacceptable choices:
 
-We've come up with quite a few attempts at a consensus algorithm.  None of them worked, but looking at what didn’t work, a pattern is starting to emerge. Some of our algorithms are perfectly workable consensus algorithms, but aren’t fault tolerant; examples include . . .
+* Include a tiebreaker, which caused the algorithm to terminate but does not provide Agreement
+* No tiebreaker, which caused the algorithm not to Terminate
 
-* Our “single leader replication” algorithm, before we added failover
-* Our “majority rules voting” algorithm, before we added a tiebreak
-
-Other attempts were fault tolerant, but could violate the Agreement property in some cases:
-
-* Single-leader replication, once we added our failover algorithm
-* Majority-rules voting, after we added our tiebreaking rule
-* While it wasn’t meant to be a consensus algorithm in the first place, our “broadcast replication” algorithm fits into this bucket
-
-Isn't it weird that we keep hitting the same two dead ends? Why does it seem Agreement and Fault Tolerant don't want to coexist?
+Why do Agreement and Termination seem to be at odds with one another?
 
 Think about it! This page will still be here when you get back.
 

@@ -5,19 +5,11 @@ author: Dave
 draft: true
 ---
 
-<div style="margin-left: 1em; margin-right: 1em; padding-left: 1em; padding-top: .1em; padding-bottom: .1em; border-left: .3em solid #eee; color: #333" markdown="1">
-*"How can you make a reliable computer service?” the presenter will ask in an innocent voice before continuing, “It may be difficult if you can’t trust anything and the entire concept of happiness is a lie designed by unseen overlords of [endless deceptive power](https://scholar.harvard.edu/files/mickens/files/thesaddestmoment.pdf)."*
-</div>
-
-Building distributed systems requires a kind of zen mindset. You build on a platform made up of hardware and other people’s software, and those things don’t work &mdash; not always, anyways. That’s kind of the point of SLAs: we need to set expectations of how much the service should work, how much of the time, because it won’t be working 100% of the time. And even then, reducing our reliability goals isn’t enough: systems are out of SLA all the time.
-
-And you know what? I still think we’re doing an amazing job making systems reliable.
+To understand the algorithms that underpin distributed systems, one must first accept this fundamental truth of all distributed systems: stuff is broken all the time. We have no hope of fixing everything.
 
 A thought experiment:
 
-Look at the device you’re using to read this page. Does it always work? I’m sure it usually does what you want, but *always*? Sometimes, doesn’t it freeze up, crash, overheat, lose power, disconnect randomly from the network for no discernible reason? 
-
-In distributed systems, these kinds of problems are called **faults**. So how often does your device fault? It hopefully doesn't happen often enough to be a major day-to-day disruption, but I'm still betting it happens. How often would you say it does &mdash; on the order hours, days, weeks?
+How reliable is the device you’re using to read this? I mean, it’s probably pretty functional most of the time, but occasionally I’m sure you run into snags: freezes, crashes, overheating, dead batteries, random network disconnects, etc. In distributed systems, these kinds of problems are called **faults**. So how often does your device fault? Would you say it’s on the order hours, days, weeks?
 
 Well, that's just with one device. What if you had to manage two thousand of them? What if you had to keep all of them working all the time?
 
@@ -33,28 +25,28 @@ Not too bad. But now let’s say we have 2,000 devices to manage. We’re going 
 
 $$1,209,600 \div 2,000 = 604.8 \; seconds$$
 
-That's one new fault every 10 minutes . . . 24 hours a day, 7 days a week, until the day we decommision the system. This is going to be a problem! By this estimate, even if we do ever manage to get on top of all the weird stuff going on in our network, we'll never be done for more than 10 minutes at a time. 
+That's one new fault every 10 minutes . . . 24 hours a day, 7 days a week, forever. See the problem? By this estimate, even if we do ever manage to get on top of all the weird stuff going on in our network, we'll never be done for more than 10 minutes at a time. 
 
-So the random crashes, freezes and disconnects that didn't seem like a big deal before are now insurmountable thanks to scale. Cloud providers have this problem times 100: they operate huge networks with many thousands of computers distributed all across the planet. Every minute, there’s bound to be new nonsense cropping up somewhere in the network; it happens so much because the network is so large. They can spend as much money and hire as many people to maintain the system as they like, and still never get ahead of all the problems constantly starting up.
+So the random crashes, freezes and disconnects that didn't seem like a big deal before are now insurmountable thanks to scale. Cloud providers have this problem times 100: they operate huge networks with many thousands of computers distributed all across the planet. Every minute, there’s going to be some new nonsense cropping up somewhere in the network; it happens so much because the network is so large. They can spend as much money and hire as many people to maintain the system as they like, and still never get ahead of all the problems constantly starting up.
 
-To say it again in no uncertain terms: the hardware running your code is not 100% reliable, the network is not 100% reliable, operating systems are not 100% reliable, and we have no path to 100% reliability for any of these things.
+So, in conclusion: the hardware running your code is not 100% reliable, the network is not 100% reliable, operating systems are not 100% reliable, and we have no path for to 100% reliability for any of these things.
 
-Does that sound terrible? Because distributed systems people know all this and they’re cool with it. Distributed systems people always end up like this:
+Does that sound terrible? Because distributed systems people know all this, and they’re pretty zen about it.
 
 [ this is fine dog meme ]
 
-You see, it took the entire field of distributed systems many years, but in the end we figured out how to write software that papers over these reliability problems. Today, large distributed systems everywhere are underpinned by **fault-tolerant** software algorithms, which (magically) work even when the infrastructure they run on doesn’t.
+You see, it took the entire field of distributed systems many years, but in the end we figured out how to write software that papers over these reliability problems. Today, large distributed systems everywhere are underpinned by **fault-tolerant** software algorithms, which work even when the infrastructure they run on doesn’t. Sounds like magic, doesn’t it? The basic idea is actually kind of simple:
 
-How can this be? It turns out when stuff fails in a distributed system, it fails in predictable ways. Any time your code asks the system to do something, one of three things will happen:
+You see, it turns out when stuff fails in a distributed system, it fails in predictable ways. Any time your code asks the system to do something, one of three basic things will happen:
 
 * The system does what you asked it to do
 * It does what you asked, but it takes a really long time to do it
-* Nothing happens at all
+* The thing you asked for just never happens at all
 
-One thing you do not need to worry about: the system will not go rogue and start doing random things you didn’t ask it to. All the things that will happen are things you coded to happen ... you just can’t be sure how soon anything will happen, or which things might end up not happening at all. It turns out we can handle these problems with two basic strategies:
+However, it’s generally safe to assume the system will not go rogue and start doing random things you didn’t ask it to. All the things that will happen are things you coded to happen ... you just can’t be sure how soon anything will happen, if at all. It turns out we can handle these problems with two basic strategies:
 
-* Keep backup copies of all data, in case any of the machines storing that data crashes
-* Keep retrying things until they happen, to deal with delays and dropped requests
+* **Keep backup copies** of all data, in case any of the machines storing that data crashes
+* **Keep retrying things** until they happen, to deal with delays and dropped requests
 
 In this post we’re going to take the first baby step on our journey writing fault tolerant code: we are going to reinvent variables for the fault-tolerant world.
 

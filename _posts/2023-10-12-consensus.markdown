@@ -358,7 +358,7 @@ At this point I would like to invite you to join in the tradition by mulling it 
 If you want a little bit of direction to guide you, consider the dead end we just ran into with split votes: we were left with two unacceptable choices:
 
 * Include a tiebreaker, which caused the algorithm to terminate but does not provide Agreement
-* No tiebreaker, which caused the algorithm not to Terminate
+* No tiebreaker, which caused the algorithm not to Terminate but does uphold Agreement
 
 Why do Agreement and Termination seem to be at odds with one another?
 
@@ -366,7 +366,7 @@ Think about it! This page will still be here when you get back.
 
 <center>* * *</center>
 
-Welcome back! How did it go? I'm guessing you're still stuck, but don't worry &mdash; we'll figure out what the problem is soon enough.
+Welcome back! How did it go? I'm guessing you're still stuck, but don't worry &mdash; we'll sort this all out soon enough.
 
 If you repeatedly find yourself unable to solve a problem, and especially if all your solutions keep hitting the same set of dead ends, the next thing to do is to try proving the problem is impossible to solve in the first place. This is exactly what three researchers managed to do in the mid-1980s. In their paper *Impossibility of Distributed Consensus with One Faulty Process*, Fischer, Lynch and Paterson (the "FLP" in what later became known as the "FLP result") explained exactly why nobody could come up with a fault-tolerant consensus algorithm.
 

@@ -362,6 +362,18 @@ If you want a little bit of direction to guide you, consider the dead end we jus
 
 Why do Agreement and Termination seem to be at odds with one another?
 
+<!--
+
+Omfg, self nerd snipe: this is CAP.
+
+* No network partition: CA
+* Tiebreaker: AP
+* No tiebreaker: CP
+
+Funkay.
+
+-->
+
 Think about it! This page will still be here when you get back.
 
 <center>* * *</center>

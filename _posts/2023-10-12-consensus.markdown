@@ -136,7 +136,77 @@ DIAGRAM: same diagram, but with the leader Xed out
 
 Now we have a problem. With the leader gone, so is the variable. All the follower nodes are still up and running, but they're only programmed to send RPCs to the leader, and the leader isn’t going to respond now that it’s offline. Our variable has vanished along with the leader; and since it only took one fault (the leader crashing) to do it, we have to accept our variable is not fault tolerant.
 
-That’s fine; we have a basic sketch of a design, now we just need to figure out how to fix it into something fault tolerant. How hard can it be?
+That’s fine, this was the plan all along: now that we have a basic sketch of a design, we just need to figure out how to fix it into something fault tolerant. How hard can it be?
+
+## Broadcast Replication
+
+Our current design doesn’t work because there is no safe quarter for our variable: no matter what node we put the variable on, it's possible we could lose that node, and the variable with it. The only way to definitely survive one node crash is to have at least two copies of the variable on different nodes. If any one node crashes, we’ll definitely have one more back up copy we can switch over to. But what if two nodes crash? Or three?
+
+Heck, to be maximally safe, let's just put a copy of the variable on every node:
+
+DIAGRAM
+
+Every copy of the variable is called a **replica**. The process of creating and updating replicas is called **replication**.
+
+In this new setup, getting a variable is simple: every node already has its own local replica of the variable, so to get the variable, just read the local replica like any other variable. To set the variable, let's use a **broadcast** protocol: the node that wants to update the variable sends a "set" RPC to every other node, and each other node in turn updates its local replica to reflect the update it just received:
+
+DIAGRAM
+
+One way to think about this design: before there was one leader, managing the one and only copy of the variable. Now every node is a leader, each with its own copy of the variable.
+
+One good thing I can say about this new design: it’s definitely fault tolerant. Each node has its own replica of the variable, so as long as we have at least one live node which has not faulted, we also have a live replica of the variable. All remaining nodes can still send set RPCs to one another, so the variable keeps working even if some nodes crash. It is definitely fault tolerant.
+
+Unfortunately, that’s just about the only good thing I can say about this idea. This design is still majorly flawed.
+
+Even with fast computers and fast networks, it still takes some amount of time for a broadcast to reach every node. What if two nodes do an update in parallel?
+
+DIAGRAM
+
+Now it's possible for the two broadcasts to arrive in different orders on different nodes:
+
+DIAGRAM
+
+Once all updates have been processed, some replicas will be out of sync with the others:
+
+DIAGRAM
+
+Now the different nodes in our network disagree as to the current variable of our variable &mdash; something that certainly could never happen with a "normal," non-distributed variable. What a mess!
+
+How can we make sure, if two conflicting broadcasts happen at the same time, the nodes come to an agreement on what the final value of the variable should be? This question is called **the consensus problem**.
+
+## Consensus 
+
+TODO: we did not correctly set up that variables are multi-shot but consensus is fundamentally one-shot. That must happen before we go into properties or the properties won’t make sense.
+
+---
+
+Consensus is the problem of getting a group of nodes to agree on the value of some variable. In our case, the value we're trying to agree on is the next value our fault tolerant variable should be set to. To make our variable, it would seem consensus is the next problem we need to tackle.
+
+So, what do we need a consensus algorithm to do?
+
+To start, the basic purpose of a consensus algorithm is to ensure all nodes agree on the value of the variable by the time the algorithm finishes. This most basic property is sometimes called **Agreement**. When we say all nodes should agree "by the time the algorithm finishes," we're also assuming the algorithm should finish in the first place. That is called **Termination**.
+
+If you like technicalities, there technically is a way to achieve Agreement and Termination without really solving the problem: you just hardcode an answer. For example, if you're trying to write a consensus algorithm for integers, "always return 4" is technically a valid consensus algorithm according to our definition so far: all nodes will agree the value is 4, and the algorithm will terminate very quickly. But algorithms like this are useless for the fault tolerant variable problem; we'd end up with a fault tolerant constant instead!
+
+We want the agreed-upon value to be the one somebody wanted. If only one node calls set, the variable should be set to that value. If two nodes call set() at the same time with different values, the algorithm should pick one of those two values. If both set() calls specify the same value, the algorithm should always pick that value. This idea is called **Integrity**.
+
+And, of course, we can't forget how important it is to make every algorithm **Fault Tolerant**. 
+
+In conclusion, a consensus algorithm should provide:
+
+> **Termination**: The algorithm exits.
+>
+> **Agreement**: When the algorithm exits, all replicas agree on a value.
+>
+> **Integrity**: That value is one somebody proposed.
+>
+> **Fault Tolerance**: A single fault cannot violate any of the properties above.
+
+Let's try to invent an algorithm that accomplishes all of this.
+
+<!-- TODO: now forget about the single leader failover excursion and instead go straight to “real life consensus” > majority rules voting.
+
+
 
 
 
@@ -156,61 +226,7 @@ New plan
 
 --
 
-## Broadcast Replication
 
-There is no safe quarter for our variable: no matter what node we put the variable on, it's possible we could lose that node, and the variable with it. The only way to definitely survive a node crash is to have copies of the variable on multiple nodes. To be maximally safe, let's put a copy of the variable on every node:
-
-DIAGRAM
-
-Every copy of the variable is called a **replica**. The process of creating and updating replicas is called **replication**.
-
-In this new setup, getting a variable is simple: every node already has its own local replica of the variable, so to get the variable, just read the local replica like any other variable. To set the variable, let's use a **broadcast** protocol: the node that wants to update the variable sends a "set" RPC to every other node, and each other node in turn updates its local replica to reflect the update it just received:
-
-DIAGRAM
-
-We’ve definitely managed to create something fault-tolerant this time: each node has its own replica of the variable, so as long as we have at least one live node which has not faulted, we also have a live replica of the variable, so the variable is never lost. Even if a node crashes, the remaining nodes can still broadcast updates to one another and read their local replicas. So we can still get and set the variable any time we have at least one node online.
-
-So, now we have a variable that we can get and set from any node, and it's fault-tolerant. What’s not to love?
-
-Here's a problem: even with fast computers and fast networks, it still takes some amount of time for a broadcast to reach every node. What if two nodes do an update in parallel?
-
-DIAGRAM
-
-Now it's possible for the two broadcasts to arrive in different orders on different nodes:
-
-DIAGRAM
-
-Once all updates have been processed, we’ll end up with different values for different replicas of the variable:
-
-DIAGRAM
-
-That’s kind of terrible! Now the different nodes in our network disagree as to the current variable of our variable &mdash; something that certainly could never happen with a "normal," non-distributed variable. We have to fix this. How can we make sure, if two conflicting broadcasts happen at the same time, the nodes come to an agreement on what the final value of the variable should be? This question is called **the consensus problem**.
-
-## Consensus 
-
-Consensus is the problem of getting a group of nodes to agree on the value of some variable. In our case, the value we're trying to agree on is the next value our distributed variable should be set to. To make our distributed variable, it would seem consensus is the next problem we need to tackle.
-
-So, what do we need a consensus algorithm to do?
-
-To start, the basic purpose of a consensus algorithm is to ensure all nodes agree on the value of the variable by the time the algorithm exits. This most basic property is sometimes called **Agreement**. When we say all nodes should agree "by the time the algorithm exits," we're also assuming the algorithm should exit in the first place. That is called **Termination**.
-
-Putting on our rules-lawyer hats for a minute, there's a way to achieve Agreement and Termination without really solving the problem: you just hardcode an answer. For example, if you're trying to write a consensus algorithm for integers, "always return 4" is technically a valid consensus algorithm according to our definition so far: all nodes will agree the value is 4, and the algorithm will terminate very quickly. But algorithms like this are useless for the distributed variable problem; we'd end up with a distributed constant instead!
-
-We want the value of the variable to always be the one proposed in a recent set() call. If two nodes call set() at the same time with different values, the algorithm should end up picking one of those two values. If both set() calls specify the same value, the algorithm should always pick that value. This idea is called **Integrity**.
-
-And, of course, we can't forget how important it is to make every algorithm **Fault Tolerant**. 
-
-In conclusion, a consensus algorithm should provide:
-
-> **Termination**: The algorithm exits.
->
-> **Agreement**: When the algorithm exits, all replicas agree on a value.
->
-> **Integrity**: That value is one somebody wanted.
->
-> **Fault Tolerance**: A single fault cannot violate any of the properties above.
-
-Let's try to invent an algorithm that accomplishes all of this.
 
 ## Single-Leader Replication
 

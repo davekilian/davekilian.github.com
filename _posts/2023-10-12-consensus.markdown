@@ -212,24 +212,6 @@ For example, think of a group of friends that want to out to eat somewhere. In o
 
 Oh yeah, voting! Majority-rules voting is a leaderless algorithm that results in a group agreement. Maybe we could code up something like that?
 
-
-
-
-
-
-
-<!--
-
-New plan
-
-* Cold open with need for fault tolerance and redundancy ✅
-* Sidestep the need to discuss single leader failover and go straight to voting ✅
-* FLP is a discussion of “wayness” followed by the proof
-
---
-
-
-
 ## Majority-Rules Voting
 
 Let's code up an algorithm where nodes throw out proposals and vote on them, just like in the restaurant example above. However, unlike in real life where people  have preferences, we'll make it so  each node has no preference whatsoever. Each node will vote for whichever option it heard about first, and never change its mind.
@@ -391,6 +373,16 @@ Think about it! This page will still be here when you get back.
 Welcome back! How did it go? I'm guessing you're still stuck, but don't worry &mdash; we'll figure out what the problem is soon enough.
 
 If you repeatedly find yourself unable to solve a problem, and especially if all your solutions keep hitting the same set of dead ends, the next thing to do is to try proving the problem is impossible to solve in the first place. This is exactly what three researchers managed to do in the mid-1980s. In their paper *Impossibility of Distributed Consensus with One Faulty Process*, Fischer, Lynch and Paterson (the "FLP" in what later became known as the "FLP result") explained exactly why nobody could come up with a fault-tolerant consensus algorithm.
+
+
+
+
+<!--
+
+I have a phone note not copied here yet; I want to do this differently. Focus on “way-ness” where each step of the algorithm is a 0-way, 1-way or 2-way decision. Show that 2-way decisions are DOA, you either have a deadlock or a race condition in your algorithm. Suggest that you find a way to do 1-way voting.
+
+
+---
 
 Much of the time, big breakthroughs in hard problems come from finding an interesting new way to look at and analyze the problem; FLP is an example of this. Let’s see how they look at consensus algorithms:
 

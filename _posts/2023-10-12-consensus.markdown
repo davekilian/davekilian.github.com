@@ -7,9 +7,9 @@ draft: true
 
 To understand the algorithms that underpin distributed systems, one must first accept this fundamental truth of all distributed systems: 
 
-Stuff is broken all the time. We have no hope of fixing everything.
+> Stuff is broken all the time. We have no hope of fixing everything.
 
-## A thought experiment
+Think about it this way:
 
 How reliable is the device you’re using to read this? I mean, it’s probably pretty functional most of the time, but occasionally I’m sure you run into snags: freezes, crashes, overheating, dead batteries, random network disconnects, etc. In distributed systems, these kinds of problems are called **faults**. So how often does your device fault? Would you say it’s on the order hours, days, weeks?
 
@@ -43,7 +43,9 @@ Does that sound like magic? It seems less amazing once you realize when stuff fa
 * It does what you asked, but it takes a really long time to do it
 * The thing you asked for just never happens at all
 
-However, it’s generally safe to assume the system will not go rogue and start doing random things you didn’t ask it to. All the things that will happen are things you coded to happen ... you just can’t be sure how soon anything will happen, if at all. It turns out we can handle all these problems with two basic strategies:
+However, it’s generally safe to assume the system will not go rogue and start doing random things you didn’t ask it to. All the things that will happen are things you coded to happen ... you just can’t be sure how soon anything will happen, if at all. 
+
+It’s also safe to assume faults aren’t very widespread and don’t correlate with one another: obviously if all computers in the network crash simultaneously, there’s nothing our code can do because it’s not running anywhere anymore. But if just a few machines are having problems, the other computers can compensate for faults with two basic strategies:
 
 * **Keep backup copies** of all data, in case a machine storing it crashes
 * **Keep retrying things** until they happen, to deal with delays and dropped requests
@@ -52,31 +54,33 @@ In this post we’re going to take the first baby step on our journey writing fa
 
 ## Fault Tolerant Variables
 
----
-
-TODO old content to massage back together:
-
----
-
 Say we have a network of computers. Call each computer a **node**. We might picture the network of nodes like this:
 
 DIAGRAM
 
-Let’s build ourselves a little software abstraction to support programs running on these nodes. The one I have in mind is something you might call a “distributed variable.” Basically, 
+Neither the nodes nor the network are completely reliable. At a low rate, the network randomly delays messages, and sometimes drops them so they are never delivered at all. The nodes also crash sometimes.
 
-* There should be one variable
+Can we implement a fault tolerant variable in software for this network? By this I mean I want a software primitive with the following properties:
+
+* There is one variable
 * Any node can get it
 * Any node can set it
 
+. . . and all of these properties hold even if there are some ongoing faults in the network. (This is what it means for the variable to be “fault tolerant.”)
+
 DIAGRAM: nodes a network, thought bubble question mark in the middle for a variable
 
-So how do we make a distributed variable? Well, we already know how to make regular, non-distributed variables; so let’s make a plain old variable on one of our nodes, and set up an RPC server on that node so the other nodes can get and set the variable remotely.
+Oftentimes the hardest part of a problem is figuring out where to start. Let’s attack it this way: we’ll start with a simple approach we know doesn’t work, and then try to fix it into working. Maybe along the way we’ll discover a crux of the problem, and that’ll lead us to a pretty good design. 
+
+## A Simple (But Wrong) Approach
+ 
+We already know how to make regular, non-distributed variables, so let’s make a plain old variable on one of our nodes, and set up an RPC server on that node so the other nodes can get and set the variable remotely.
 
 DIAGRAM
 
-The node we picked to store the variable is now special; let's call it the **leader**. For the leader, the variable is just a plain old local variable like any other. The other nodes, we'll call **followers**. The followers access the variable by sending RPC messages to the leader.
+The node we picked to store the variable is now special; let's call it the **leader**. For the leader, the variable is just a plain old local variable like any other. The other nodes, which we'll call **followers**, access the variable by sending RPC messages to the leader.
 
-To put it a little more formally, the leader's logic is roughly . . .
+The leader's logic will roughly be . . .
 
 ```
 leader {
@@ -100,7 +104,7 @@ leader {
 }
 ```
 
-The followers are:
+The followers:
 
 ```
 client {
@@ -114,13 +118,11 @@ client {
 }
 ```
 
-Now we have one variable any node can get or set. That was easy! But, alas, we are not done. 
+Now we have one variable any node can get or set. That was easy! 
 
-Although we have a design that meets our requirements, we might not have thought hard enough about those requirements in the first place. As is sadly so often the case in life, things have been simple thus far only because we missed a major aspect of the problem.
+Too easy.
 
-Fault tolerance is the major aspect of the problem that we were missing before. It's not enough to just want "distributed variables that any node can get or set," we also need fault tolerance: the variable should keep working even if a node crashes, or a network connection goes down, and so on.
-
-So what happens to our algorithm if a node crashes?
+What happens to our algorithm if a node crashes?
 
 DIAGRAM: another copy of the RPC diagram, last one in the previous section
 
@@ -132,8 +134,9 @@ But the leader is not immune to problems. If a random node crashes, it very well
 
 DIAGRAM: same diagram, but with the leader Xed out
 
-Now we have a problem. With the leader gone, so is the variable. All the follower nodes are still up and running, but they're only programmed to send RPCs to the leader, and the leader isn’t going to respond now that it’s offline. Our entire distributed variable is now offline! And since a single node crash was enough to bring down the variable, we have to admit that our variable was not fault tolerant. That's no good; we need to fix this.
+Now we have a problem. With the leader gone, so is the variable. All the follower nodes are still up and running, but they're only programmed to send RPCs to the leader, and the leader isn’t going to respond now that it’s offline. Our variable has vanished along with the leader; and since it only took one fault (the leader crashing) to do it, we have to accept our variable is not fault tolerant.
 
+That’s fine; we have a basic sketch of a design, now we just need to figure out how to fix it into something fault tolerant. How hard can it be?
 
 
 

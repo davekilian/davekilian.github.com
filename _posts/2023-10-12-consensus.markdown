@@ -204,9 +204,13 @@ In conclusion, a consensus algorithm should provide:
 
 Let's try to invent an algorithm that accomplishes all of this.
 
-<!-- TODO: now forget about the single leader failover excursion and instead go straight to “real life consensus” > majority rules voting.
+Do you know of any real-life algorithms for a group of people to come to an agreement, even without someone being in charge?
 
+For example, think of a group of friends that want to out to eat somewhere. In order to go somewhere, they need to pick where to go first; that's an agreement problem. What might happen next? Maybe someone throws out an idea, someone throws out another idea, some people agree, some disagree, eventually a group opinion starts to form. The tide starts to turn when someone finally says
 
+<center>"I vote we (blah blah blah . . .)"</center>
+
+Oh yeah, voting! Majority-rules voting is a leaderless algorithm that results in a group agreement. Maybe we could code up something like that?
 
 
 
@@ -219,143 +223,12 @@ Let's try to invent an algorithm that accomplishes all of this.
 New plan
 
 * Cold open with need for fault tolerance and redundancy ✅
-* Try to sidestep the need to discuss single leader failover and go straight to voting
+* Sidestep the need to discuss single leader failover and go straight to voting ✅
 * FLP is a discussion of “wayness” followed by the proof
-
-
 
 --
 
 
-
-## Single-Leader Replication
-
-The easiest way to resolve conflicts during replication, and thereby solve the consensus problem, is to pass all set() calls through a single node. That node decides the order the set() calls should take effect, and coordinates the work of replicating the results to all other nodes:
-
-DIAGRAM
-
-This works, but we once again have a leader node and follower nodes, so we know this scheme isn't fault tolerant on its own. We will have to add some kind of **failover** mechanism, so that if the current leader faults, a new leader takes its place. 
-
-Whatever failover mechanism we invent cannot itself rely on a leader, because the whole point is that the leader might be offline. Instead, let’s come up with a scheme where each node independently makes a decision who the leader should be, and set things up so that all nodes independently end up making the same leader decision. In principle, if we can make it so every node has the same local information and runs the same deterministic algorithm on that information as input, they should end up choosing the same leader.
-
-To get there, we have to solve two subproblems:
-
-1. We need a way for each node to determine which other nodes are still online
-2. We need a deterministic rule for deciding which of those nodes should be leader
-
-Let’s start with the first subproblem.
-
-### Detecting Node Faults
-
-**Heartbeating** is a simple approach for detecting node faults.
-
-If you've ever ued the `ping` command to check if you're online, heartbeating is pretty much the same concept. A heartbeat is a request/response pair. To start a heartbeat, one node sends a request, asking "Are you still online?" As soon as it can, the other node responds, "Yes, I am!" If a node has gone offline, it will not have the opportunity to send a response to the heartbeat request, so getting a response to your heartbeat request is pretty strong evidence the other node is still online.
-
-By having each node periodically send heartbeats to all other nodes and track who did and did not respond, we can build local information on each node tracking which peers are online or offline. Assuming each node either is online and responding to all heartbeats, or offline and not responding to any heartbeats, all nodes should end up with an identical faulted/non-faulted map in local memory. So that's one subproblem checked off.
-
-### Selecting a Leader
-
-Once every node has built an identical map of online vs faulted nodes using the heartbeating system, we just need a deterministic rule every node can run on that map to pick a leader.
-
-The simplest approach is to use some kind of **bully algorithm**. Bully algorithms follow the principle, "the biggest guy wins" &mdash; you sort the list of candidates by some metric, and then pick the element that's first or last in the sorted list. If every node starts with same list, they'll all come up with the same sort order, and so they'll all pick the same element out of that list.
-
-To apply that idea here, we start by assigning every node a numerical ID:
-
-DIAGRAM
-
-We'll assume every node knows every other node's ID. The list of node IDs need not be runtime-configurable; it can be hardcoded, or provided via a config file.
-
-Once we know the ID of every node that's still online, all we need is a rule for selecting a leader from that list. There are many rules that would work; let's go with this one:
-
-<center>Pick the node with the smallest numerical node ID</center>
-
-### The Full Algorithm
-
-We've already sketched it out, but nonetheless let's put together all the pieces of our failover algorithm. Succinctly, a our leader selection algorithm is:
-
-> 1. Take the set of node IDs of all peer nodes
-> 2. Eliminate any peer which isn't responding to heartbeat requests
-> 3. Pick the lowest remaining node ID. That node is the leader
-
-Time to check whether this works. Let's say we're in the initial state where all nodes are booting up for the first time, and nobody has figured out who the leader is yet:
-
-DIAGRAM
-
-All nodes start exchanging heartbeats with one another. Say at this point no node has faulted, so every heartbeat request gets a timely response. Each node now executes the algorithm:
-
-> 1. **Take the set of node IDs of all peer nodes.** Every node starts with the full set of node IDs: $(1, 2, 3, 4, 5)$. 
-> 2. **Eliminate any peer which isn't responding to heartbeat requests.** All nodes are online and heartbeat requests, so no IDs are eliminated; every node finishes this step with the full original list: $(1, 2, 3, 4, 5)$
-> 3. **Pick the lowest remaining node ID.** Every node picks $1$
-
-Now node 1 is the leader. It will manage all get and set calls and take care of replicating the variable to all followers:
-
-DIAGRAM
-
-All looks well so far. Now, let's try the case that broke our algorithm before. Say the leader crashes or gets disconnected. Now node 1 is offline:
-
-DIAGRAM
-
-Soon afterward, node 1 starts missing heartbeats. A new leader is needed. Each node now runs the same algorithm as before to select a leader:
-
-> 1. **Take the set of node IDs of all peer nodes.** That's still $(1, 2, 3, 4, 5)$. 
-> 2. **Eliminate any peer which isn't responding to heartbeat requests.** Only node $1$ is missing hearbeats, so the remaining node IDs are: $(1, 2, 3, 4, 5)$
-> 3. **Pick the lowest remaining node ID.** Every node picks $2$
-
-And just like that, every node has switched over to node 2 as the leader:
-
-DIAGRAM
-
-This is looking pretty good! But does it really always work?
-
-## Split-Brain
-
-Alas, outright crashes are not the only way nodes in a distributed system can fail. In the grand scheme of things, crashes are some of the cleaner, clear-cut problems we need to worry about: a node is either alive or it is not. Other kinds of faults are more insidious.
-
-Wind back to the point where every node was healthy and node $1$ was still the leader:
-
-DIAGRAM copied from before
-
-We've been looking at this network a little too abstractly. In a real network, nodes aren't wired directly together; they're connected through a network of intermediary devices called **switches**:
-
-DIAGRAM
-
-Nodes aren't the only things that can get disconnected; switches can too! What happens if the switches that bridge two portions of our network get disconnected?
-
-DIAGRAM
-
-Now our system has been split into two **network partitions**. Nodes within the same partition (i.e. connected to the same switch) can communicate with one another, but nodes cannot communicate across partitions (because the two switches are disconnected).
-
-DIAGRAM
-
-What is our leader selection algorithm going to do now?
-
-On the left-hand partition, nodes 1-3 can still heartbeat with each other, but not nodes 4-5. So when they select a leader, they pick from the node ID set $(1, 2, 3)$, and decide that node $1$ is still the leader.
-
-On the right-hand partition, however, nodes 4-5 can heartbeat with each other but not nodes 1-3. So when *these* nodes select a leader, they pick from the set $(4, 5)$ and choose $4$. 
-
-That's right &mdash; our system has two leaders!
-
-DIAGRAM
-
-This situation, where the system is only supposed to have one leader but accidentally now has two, is called **split-brain**. 
-
-With two distinct subnetworks following two different leaders, we have the potential for each subnetwork to replicate a different value:
-
-DIAGRAM
-
-We have violated the Agreement property, so what we have is not a consensus algorithm.
-
-It might still be possible to salvage this approach, but it seems we have a really big problem on our hands: safe failover itself is a consensus problem. Every node needs to agree on who is the leader. To implement safe failover, we need a consensus algorithm. Single-leader replication was supposed to itself be a consensus algorithm, but we can’t use it to implement failover, since we don’t have a leader during failover. Whatever algorithm we use to implement safe failover, would have to itself be a leaderless consensus algorithm; if we had that, we’d also have a working consensus algorithm, so we probably wouldn’t need single-leader replication at all.
-
-So let’s abandon single-leader replication. It doesn’t work, but it taught us something important: a workable solution to the consensus algorithm must be **leaderless**. There cannot be any one special mode coordinating the algorithm.
-
-Do you know of any real-life algorithms for a group of people to come to an agreement, even without someone being in charge?
-
-For example, think of a group of friends that want to out to eat somewhere. In order to go somewhere, they need to pick where to go first; that's an agreement problem. What might happen next? Maybe someone throws out an idea, someone throws out another idea, some people agree, some disagree, eventually a group opinion starts to form. The tide starts to turn when someone finally says
-
-<center>"I vote we (blah blah blah . . .)"</center>
-
-Oh yeah, voting! Majority-rules voting is a leaderless algorithm that results in a group agreement. Maybe we could code up something like that?
 
 ## Majority-Rules Voting
 

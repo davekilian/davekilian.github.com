@@ -7,11 +7,11 @@ draft: true
 
 To understand the algorithms that underpin distributed systems, one must first accept this fundamental truth of all distributed systems: 
 
-> Stuff is broken all the time. We have no hope of fixing everything.
+> Stuff is broken all the time, and we have no hope of fixing it all.
 
-Think about it this way:
+Why? Think about it this way:
 
-How reliable is the device you’re using to read this? I mean, it’s probably pretty functional most of the time, but occasionally I’m sure you run into snags: freezes, crashes, overheating, dead batteries, random network disconnects, etc. In distributed systems, these kinds of problems are called **faults**. So how often does your device fault? Would you say it’s on the order hours, days, weeks?
+How reliable is the device you’re using to read this? I mean, it probably works fine most of the time, but occasionally I’m sure you run into snags: freezes, crashes, overheating, dead batteries, random network disconnects, etc. In distributed systems, these kinds of problems are called **faults**. So how often does your device fault? Would you say it’s on the order hours, days, weeks?
 
 Well, that's just with one device. What if you had to manage two thousand of them? What if you had to keep all of them working all the time?
 
@@ -29,28 +29,28 @@ $$1,209,600 \div 2,000 = 604.8 \; seconds$$
 
 That's one new fault every 10 minutes . . . 24 hours a day, 7 days a week, forever. See the problem? Even if we do ever manage to get on top of all the weird stuff going on in our network, we'll never be done for more than 10 minutes at a time. 
 
-So the random crashes, freezes and disconnects that didn't seem like a big deal before are now insurmountable thanks to scale. Cloud providers have this problem times 100: they operate huge networks with many thousands of computers distributed all across the planet. Every minute, there’s new nonsense cropping up somewhere in the network; it happens so much because the network is so large. They can spend as much money as they want and hire as many people as they like, and still never get ahead of all the problems constantly starting up.
+The random crashes, freezes and disconnects that didn't seem like a big deal before are insurmountable at scale. Cloud providers have this problem times 100: they operate huge networks with many thousands of computers distributed across the world. Every minute, there’s new nonsense cropping up somewhere in the network; it happens so much because the network is so large. They can spend as much money as they want and hire as many people as they like, and still never get ahead of all the problems constantly starting up.
 
 So that’s that: the hardware running your code is not 100% reliable, the network is not 100% reliable, operating systems are not 100% reliable, and we have no path for to 100% reliability for any of these things. Does that sound terrible? Because distributed systems people know all this, and they’re pretty zen about it.
 
 [ this is fine dog meme ]
 
-It was a long journey, but in the end we figured out how to write software that papers over these reliability problems. Today, large systems everywhere are underpinned by **fault-tolerant** software algorithms, which work even when the infrastructure they run on doesn’t. 
+That’s because we’ve figured out how to write software that papers over these reliability problems. Today, large systems everywhere are underpinned by **fault-tolerant** software algorithms, which work even when the infrastructure they run on doesn’t. 
 
-Does that sound like magic? It seems less amazing once you realize distributed systems fail in predictable ways. Any time your code asks the system to do something, one of three basic things will happen:
+But how can code work when the computer running it doesn’t? There’s no magic here; fault tolerant software works because systems fail in predictable ways. Any time your code asks the system to do something, one of three basic things will happen:
 
 * The system does what you asked it to do
-* It does what you asked, but it takes a really long time to do it
+* It does what you asked, but it takes a *reeeally* long time to do it
 * The thing you asked for just never happens at all
 
-However, it’s generally safe to assume the system will not go rogue and start doing random things you didn’t ask it to. All the things that will happen are things you coded to happen ... you just can’t be sure how soon anything will happen, if at all. 
+However, it’s generally safe to assume the system will not go rogue and start doing random things you didn’t ask it to. All the things that will happen are things you coded to happen ... you just can’t be sure how soon anything will happen, if ever. 
 
-It’s also safe to assume faults aren’t very widespread: obviously if all computers in the network crash simultaneously, there’s nothing our code can do about it, but if just a few machines are having problems, the other computers can compensate via two basic strategies:
+It’s also safe to assume faults aren’t very widespread: obviously if all our computers have crashed and there is nothing left to run our code, then there’s nothing our code can do about it; but if just a few machines are having problems, the other computers can compensate via two basic strategies:
 
 * **Keep backup copies** of all data, in case a machine storing it crashes
 * **Keep retrying things** until they happen, to deal with delays and dropped requests
 
-In this post we’re going to take the first baby step on our journey writing fault tolerant code: we are going to reinvent variables for fault-tolerant programs.
+In this post we’re going to take the first baby step on our journey writing fault tolerant code: we are going to reinvent the concept of variables for the world of fault-tolerant programs.
 
 ## Fault Tolerant Variables
 
@@ -66,11 +66,11 @@ Can we implement a fault tolerant variable in software for this network? By this
 * Any node can get it
 * Any node can set it
 
-. . . and all of these properties hold even if there are some ongoing faults in the network. (This is what it means for the variable to be “fault tolerant.”)
+. . . and all of these properties hold even if the network is having problems, or some nodes have crashed. The variables are supposed to be fault tolerant, after all.
 
 DIAGRAM: nodes a network, thought bubble question mark in the middle for a variable
 
-Oftentimes the hardest part of a problem is figuring out where to start. Let’s attack it this way: we’ll start with a simple approach we know doesn’t work, and then try to fix it into working. Maybe along the way we’ll discover a crux of the problem, and that’ll lead us to a pretty good design. 
+Oftentimes the hardest part of a problem is figuring out where to start. Let’s attack it this way: we’ll start with a simple approach we know doesn’t work, and then try to fix it into working. Maybe that’ll yield a good solution, or maybe along the way we’ll learn something important about the problem.
 
 ## A Simple (But Wrong) Approach
  
@@ -120,7 +120,7 @@ client {
 
 Now we have one variable any node can get or set. That was easy! 
 
-Too easy.
+. . . too easy.
 
 What happens to our algorithm if a node crashes?
 
@@ -136,11 +136,11 @@ DIAGRAM: same diagram, but with the leader Xed out
 
 Now we have a problem. With the leader gone, so is the variable. All the follower nodes are still up and running, but they're only programmed to send RPCs to the leader, and the leader isn’t going to respond now that it’s offline. Our variable has vanished along with the leader; and since it only took one fault (the leader crashing) to do it, we have to accept our variable is not fault tolerant.
 
-That’s fine, this was the plan all along: now that we have a basic sketch of a design, we just need to figure out how to fix it into something fault tolerant. How hard can it be?
+That’s fine though, this was the plan all along: now that we have a basic sketch of a design, we just need to figure out how to fix it into something fault tolerant. Let’s give it a shot.
 
 ## Broadcast Replication
 
-Our current design doesn’t work because there is no safe quarter for our variable: no matter what node we put the variable on, it's possible we could lose that node, and the variable with it. The only way to definitely survive one node crash is to have at least two copies of the variable on different nodes. If any one node crashes, we’ll definitely have one more backup copy we can switch over to. But what if two nodes crash? Or three?
+The single-leader design didn’t work because there is no safe quarter for our variable: no matter what node we put the variable on, it's possible we could lose that node, and the variable with it. The only way to definitely survive one node crash is to have at least two copies of the variable on different nodes. That way, if any one node crashes,  no matter which node, we’ll still have one live backup copy we can switch over to. But what if two nodes crash? Or three?
 
 Heck, to be maximally safe, let's just put a copy of the variable on every node:
 
@@ -148,29 +148,58 @@ DIAGRAM
 
 Every copy of the variable is called a **replica**. The process of creating and updating replicas is called **replication**.
 
-In this new setup, getting a variable is simple: every node already has its own local replica of the variable, so to get the variable, just read the local replica like any other variable. To set the variable, let's use a **broadcast** protocol: the node that wants to update the variable sends a "set" RPC to every other node, and each other node in turn updates its local replica to reflect the update it just received:
+In this new setup, getting a variable is simple: every node already has its own local replica of the variable, so to get the variable, just read to your local replica like any other variable. To set the variable, let's use a **broadcast** protocol: the node that wants to update the variable sends a "set" RPC to every other node, and each other node in turn updates its local replica to reflect the update it just received:
 
 DIAGRAM
-
-One way to think about this design: before there was one leader, managing the one and only copy of the variable. Now every node is a leader, each with its own copy of the variable.
 
 One good thing I can say about this new design: it’s definitely fault tolerant. Each node has its own replica of the variable, so as long as we have at least one live node which has not faulted, we also have a live replica of the variable. All remaining nodes can still send set RPCs to one another, so the variable keeps working even if some nodes crash. It is definitely fault tolerant.
 
-Unfortunately, that’s just about the only good thing I can say about this idea. This design is still majorly flawed.
+Unfortunately, that’s just about the only good thing I can say about this idea. This design is majorly flawed.
 
-Even with fast computers and fast networks, it still takes some amount of time for a broadcast to reach every node. What if two nodes do an update in parallel?
-
-DIAGRAM
-
-Now it's possible for the two broadcasts to arrive in different orders on different nodes:
+Even with fast computers and fast networks, it still takes some amount of time for a broadcast to reach every node. What if two nodes happen to do an update simultaneously?
 
 DIAGRAM
 
-Once all updates have been processed, some replicas will be out of sync with the others:
+Both sets of RPCs race, so it’s possible for different nodes to see the set messages in different orders:
 
 DIAGRAM
+
+If the updates are processed in different orders, then different nodes will end up with different values for their respective replicas:
+
+DIAGRAM
+
+This means the different nodes disagree what the current value of the variable is. That’s pretty messed up! I’m not sure what kind of nontrivial software programs you can write on top of a variable that can get all confused like this. We’re going to have to find a way to keep them in sync.
+
+However, keeping replicas of a variable in a sync turns out to be a very hard problem. So tricky, in fact, that we probably don’t want to tackle it right away. Let’s choose a slightly easier problem: how can get the replicas in sync just once?
+
+TODO intro write once variable semantic
+
+
+
+
+
+
+
+
+
+
+
+
+
+It turns out keeping replicas in sync is a very hard problem. It’s so tricky, in fact, that we’re going to want to start out by making the problem just a bit easier for ourselves. So in the fullness of time, yes, we’re going to want variables you can get and set at will; but for now, let’s make *write-once* variables, which can only be set once. If fault tolerant variables are our first baby step in the world of
+
+
+
+
+
+
+
+
+
 
 Now the different nodes in our network disagree as to the current variable of our variable &mdash; something that certainly could never happen with a "normal," non-distributed variable. What a mess!
+
+Another way to think about this problem: before there was one leader, managing the one and only copy of the variable. Since there is only one replica, keeping it in sync is trivially easy. Now every node is a leader, each with its own copy of the variable, and so keeping the replicas in sync is now a real challenge we must solve.
 
 How can we make sure, if two conflicting broadcasts happen at the same time, the nodes come to an agreement on what the final value of the variable should be? This question is called **the consensus problem**.
 

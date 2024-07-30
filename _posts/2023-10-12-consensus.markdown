@@ -37,7 +37,7 @@ So that’s that: the hardware running your code is not 100% reliable, the netwo
 
 That’s because we’ve figured out how to write software that papers over these reliability problems. Today, large systems everywhere are underpinned by **fault-tolerant** software algorithms, which work even when the infrastructure they run on doesn’t. 
 
-But how can code work when the computer running it doesn’t? There’s no magic here; fault tolerant software works because systems fail in predictable ways. Any time your code asks the system to do something, one of three basic things will happen:
+But how can code work when the computer running it doesn’t? There’s no magic here; fault tolerant software works because systems fail in predictable, manageable ways. Any time your code asks the system to do something, one of three basic things will happen:
 
 * The system does what you asked it to do
 * It does what you asked, but it takes a *reeeally* long time to do it

@@ -168,70 +168,32 @@ If the updates are processed in different orders, then different nodes will end 
 
 DIAGRAM
 
-This means the different nodes disagree what the current value of the variable is. That’s pretty messed up! I’m not sure what kind of nontrivial software programs you can write on top of a variable that can get all confused like this. We’re going to have to find a way to keep them in sync.
+This means the different nodes disagree what the current value of the variable is. That’s pretty messed up! I’m not sure what kind of software programs you can write on top of a variable that can get all confused like this. We’re going to have to find a way to keep them in sync.
 
 However, keeping replicas of a variable in a sync turns out to be a very hard problem. So tricky, in fact, that we probably don’t want to tackle it right away. Let’s choose a slightly easier problem: how can get the replicas in sync just once?
 
-If we can solve that problem, and apply it to this broadcasting replication algorithm, the result will be a kind of “write-once” variable: one that starts out null, can be set once, and from then on is immutable. To implement that, we just start out will replicas storing value of null, and then run this “get replicas in sync just once” algorithm to decide what the permanent value for the variable will be, and store that on all the nodes. A real implementation of fault tolerant variables will of course need to support set() being called any number of times, but maybe once we’ve figured out write-once variables we can extend the idea into full many-write variables.
+If we can solve that problem, and apply it to this broadcasting replication algorithm, the result will be a kind of “write-once” variable: one that starts out null, can be set once, and from then on is immutable. To implement that, we just start out with all replicas initialized to null, and then anytime someone wants to set the variable, we run this “get replicas in sync just once” algorithm to decide what the permanent value for the variable will be, and stick with that forever. A real implementation of fault tolerant variables will of course need to support any number of set() calls, but maybe once we’ve figured out write-once variables we can extend the idea into many-write variables.
 
+So for now, let’s focus on the next step: if multiple nodes try to set the variable at the same time, how do we get the replicas to get in sync just once?
 
+This question has a name. It’s called **consensus**.
 
-
-
-
-
-
-
-TODO intro write once variable semantic
-
-
-
-
-
-
-
-
-
-
-
-
-
-It turns out keeping replicas in sync is a very hard problem. It’s so tricky, in fact, that we’re going to want to start out by making the problem just a bit easier for ourselves. So in the fullness of time, yes, we’re going to want variables you can get and set at will; but for now, let’s make *write-once* variables, which can only be set once. If fault tolerant variables are our first baby step in the world of
-
-
-
-
-
-
-
-
-
-
-Now the different nodes in our network disagree as to the current variable of our variable &mdash; something that certainly could never happen with a "normal," non-distributed variable. What a mess!
-
-Another way to think about this problem: before there was one leader, managing the one and only copy of the variable. Since there is only one replica, keeping it in sync is trivially easy. Now every node is a leader, each with its own copy of the variable, and so keeping the replicas in sync is now a real challenge we must solve.
-
-How can we make sure, if two conflicting broadcasts happen at the same time, the nodes come to an agreement on what the final value of the variable should be? This question is called **the consensus problem**.
 
 ## Consensus 
 
-TODO: we did not correctly set up that variables are multi-shot but consensus is fundamentally one-shot. That must happen before we go into properties or the properties won’t make sense.
-
----
-
-Consensus is the problem of getting a group of nodes to agree on the value of some variable. In our case, the value we're trying to agree on is the next value our fault tolerant variable should be set to. To make our variable, it would seem consensus is the next problem we need to tackle.
+Consensus is the problem of getting a group of nodes to agree &mdash; just once! &mdash; on the value of some variable. In our case, the value we're trying to agree upon is what value our fault tolerant write-once variable should be set to. This is easy if only one node calls set(); it’s harder if multiple nodes call set() simultaneously. 
 
 So, what do we need a consensus algorithm to do?
 
-To start, the basic purpose of a consensus algorithm is to ensure all nodes agree on the value of the variable by the time the algorithm finishes. This most basic property is sometimes called **Agreement**. When we say all nodes should agree "by the time the algorithm finishes," we're also assuming the algorithm should finish in the first place. That is called **Termination**.
+To start, the basic reason we want a consensus algorithm is to ensure all nodes agree on the value of the variable by the time the algorithm finishes. In “the literature,” this most basic property is sometimes called **Agreement**. When we say all nodes should agree "by the time the algorithm finishes," we're also assuming the algorithm should finish in the first place. That is called **Termination**.
 
 If you like technicalities, there technically is a way to achieve Agreement and Termination without really solving the problem: you just hardcode an answer. For example, if you're trying to write a consensus algorithm for integers, "always return 4" is technically a valid consensus algorithm according to our definition so far: all nodes will agree the value is 4, and the algorithm will terminate very quickly. But algorithms like this are useless for the fault tolerant variable problem; we'd end up with a fault tolerant constant instead!
 
-We want the agreed-upon value to be the one somebody wanted. If only one node calls set, the variable should be set to that value. If two nodes call set() at the same time with different values, the algorithm should pick one of those two values. If both set() calls specify the same value, the algorithm should always pick that value. This idea is called **Integrity**.
+We want the agreed-upon value to be the one somebody wanted. If only one node calls set(), the variable should be set to that value. If two nodes call set() at the same time with different values, the algorithm should pick one of those two values. If both set() calls specify the same value, the algorithm should always pick that value. This idea is called **Integrity**.
 
-And, of course, we can't forget how important it is to make every algorithm **Fault Tolerant**. 
+And, of course, we can't forget the uber-goal of ending up with something **Fault Tolerant**. 
 
-In conclusion, a consensus algorithm should provide:
+Then it’s settled: we believe a consensus algorithm should provide:
 
 > **Termination**: The algorithm exits.
 >
@@ -243,25 +205,25 @@ In conclusion, a consensus algorithm should provide:
 
 Let's try to invent an algorithm that accomplishes all of this.
 
-Do you know of any real-life algorithms for a group of people to come to an agreement, even without someone being in charge?
+Do you know of any real-life algorithms for a group of people to come to an agreement?
 
-For example, think of a group of friends that want to out to eat somewhere. In order to go somewhere, they need to pick where to go first; that's an agreement problem. What might happen next? Maybe someone throws out an idea, someone throws out another idea, some people agree, some disagree, eventually a group opinion starts to form. The tide starts to turn when someone finally says
+For example, think of a group of friends that want to out to eat somewhere. To do that, first they need to pick where to go; that's an agreement problem. What might happen next? Maybe someone throws out an idea, someone throws out another idea, some people agree, some disagree, eventually a group opinion starts to form. The tide starts to turn when someone finally says
 
 <center>"I vote we (blah blah blah . . .)"</center>
 
-Oh yeah, voting! Majority-rules voting is a leaderless algorithm that results in a group agreement. Maybe we could code up something like that?
+Oh yeah, voting! Majority-rules voting is an algorithm that results in a group agreement. Maybe we could code up something like that? Let’s try it.
 
 ## Majority-Rules Voting
 
-Let's code up an algorithm where nodes throw out proposals and vote on them, just like in the restaurant example above. However, unlike in real life where people  have preferences, we'll make it so  each node has no preference whatsoever. Each node will vote for whichever option it heard about first, and never change its mind.
+Let's code up an algorithm where nodes throw out proposals and vote on them, just like in the restaurant example above. However, unlike messy real life where people have preferences, we'll make it so each node has no preference whatsoever: each node will vote for whichever option it heard about first, and never change its mind.
 
-To keep things as simpile as possible (for now), let's only allow two values to be proposed. Since I’m American, we'll call those options <span style="color:red">red</span> and <span style="color:blue">blue</span>; but these options can stand in for anything: 0 and 1, yes and no, apples and oranges, etc. Supporting only two options is too simplistic to implement a real consensus algorithm, but in computing you usually end up being able to have exactly zero of something, exactly one of something, or any number $N$ of something. If we can figure out how to have exactly two options, there's probably a way to extend it from 2 to $N$​ options.
+To keep things as simpile as possible (for now), let's only allow two values to be proposed. Since I’m American, we'll call those options <span style="color:red">red</span> and <span style="color:blue">blue</span>; but these options can stand in for anything: 0 and 1, yes and no, apples and oranges, etc. Supporting only two options is too simplistic to implement a real consensus algorithm, but in computing you usually end up being able to have exactly zero of something, exactly one of something, or any number of something. If we can figure out how to have exactly two options, there's probably a way to extend it from 2 to $N$​ options.
 
 With that, let's start by having each node track its own vote, initially null:
 
 DIAGRAM
 
-To get things going, some client of our system needs to throw out a proposal. We'll implement proposals by broadcasting a message to all other nodes, telling them all to vote for a specific proposed value, which can either be <span style="color:red">red</span> or <span style="color:blue">blue</span>.
+To get things going, some client of our system needs to call set() &mdash; a.k.a. throw out a proposal. We'll implement that by broadcasting a message to all other nodes, telling them all to vote for a specific proposed value, which can either be <span style="color:red">red</span> or <span style="color:blue">blue</span>.
 
 DIAGRAM one proposal
 
@@ -273,15 +235,15 @@ Lucky us! We won't always be so lucky though. There's no central coordination in
 
 DIAGRAM three proposals, two blue and one red
 
-With multiple competing proposals, different nodes can receive different proposals first, and end up voting for different things:
+With multiple competing proposals, different nodes can receive different proposals first, and end up voting for different things, just like when we were talking about our broadcast replication algorithm before:
 
 DIAGRAM
 
-Now the votes don't agree. But that's okay, we don't need the votes to agree. Remember earlier, when we wanted every node to obtain the same information, and then run the same deterministic algorithm on said information so they all come to the same conclusion? We can have every node tell every other node who they voted for:
+Now the votes don't agree. But that's okay, we don't need the votes to agree; we just need to figure out which proposal got the most votes. For that, we can have every node tell every other node who they voted for:
 
 DIAGRAM
 
-Once every node knows what the final votes were, they can each run the same deterministic rule to pick the winner. For us, that rule will be: "pick the value that received a majority of the votes."
+Once every node knows what the final votes were, they can each independently count the votes to pick the winner. Since it’s the same votes no matter who’s counting, all nodes end up picking the same winner:
 
 DIAGRAM
 
@@ -304,7 +266,7 @@ consensus {
   }
   
   // received a proposal from another node
-  on received propose(value) {
+  on received proposal(value) {
     // accept the first proposal, ignore others
     if (vote == null) {
       vote := value
@@ -331,9 +293,9 @@ consensus {
 
 Now we have a complete algorithm, that pretty much works:
 
-* **Agreement**: ✅ &mdash; only one value can reach a majority, and any value that reaches a majority will always be the majority
+* **Agreement**: ✅ &mdash; only one value can reach a majority, and all nodes will see that value is the one that reached a majority
 * **Integrity**: ✅ &mdash; nodes only vote for a value someone proposed; so the value that got the most votes was proposed by somebody
-* **Termination**: oh wait, does this algorithm always terminate?
+* **Termination**: . . . oh wait, does this algorithm always terminate?
 
 In our new algorithm, agreement is reached once a value reaches a majority; so we can only terminate if some value reaches a majority. But what if we're unlucky, and we end up with a split vote?
 
@@ -341,16 +303,16 @@ DIAGRAM 3 v 3 split vote
 
 Now no value has reached a majority, and since there are no more nodes left to vote, no value ever will reach a majority. Our algorithm doesn't terminate!
 
-Well, there's a simple solution for that: just require an odd number of nodes. If there are only two values you can propose, and there's an odd number of nodes, *some* proposal has to have reached a majority once all votes are in!
+Well, there's a simple workaround for that: just require an odd number of nodes. If there are only two values you can propose, and there's an odd number of nodes, *some* proposal has to have reached a majority once all votes are in!
 
 DIAGRAM
 
 Great, let's assume an odd number of nodes and check again:
 
-* **Agreement**: ✅ &mdash; only one value can reach a majority, and any value that reaches a majority will always be the majority
-* **Integrity**: ✅ &mdash; nodes only vote for a value someone proposed; so the value that got the most votes was proposed by somebody
+* **Agreement**: ✅
+* **Integrity**: ✅
 * **Termination**: ✅ &mdash; with only two values and an odd number of nodes, some value will have reached a majority once all votes are in
-* **Fault Tolerance**: hmm . . . we might have a problem here
+* **Fault Tolerance**: . . . we might have a problem here
 
 In a fault tolerant algorithm, it should be okay for one node to crash. But we just said it was really important for us to have an odd number of nodes . . . if a node crashes, we're left with an even number of nodes again, and split votes become possible again:
 
@@ -358,45 +320,51 @@ DIAGRAM
 
 Uh oh, the wheels are really starting to fall off again, aren't they? Having an odd number of nodes isn't sufficient to protect from split votes; we need to find another solution.
 
+Okay, okay, hear me out. I have another idea:
+
 ## Tiebreaks and Takebacks
 
-Okay, there's no way to prevent split votes, so there's no way to ensure some value always reaches a majority. Maybe it's not as bad as it sounds. Remember, our consensus algorithm rests on a deterministic rule that takes the final vote counts as input. If we can't prevent the vote from splitting, maybe we can tweak the rule to handle split votes gracefully.
+There's no way to prevent split votes, so there's no way to ensure some value always reaches a majority. Maybe it's not as bad as it sounds. Currently, once all the votes are in, we just pick whichever value reached majority; maybe we can just tweak that rule again in the case where the votes tie.
 
-Let's add this tiebreak rule: if a color has a majority of the votes, we pick that color, but in the event of a tie, we pick red (chosen fairly by asking my 4-year-old his favorite color). Now if there's a split vote, we still get an answer:
-
-DIAGRAM
-
-But . . . no, wait, hold on now, we can't do this. We're making a decision before all the votes are in! Right now we have a tie vote and we picked red, but how do we know that last node is actually offline? What if it's completely healthy, and just happens to be the last node to vote? What if it comes back later and votes blue?
+Let's add this tiebreak rule: if a color has a majority of the votes, we pick that color, but in the event of a tie, we pick red (chosen fairly by asking my 4-year-old his favorite color). Now if a node crashes and leaves us with a split vote, we still get an answer:
 
 DIAGRAM
 
-Well, this is kind of a disaster! We have violated Agreement once again. At one point in time, we had a 3v3 split vote, and all nodes agreed on red, per the tiebreak rule. But then that last vote came in, and everybody changed their mind to blue. You can't change your mind! Agreement is total; it requires all nodes to always agree on the same value.
+But . . . no, wait, hold on now, we can't do this. We're making a decision before all the votes are in! Right now we have a tie vote and we picked red, but how do we know that last node is actually offline? What if it's completely healthy, and just happens to be the last node to vote? What if it comes back moments later and votes blue?
 
-Things get worse. The problem we just uncovered isn't a problem with the specific tiebreaking rule we chose; it's going to be a problem with any tiebreaking rule. Using a tiebreaker is totally fine *if* the final node is offline and is guaranteed never to come back. But how do we know the final node is offline and not coming back? No matter how long we wait for the last node to enter its vote, it is always still possible for it to do so some time in the future. That means, no matter how much time has passed, it's never safe to run the tiebreaker rule. If it’s never safe to run the tiebreaker rule, we simply can't have one.
+DIAGRAM
 
-So we can't prevent split votes, and we can't resolve split votes with a tie-breaking rule either. This is looking an awful lot like a dead end.
+We changed our mind! At one point in time, we had a 3v3 split vote, and all nodes agreed on red, per the tiebreak rule. But then that last vote came in, and everybody changed their mind to blue. You can't do that! What if somebody already saw that the outcome was red, and someone sees the new outcome is blue? That doesn’t sound like Agreement to me.
+
+Agreement is total; it requires all nodes to always agree on the same value. Once you declare done, you have to stick with that value forever.
+
+Things get worse from here. The problem we just uncovered isn't specific to the tiebreaking rule we chose; it's going to be a problem with any tiebreaking rule. Using a tiebreaker is totally fine *if* the final node is offline and is guaranteed never to come back. But how do we know the final node is offline and not coming back? No matter how long we wait for the last node to enter its vote, it is always still possible for it to do so some time in the future. That means, no matter how much time has passed, it's never safe to run the tiebreaker rule. If it’s never safe to run the tiebreaker rule, we simply can't have one.
+
+So we can't prevent split votes, and we can't resolve split votes either. This is looking an awful lot like a dead end.
+
+Hm.
 
 ## Something Has Gone Very Wrong
 
-It would seem we have jumped down a rabbit hole much deeper than we at. First imagined.
+It would seem we have jumped down a rabbit hole much deeper than we at first imagined.
 
-Lets recap:
+Lets recap how we got here:
 
 We started with the simple goal of inventing a fault tolerant variable &mdash; kind of the most basic thing you would need if you intend to write fault tolerant software. 
 
-Then, in about 30 seconds, we invented a single-leader algorithm that worked, except it made no attempt whatsoever at fault tolerant. To add fault tolerance, we then added backup copies of our variable: more leaders, more replicas. But that lead to the problem of keeping all those replicas in sync: that’s how we got started talking about consensus.
+Then, in about 30 seconds, we invented a single-leader algorithm that worked, except it made no attempt whatsoever at fault tolerant. To add fault tolerance, we then added backup copies of our variable. But more replicas meant more leaders, and that lead to a new problem: how do we keep those replicas in sync? That’s how we got started talking about consensus.
 
-We came up with a pretty good base idea for consensus, one even rooted in metaphor for consensus in real life. But it turned out to be a dead end.
+We came up with a pretty good base idea for consensus, one even rooted in metaphor for consensus in real life. But rather unexpectedly, it turned out to be a complete dead end.
 
-The complexity here is starting to spiral out of control, and still we don’t really have a solution in sight. Did we do something wrong? This seemed so simple at the start; how did we get so stuck?
+We just keep layering on the complexity, and still we don’t have a solution in sight. Did we take a misstep somewhere? This seemed so simple at the start; how did we get so stuck?
 
-At least we’re in good company. A generation of distributed systems researchers put an awful lot of thought into this problem, and were able to answer lots of related questions: things that don't work work, properties any solution must have, different ways of simplifying the problem and then solving the simplified problem. But for years, nobody had an answer to the main question. How does one design a fault-tolerant consensus algorithm?
+If we’re looking for consolation, at least we’re in good company. At this stage, a generation of distributed systems researchers put an awful lot of thought into this problem. They were able to answer lots of related questions: things that don't work work, properties any solution must have, different ways of simplifying the problem and then solving the simplified problem. But for years, nobody had an answer to the main question: how does one design a fault-tolerant consensus algorithm?
 
-At this point I would like to invite you to join in the tradition by mulling it over yourself. What is wrong with the approaches we've tried so far? Can we fix them? If not, why not?
+I would like to invite you to join in the tradition by mulling it over yourself. What is wrong with the approaches we've tried so far? Can we fix them? If not, why not?
 
-If you want a little bit of direction to guide you, consider the dead end we just ran into with split votes: we were left with two unacceptable choices:
+If you want a little bit of direction, consider the dead end we just ran into with split votes. We were left with two unacceptable choices:
 
-* Include a tiebreaker, which caused the algorithm to terminate but does not provide Agreement
+* Include a tiebreaker, which caused the algorithm to Terminate but does not provide Agreement
 * No tiebreaker, which caused the algorithm not to Terminate but does uphold Agreement
 
 Why do Agreement and Termination seem to be at odds with one another?

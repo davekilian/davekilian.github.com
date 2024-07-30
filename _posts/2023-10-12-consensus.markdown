@@ -172,6 +172,16 @@ This means the different nodes disagree what the current value of the variable i
 
 However, keeping replicas of a variable in a sync turns out to be a very hard problem. So tricky, in fact, that we probably don’t want to tackle it right away. Let’s choose a slightly easier problem: how can get the replicas in sync just once?
 
+If we can solve that problem, and apply it to this broadcasting replication algorithm, the result will be a kind of “write-once” variable: one that starts out null, can be set once, and from then on is immutable. To implement that, we just start out will replicas storing value of null, and then run this “get replicas in sync just once” algorithm to decide what the permanent value for the variable will be, and store that on all the nodes. A real implementation of fault tolerant variables will of course need to support set() being called any number of times, but maybe once we’ve figured out write-once variables we can extend the idea into full many-write variables.
+
+
+
+
+
+
+
+
+
 TODO intro write once variable semantic
 
 

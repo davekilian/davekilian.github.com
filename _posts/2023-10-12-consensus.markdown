@@ -168,7 +168,7 @@ If the updates are processed in different orders, then different nodes will end 
 
 DIAGRAM
 
-This means the different nodes disagree what the current value of the variable is. That’s pretty messed up! I’m not sure what kind of software programs you can write on top of a variable that can get all confused like this. We’re going to have to find a way to keep them in sync.
+This means the different nodes disagree what the current value of the variable is. That’s pretty messed up! I’m not sure what kind of software programs you can write on top of variables that can get all confused like this. We’re going to have to find a way to keep them in sync.
 
 However, keeping replicas of a variable in a sync turns out to be a very hard problem. So tricky, in fact, that we probably don’t want to tackle it right away. Let’s choose a slightly easier problem: how can get the replicas in sync just once?
 

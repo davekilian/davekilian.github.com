@@ -7,7 +7,7 @@ draft: true
 
 To understand the algorithms that underpin distributed systems, one must first accept this fundamental truth of all distributed systems: 
 
-> Stuff is broken all the time, and we have no hope of fixing it all.
+> Stuff is broken all the time, and we have no hope of fixing it all. ¯\\\_(ツ)\_/¯
 
 Why? Think about it this way:
 

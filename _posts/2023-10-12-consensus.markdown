@@ -397,6 +397,61 @@ Strange ... lots of stuff is built on the cloud, using fault tolerant programmin
 
 There’s no conundrum here: what FLP proves impossible is fault tolerant consensus *as we have formulated the problem so far*. Remember when we came up with our four properties, Agreement, Integrity, Termination and Fault Tolerance? We made a subtle error at that point, and ended up with a set of requirements that cannot all be satisfied simultaneously by one algorithm; that is what FLP proves. But there is also a loophole, a way of tweaking those properties to reformulate the consensus problem as something that can indeed be done. Paxos and Raft are both built on this loophole. So the next step in our mission to build a fault tolerant variable is to find that loophole ourselves. To do that, we had better sit down and work through FLP.
 
+
+<!--
+
+I think this was moving in the wrong direction. I don’t want to explain the system model, and I don’t want readers to try and analyze real algorithms by moving to FLP’s very abstract model. Ideally, wayness is an analysis you can do on any algorithm the same way you can analyze an algorithm for faults: directly, based on analyzing the code and imagining its real execution.
+
+So what’s the minimum viable path to wayness? 
+
+The definition of wayness is basically, given all network messages inbound to the node right now, how many ways can the node make the decision?
+
+To get there, some observations possibly worth making:
+
+* Every step runs on a single node
+* Some steps decide
+* A decision made must never change
+
+We also want to keep FLP’s “only one crash” game, because that helps simplify analysis. Really now we’re combining wayness analysis with fault tolerance analysis
+
+Focus on giving examples
+
+Putting it all together, a possible flow is like
+
+* A decision once made must never be undone or changed
+* How are decisions made?
+* Every step runs on a single node
+* Eventually some step makes the decision 
+* No decision before the step
+* Decision is permanent after that step
+
+Then link decision step to network nondeterminism
+
+* Integrity implies the decision must be somehow based on some kind of proposal
+* So decision is always based on network message delivery - at the very least, you cannot make a decision without first receiving a proposal via the network
+* Network message delivery order is arbitrary. This is a source of nondeterminism
+* So in the event of two competing proposals, which proposal gets accepted depends on the order of network messages
+
+I think this is enough to now define wayness. Given the network messages that are currently in flight (sent but not received), how many ways could any given node run the decision step?
+
+This depends on the state of the network. We have to take a global view
+
+Example of majority voting with two proposals already sent (both proposals are inbound for all voting nodes)
+
+Initially each node is a zero-way decider. The relative order of messages determines whether the node decides red or blue, but whether it decides red or blue, no majority has yet been reached.
+
+But say we get to a state of the algorithm where we have 3 blue, 1 red vote. Now each node is a 1-way decider. Based on the network delivery order, each node could go blue and thus decide blue, or it could go red and thus not make the decision.
+
+In the case of a 3v3 split vote, we have one 2-way decider. Interesting, split votes were the broken case before. Is something wrong with 2-way decisions?
+
+
+
+
+
+
+
+---
+
 ## *Abandon All Hope, Ye Who Enter Here*
 
 Our first task is to get a feel for the proof’s system model.

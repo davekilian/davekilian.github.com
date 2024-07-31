@@ -387,15 +387,36 @@ Think about it! This page will still be here when you get back.
 
 Welcome back! How did it go? I'm guessing you're still stuck, but don't worry &mdash; everyone else gets stuck here too.
 
-If you repeatedly find yourself unable to solve a problem, and especially if all your solutions keep hitting the same set of dead ends, the next thing to do is to try proving the problem is impossible to solve in the first place. This is exactly what three researchers managed to do in the mid-1980s. In their paper *Impossibility of Distributed Consensus with One Faulty Process*, Fischer, Lynch and Paterson (the "FLP" in what later became known as the "FLP result") explained exactly why nobody could come up with a fault-tolerant consensus algorithm. It’s impossible!
+If you repeatedly find yourself unable to solve a problem, the next thing to do is to try proving the problem is impossible to solve in the first place. This is exactly what three researchers managed to do in the mid-1980s. In their paper *Impossibility of Distributed Consensus with One Faulty Process*, Fischer, Lynch and Paterson (the "FLP" in what later became known as the "FLP result") explained exactly why nobody could come up with a fault-tolerant consensus algorithm: it’s impossible!
 
 ## Wait, what??
 
-Yeah, you read that right. Fault tolerant consensus is impossible.
+That’s right, fault tolerant consensus is impossible. Strange ... lots of stuff is built on the cloud, using fault tolerant programming techniques, which rely on fault tolerant consensus algorithms &mdash; which exist. But we also have this FLP proof, a well respected proof that fault tolerant consensus algorithms do not exist. 🤔
 
-Strange, right? Lots of stuff is built on the cloud, using fault tolerant programming techniques, which rely on fault tolerant consensus algorithms &mdash; which exist. But we also have this FLP proof, a very well respected and completely correct proof that fault tolerant consensus algorithms do not exist. 🤔
+There’s no conundrum here: what FLP proves impossible is fault tolerant consensus *as we have formulated the problem so far*. Remember when we came up with our four properties, Agreement, Integrity, Termination and Fault Tolerance? We made a subtle error at that point, and ended up with a set of requirements that cannot all be satisfied simultaneously by one algorithm; that is what FLP proves. But there is also a loophole, a way of tweaking those properties so we’re left with something that meets our needs and is 100% possible. Paxos and Raft are both built on that loophole. So the next step in our mission to build a fault tolerant variable is to find that loophole ourselves. To do that, we had better sit down and work through FLP.
 
-These things are both true; they’re not at odds. What FLP proves impossible is fault tolerant consensus *as we have formulated the problem so far*. Remember when we came up with our four properties, Agreement, Integrity, Termination and Fault Tolerance? We made a subtle error at that point, and ended up with a set of requirements that cannot all be satisfied simultaneously by one algorithm; that is what FLP shows. But there is also a loophole, a way of tweaking those properties so we’re left with something that meets our needs and 100% can be done. To find that loophole, we had better sit down and work through FLP.
+## *Abandon All Hope, Ye Who Enter Here*
+
+Our first task is to get a feel for the proof’s system model.
+
+TODO a proof model is the framework in which we simplify how real systems work so we can talk about what can and can’t happen. There’s always a risk that the model doesn’t align to reality, but generally it works out. If you’re trying to prove something is possible, you generally pick a model that is worse than reality -- even if the world were more brutal than it actually is, my algorithm would STILL work! And if you’re trying to prove impossibility, you go the other way -- even if the world were a much nicer place than it actually is, you STILL can’t make an algorithm that does what you want! FLP is an impossibility proof so it does the latter.
+
+TODO FLP is a model where the network can delay messages arbitrarily, but can’t delete them entirely. Real networks can. FLP’s network cannot deliver the same message twice; in some cases, real networks can. Also, in FLP model only one machine can crash at a time; in the real world there is no such luck. Later we will show we can’t make fault tolerant consensus work even in this very polite, idealized network; so we have no hope of making it work in the messier real world.
+
+## The System Model
+
+TODO build up to the sequential step model where a step is (1) poll the network for a message; get a random one that was previously sent, or get nothing. (2) 
+
+## One Way, Two Way, Red Way, Blue Way
+
+TODO warn I am now straying from FLP’s notation, although I hope to be true to their main argument
+
+TODO introduce the idea of “wayness.” How many ways can the system decide after the next step executes?
+
+TODO it depends on the state of the whole system. Fundamentally, a step in the majority voting algorithm is to register one’s own vote. But how many ways that step can make the decision depends on how many other votes are registered. The first step is always a zero-way decision. When a color is one vote from the majority, all remaining votes are 1-way decisions. If we get to a split vote, we have a two-way decision.
+
+TODO 2-way votes are the case that doesn’t work. And we already saw why: it’s the same as with split votes
+
 
 
 

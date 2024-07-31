@@ -393,12 +393,9 @@ If you repeatedly find yourself unable to solve a problem, and especially if all
 
 Yeah, you read that right. Fault tolerant consensus is impossible.
 
-That’s a little strange, though: everything nowadays is built on the cloud, using fault tolerant programming techniques, which rely on fault tolerant consensus algorithms &mdash; which exist. But we also have this FLP proof, a very well respected and completely correct proof that fault tolerant consensus algorithms do not exist. 🤔
+Strange, right? Lots of stuff is built on the cloud, using fault tolerant programming techniques, which rely on fault tolerant consensus algorithms &mdash; which exist. But we also have this FLP proof, a very well respected and completely correct proof that fault tolerant consensus algorithms do not exist. 🤔
 
-What’s going on here is simpler than it seems! The thing FLP proves impossible is fault tolerant consensus *as we have formulated the problem so far*. Remember when we came up with our four properties, Agreement, Integrity, Termination and Fault Tolerance? We made a subtle error at that point, and ended up with a set of requirements that cannot all be satisfied simultaneously by one algorithm; that is what FLP shows. But there is also a loophole, a way of tweaking those properties so we’re left with something that meets our needs and is 100% solvable. To find that loophole, we had better sit down and work through FLP.
-
-Word to the wise: FLP is a mathematical proof for people who find it natural to read mathematical proofs. The proof is not too long, but unless you find it easiest to picture the world in terms of graphs and finite state machines (definitely not me), the proof is dense and hard to follow. So here we’re going to stay close to the FLP argument, but stray far from their notation for expressing it. Just be aware if you try to talk about FLP this way with “real” researchers, you might get some funny looks.
-
+These things are both true; they’re not at odds. What FLP proves impossible is fault tolerant consensus *as we have formulated the problem so far*. Remember when we came up with our four properties, Agreement, Integrity, Termination and Fault Tolerance? We made a subtle error at that point, and ended up with a set of requirements that cannot all be satisfied simultaneously by one algorithm; that is what FLP shows. But there is also a loophole, a way of tweaking those properties so we’re left with something that meets our needs and 100% can be done. To find that loophole, we had better sit down and work through FLP.
 
 
 

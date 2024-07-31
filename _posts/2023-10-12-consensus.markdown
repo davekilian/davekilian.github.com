@@ -389,6 +389,9 @@ Welcome back! How did it go? I'm guessing you're still stuck, but don't worry &m
 
 If you repeatedly find yourself unable to solve a problem, and especially if all your solutions keep hitting the same set of dead ends, the next thing to do is to try proving the problem is impossible to solve in the first place. This is exactly what three researchers managed to do in the mid-1980s. In their paper *Impossibility of Distributed Consensus with One Faulty Process*, Fischer, Lynch and Paterson (the "FLP" in what later became known as the "FLP result") explained exactly why nobody could come up with a fault-tolerant consensus algorithm.
 
+TODO maybe stop here to address the fact that fault tolerant consensus algorithms do exist, and yet fault tolerant consensus as we have formulated the problem so far is impossible. Set up we need to see why our current definition doesn’t work so we can look for a loophole - a way to redefine consensus so that it solves the problem, and is tractable. 
+
+But save the “doesn’t have to terminate” realization until the end of the FLP discussion.
 
 
 

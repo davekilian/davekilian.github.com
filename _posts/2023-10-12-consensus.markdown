@@ -387,11 +387,18 @@ Think about it! This page will still be here when you get back.
 
 Welcome back! How did it go? I'm guessing you're still stuck, but don't worry &mdash; we'll sort this all out soon enough.
 
-If you repeatedly find yourself unable to solve a problem, and especially if all your solutions keep hitting the same set of dead ends, the next thing to do is to try proving the problem is impossible to solve in the first place. This is exactly what three researchers managed to do in the mid-1980s. In their paper *Impossibility of Distributed Consensus with One Faulty Process*, Fischer, Lynch and Paterson (the "FLP" in what later became known as the "FLP result") explained exactly why nobody could come up with a fault-tolerant consensus algorithm.
+If you repeatedly find yourself unable to solve a problem, and especially if all your solutions keep hitting the same set of dead ends, the next thing to do is to try proving the problem is impossible to solve in the first place. This is exactly what three researchers managed to do in the mid-1980s. In their paper *Impossibility of Distributed Consensus with One Faulty Process*, Fischer, Lynch and Paterson (the "FLP" in what later became known as the "FLP result") explained exactly why nobody could come up with a fault-tolerant consensus algorithm. It’s impossible!
 
-TODO maybe stop here to address the fact that fault tolerant consensus algorithms do exist, and yet fault tolerant consensus as we have formulated the problem so far is impossible. Set up we need to see why our current definition doesn’t work so we can look for a loophole - a way to redefine consensus so that it solves the problem, and is tractable. 
+## Wait, what??
 
-But save the “doesn’t have to terminate” realization until the end of the FLP discussion.
+Yeah, you read that right. Fault tolerant consensus is impossible.
+
+That’s a little strange, though: everything nowadays is built on the cloud, using fault tolerant programming techniques, which rely on fault tolerant consensus algorithms &mdash; which exist. But we also have this FLP proof, a very well respected and completely correct proof that fault tolerant consensus is impossible.
+
+This is because the thing FLP proves impossible is fault tolerant consensus *as we have formulated the problem so far*. Remember when we came up with our four properties, Agreement, Integrity, Termination and Fault Tolerance? It would we seem we made a subtle error there, and ended up with a set of requirements that cannot all be satisfied by one algorithm; that is what FLP shows. But there is a loophole, a way of tweaking those properties so we’re left with something that meets our needs and is 100% solvable. To find that loophole, we had better sit down and work through FLP.
+
+Word to the wise: FLP is a mathematical proof for people who find it natural to read mathematical proofs. The proof is not too long, but unless you find it easiest to picture the world in terms of graphs and finite state machines (definitely not me), the proof is kind of hard to follow. So here we’re going to stay close to the FLP argument, but stray far from their notation for expressing it. Just be aware if you try to talk about FLP this way with “real” researchers, you might get some funny looks.
+
 
 
 

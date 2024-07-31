@@ -387,13 +387,15 @@ Think about it! This page will still be here when you get back.
 
 Welcome back! How did it go? I'm guessing you're still stuck, but don't worry &mdash; everyone else gets stuck here too.
 
-If you repeatedly find yourself unable to solve a problem, the next thing to do is to try proving the problem is impossible to solve in the first place. This is exactly what three researchers managed to do in the mid-1980s. In their paper *Impossibility of Distributed Consensus with One Faulty Process*, Fischer, Lynch and Paterson (the "FLP" in what later became known as the "FLP result") explained exactly why nobody could come up with a fault-tolerant consensus algorithm: it’s impossible!
+During the mid-1980s, in their paper *Impossibility of Distributed Consensus with One Faulty Process*, Fischer, Lynch and Paterson (the "FLP" in what later became known as the "FLP result") explained exactly why nobody could come up with a fault-tolerant consensus algorithm: it’s impossible!
 
 ## Wait, what??
 
-That’s right, fault tolerant consensus is impossible. Strange ... lots of stuff is built on the cloud, using fault tolerant programming techniques, which rely on fault tolerant consensus algorithms &mdash; which exist. But we also have this FLP proof, a well respected proof that fault tolerant consensus algorithms do not exist. 🤔
+That’s right, fault tolerant consensus is impossible. You cannot create an algorithm which satisfies Agreement, Integrity, Termination, and Fault Tolerance, all at the same time.
 
-There’s no conundrum here: what FLP proves impossible is fault tolerant consensus *as we have formulated the problem so far*. Remember when we came up with our four properties, Agreement, Integrity, Termination and Fault Tolerance? We made a subtle error at that point, and ended up with a set of requirements that cannot all be satisfied simultaneously by one algorithm; that is what FLP proves. But there is also a loophole, a way of tweaking those properties so we’re left with something that meets our needs and is 100% possible. Paxos and Raft are both built on that loophole. So the next step in our mission to build a fault tolerant variable is to find that loophole ourselves. To do that, we had better sit down and work through FLP.
+Strange ... lots of stuff is built on the cloud, using fault tolerant programming techniques, which rely on fault tolerant consensus algorithms &mdash; which exist. But we also have this FLP proof, a well respected proof that fault tolerant consensus algorithms do not exist. 🤔
+
+There’s no conundrum here: what FLP proves impossible is fault tolerant consensus *as we have formulated the problem so far*. Remember when we came up with our four properties, Agreement, Integrity, Termination and Fault Tolerance? We made a subtle error at that point, and ended up with a set of requirements that cannot all be satisfied simultaneously by one algorithm; that is what FLP proves. But there is also a loophole, a way of tweaking those properties to reformulate the consensus problem as something that can indeed be done. Paxos and Raft are both built on this loophole. So the next step in our mission to build a fault tolerant variable is to find that loophole ourselves. To do that, we had better sit down and work through FLP.
 
 ## *Abandon All Hope, Ye Who Enter Here*
 

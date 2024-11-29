@@ -150,24 +150,31 @@ At first glance, the exactly-once and happened-or-not problems don't seem all th
 
 Distributed algorithms are a lot like multithreaded algorithms. After all, every distributed algorithm already has multiple threads: there are multiple machines, and each machine has at least one thread. So all problems that exist in multithreaded algorithms also exist in distributed algorithms.
 
-The new dimension of problems distributing adds on top of multithreading is dealing with **faults** in the system: hardware can lose power, software can crash, and networks can degrade or become disconnected. Technically these problems also affect single-node systems, but single-node code generally doesn't care about these faults because, if one occurs, then the node has failed and the code is no longer running. In other words, these faults do cause a mess, but nobody expects single-node code to be able to deal with it. In a distributed system, a fault can affect a subset of the system's nodes while leaving code running on the remaining nodes to deal with the mess.
+The new dimension of problems distributing adds on top of multithreading is dealing with **faults** in the system: hardware can lose power, software can crash, and networks can degrade or become disconnected. Technically these problems also affect single-node systems, but single-node code generally doesn't care about these faults because, if one occurs, then the node has failed and the code is no longer running. In other words, these faults do cause a mess, but nobody expects single-node code to be able to deal with that mess because the computer running the code is down. In a distributed system, a fault can affect a subset of the system's nodes while leaving code running on the remaining nodes to deal with the mess.
 
 Both our distributed solutions to the exactly-once and happened-or-not problems rely on a "coordinator" node to make progress, and neither can deal with a fault bringing the coordinator down: the bully algorithm will continue to pick that node as the coordinator, even though it's not online and can't do its work. In the exactly-once solution, the coordinator is the only node allowed to call `thingy()`, so if the coordinator crashes we never call `thingy()` and thus fail in our ultimate goal to call `thingy()` exactly once. In happened-or-not, the coordinator is the only node that stores the current cancellation state, so if it crashes, other nodes will either fail or hang in their `tryShip` / `tryCancel` calls. Neither of our distributed solutions so far is **fault tolerant**.
 
-This is certainly a limitation, but it may or may not be a problem! If you're operating a small 
+The lack of fault tolerance is certainly a limitation, but it may not actually be a problem! If you're operating a small network of nodes, in a highly controlled environment such as a data center, and you have the option to regularly schedule "maintenance windows" for taking the whole system offline and doing upgrades, then non-fault-tolerant distributed algorithms may work for you. As we have already seen, non-fault-tolerant distributed algorithms are often pretty simple, much more so than any of the algorithms we're going to go on and build in the rest of this article. However, at a certain network size it becomes infeasible to ensure all nodes are always online, and in many Internet-facing services it is not feasible to take the system down for maintenance, ever. In these situations, the only option is to design software that can tolerate faults that affect a subset of the system. Consensus algorithms are usually employed by people trying to make fault-tolerant systems, so for the rest of this article, we will assume fault tolerance is a non-negotaible requirement.
 
-TODO however if it's a large network
+It turns out to be very difficult to come up with fault-tolerant solutions to the exactly-once and happened-or-not problems. However, there is a nifty way to factor out the fault tolerance part of the problems, such that we build one fault-tolerant primitive and use it to solve these completely different problems (and many others). That fault-tolerant primitive is called a **consensus algorithm**.
 
-TODO if you have high avaialbiilty requirements
-
-TODO people who talk about consensus algorithms are generally in the "I require fault tolerance" bucket, usually for one or both of these reasons. So for the rest of this article, we will assume fault tolerance is a must. So we must find fault-tolerant solutions to the problems listed above.
-
-TODO segue out into what if I give you a fault tolerant primitive? I call it consensus.
+## Consensus
 
 
 
 
 
+TODO
+
+```java
+class Consensus<T> {
+  /** Input a proposed value, eventually learn the winning value */
+  public Future<T> resolve(T proposal);
+  
+  /** Learn the winning value without proposing one */
+  public Future<T> get();
+}
+```
 
 
 
@@ -182,16 +189,8 @@ TODO segue out into what if I give you a fault tolerant primitive? I call it con
 
 
 
-TODO this is a little tricky, I want to impress the importance of fault tolerance while not pushing it for situations where it doesn't make sense.
 
-* Static coordinator assignments are simple but they require all nodes to be up
-  * All the nodes need to stay up
-  * If you need to take nodes down, you must take an outage / downtime / do it in a maintenance window
-* That might be fine!
-* However, if the system is huge, keeping all the nodes up may not be practical. I had content for this already
-* Also, for many online businesses, downtime is not acceptable
-* If you're in either 
-* But people talking about consensus algorithms generally do care about fault tolerance, so for the remainder of our discussion we will assume we are building a system where fault tolerance is a requirement; it may be a large system, or require very high uptime, or both
+
 
 
 
@@ -265,15 +264,6 @@ TODO this is a little tricky, I want to impress the importance of fault toleranc
 
 TODO part 1 is:
 
-* Introduce and motivate fault tolerance
-  * I had some content for this already, but I want to do something a little more balanced
-  * It is true that we started with "all the nodes are always up" and "maintenance windows / planned downtime"
-  * It is true that "all the nodes are always up" stops working when you run enormous networks
-  * It is true that "maintenance windows" don't work for most cloud-native online businesses
-  * But there is a time and place for these solutions, and it is so attractive how simple they are
-  * Nothing else we do here will be `simple`
-* Bully algorithm doesn't work, it can elect a failed node as coordinator, that breaks both our algorithms
-* Do you see an easy way out? I don't.
 * Imagine we had a fault-tolerant consensus algorithm, where consensus is a little handwaved as a conflict resolution algorithm
   * `Future<T> consensus(T proposal)`
 * Show exactly-once and happened-or-not both can be trivially rebuilt on consensus, that's the link between them

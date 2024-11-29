@@ -62,7 +62,7 @@ if (iAmTheLeader) {
 }
 ````
 
-The code has gotten even more complex, and provisioning that node list is a little bit of an operational burden, but overall this seems pretty tractable! So maybe this problem isn't "borderline impossible" after all? Hold that thought for a few minutes while we examine another, closely related problem, which I will call the **happened-or-not?** problem.
+The code has gotten even more complex, and provisioning that node list is a little bit of an operational burden, but overall this seems pretty tractable! Let's move on to another related problem, which I'll call the **happened-or-not?** problem.
 
 ## Another Example: Happened-or-Not?
 
@@ -129,6 +129,22 @@ boolean tryShip() {
   }
 }
 ```
+
+We can also once again distribute the algorithm by using ab ully algorithm to elect a coordinator. However, we need to send network messages: `tryShip()` and `tryCancel()` will both be RPCs to the leader node selected by the bully algorithm. We can actually use the exact implementation above as the server side of the RPC, and implement the client side by just forwarding requests to the server like this:
+
+```java
+boolean tryCancel(Collection<int> nodeIds) {
+  int leaderId = bullyAlgorithm(nodeIds);
+  return rpc(leaderId, "tryCancel");
+}
+
+boolean tryShip(Collection<int> nodeIds) {
+  int leaderId = bullyAlgorithm(nodeIds);
+  return rpc(leaderId, "tryShip");
+}
+```
+
+At first glance, the exactly-once and happened-or-not problems don't seem all that related: their single-threaded solutions are completely different. However, it's interesting that we could extend the respective single-threaded solutions to multithreded and distributed solutions using the same basic techniques: in both cases, we could multithread by putting the single-threaded solution behind a lock, and we could distribute by electing single coordinator node using a bully algorithm. That must mean these two problems have *something* in common, even if the solutions are totally different. We'll come back to that a little later.
 
 
 

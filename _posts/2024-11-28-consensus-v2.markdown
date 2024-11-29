@@ -160,11 +160,11 @@ It turns out to be very difficult to come up with fault-tolerant solutions to th
 
 ## Consensus
 
+"Consensus" means "agreement," usually in the context of a group decision. In distributed systems, consensus is the problem of getting all nodes in a distributed system to agree upon the value of some variable.
 
+At its heart, a consensus algorithm is an asynchronous conflict-resolution algorithm: any number of threads input a 'propsed' value they each would like to set the variable to, the consensus algorithm runs and picks one of the proposed value arbitrarily, and then all threads learn the "accepted" value chosen by the consensus algorithm.
 
-
-
-TODO
+The interface for using a consensus algorithm might look something like this:
 
 ```java
 class Consensus<T> {
@@ -176,106 +176,33 @@ class Consensus<T> {
 }
 ```
 
+Code that has an opinion of what value the algorithm should pick calls `resolve()`, passing in the proposed value it wants the algorithm to pick, and waits on the future to wait for the algorithm to finish executing. When the future resolves, it returns the value the consensus algorithm picked. Code that just wants to learn what value is picked without proposing anything calls `get()`.
 
+TODO walk through happened-or-not. This one first because the integration is downright trivial.
 
+TODO walk through exactly-once. This one's a bit tricky, if `thingy()` has side effects then you have cross-domain transaction sort of problems. If we assume `thingy()` is a pure function and we just want the result saved, then the strategy is for everyone to call `thingy` and all try to resolve it to the return value, so only one invocation (arbitrarily) takes effect.
 
+TODO hints lots of other things are easy to build on consensus algorithms. There's a reason these are considered foundational to modern distributed systems.
 
+## Properties of a Consensus Algorithm
 
+TODO exploring how the algorithm is used in the examples above, derive agreement, validity, termination
 
+## Implementing Consensus
 
+TODO redo the same basic ladder as with the other two examples:
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+* There is a variable
+* Single-threaded solution sets the variable, resolving the future for everyone immediately
+* Multithreaded solution sets the variable under a lock, resolving the future for everyone immediately
+* Distributed (not fault tolerant) hops over to the bully leader and does the multithreaded solution there
+* Fault tolerant consensus?
+  * First it seems easy. Then upon closer examination, it seems impossible. Luckily, there's a subtle workaround that makes it not quite impossible.
+* Segue out into section 2
 
 ---
 
-TODO part 1 is:
-
-* Imagine we had a fault-tolerant consensus algorithm, where consensus is a little handwaved as a conflict resolution algorithm
-  * `Future<T> consensus(T proposal)`
-* Show exactly-once and happened-or-not both can be trivially rebuilt on consensus, that's the link between them
-* Using those examples, derive agreement, integrity, termination
-* Show we implement consensus by factoring out the same basic strategy
-  * There is a variable
-  * Single-threaded solution sets the variable, resolving the future for everyone immediately
-  * Multithreaded solution sets the variable under a lock, resolving the future for everyone immediately
-  * Distributed hops over to the bully leader and does the multithreaded solution there
-* Fault tolerant consensus?
-  * First it seems easy. Then upon closer examination, it seems impossible. Luckily, there's a subtle workaround that makes it not quite impossible.
-
+TODO
 
 Part 2 is called Voting Algorithms
 

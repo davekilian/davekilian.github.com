@@ -5,7 +5,7 @@ author: Dave
 draft: true
 ---
 
-Distributed consensus algorithms are a critical piece of modern computing infrastructure that almost nobody really understands. The very first one, *Paxos*, was initially met with met with indifference; people thought it was some kind of elaborate joke. (It probably did not help that Leslie Lamport decided to dress up as Indiana Jones while presenting his algorithm to the world.) For the next 25 years, there was really only one vaible algorithm for distributed consensus, and that algorithm was Paxos. For systems built in the past decade, there has also been a second choice: *Raft*. Raft exists because Paxos is too difficult; in fact, the Raft paper is called *In Search of an Understandable Consensus Algorithm*. However, Raft is also fundamentally a lot like Paxos; it is better factored and the mechanics are a little easier to explain, but the fundamental approach to solving consensus is basically the same (and just as weird-looking) as Paxos.
+Distributed consensus algorithms are a critical piece of modern computing infrastructure that almost nobody really understands. The very first one, *Paxos*, was initially met with met with indifference; people thought it was some kind of elaborate joke. (It probably did not help the presenter was dressed up in an Indiana Jones costume.) For the next 25 years, there was really only one vaible algorithm for distributed consensus, and that algorithm was Paxos. For systems built in the past decade, there has also been a second choice: *Raft*. Raft exists because Paxos is too difficult; in fact, the Raft paper is called *In Search of an Understandable Consensus Algorithm*. However, Raft is also fundamentally a lot like Paxos; it is better factored and the mechanics are a little easier to explain, but the fundamental approach to solving consensus is basically the same (and just as weird-looking) as Paxos.
 
 Not everyone thinks Paxos is impossible to understand. Its inventor for one claims that Paxos is "among the simplest and most obvious of distributed algorithms," and that it "follows unavoidably from the properties we want it to satisfy." Although it's fun to joke this is because Dr. Lamport exists in some astral plane that we mortals can only hope to one day glimpse, the fact remains that he's right: the confusing part about Paxos isn't Paxos, it's understanding the problem space and the solution space well enough to see why you end up needing to solve consensus exactly the way Paxos does it.
 
@@ -48,7 +48,7 @@ int bullyAlgorithm(Collection<int> nodeIds) {
 
 This algorithm does not require nodes to send or receive any network messages to decide which node gets to be the one to call `thingy()`; instead, we give each node the same node list, and run the same determinstic algorithm over that list, which causes each node to independently come to the same conclusion as to which node should be the `thingy()` caller. 
 
-With this, we can now solve the exactly-once problem for distributed systems, even ones which use multithreading on each node:
+With this, we can now solve the exactly-once problem for distributed systems, even ones which use multithreading:
 
 ````java
 boolean iAmTheLeader = bullyAlgorithm(nodeList);
@@ -62,15 +62,200 @@ if (iAmTheLeader) {
 }
 ````
 
-The code has gotten more complex once again, and provisioning that node list is a little bit of an ops burden, but overall this seems pretty tractable!
+The code has gotten even more complex, and provisioning that node list is a little bit of an operational burden, but overall this seems pretty tractable! So maybe this problem isn't "borderline impossible" after all? Hold that thought for a few minutes while we examine another, closely related problem, which I will call the **happened-or-not?** problem.
 
 ## Another Example: Happened-or-Not?
 
+A situation that comes up a lot in online services is having two users try to do two incompatible things at the same time; since the actions are in conflict with one another, your code must resolve the conflict by accepting one and rejecting the other.
+
+For example, maybe you have an online ordering system where an order, once placed, can be cancelled up to a certain point, but then becomes uncancelable later on when you ship the item. What do you do if someone tries to cancel their order at the same time the warehouse is marking the order uncancelable so they can ship the item? How do we know if the cancellation happened or not?
+
+Once again this is simple enough to solve in normal single-threaded code: we just need a variable with three states, "happened," "did not happened," and "still undecided." For order cancellation, those states might be called "cancelled," "shipped" and "pending" respectively:
+
+```java
+enum OrderState {
+  PENDING, // cancellable
+  SHIPPED, // no longer cancellable
+  CANCELLED, // no longer shippable
+}
+```
+
+We can use an instance of this enum to ensure a shipped order cannot be cancelled and vice versa:
+
+```java
+OrderState orderState = OrderState.PENDING;
+
+boolean tryCancel() {
+  if (orderState == OrderState.PENDING) {
+    orderState = OrderState.CANCELLED;
+    return true;
+  } else {
+    return false;
+  }
+}
+
+boolean tryShip() {
+  if (orderState == OrderState.PENDING) {
+    orderState = OrderState.SHIPPED;
+    return true;
+  } else {
+    return false;
+  }
+}
+```
+
+Once again, we can extend this into a multithreaded solution by adding a lock:
+
+```java
+boolean tryCancel() {
+  synchronized (orderStateLock) {
+    if (orderState == OrderState.PENDING) {
+      orderState = OrderState.CANCELLED;
+      return true;
+    } else {
+      return false;
+    }
+  }
+}
+
+boolean tryShip() {
+  synchronized (orderStateLock) {
+    if (orderState == OrderState.PENDING) {
+      orderState = OrderState.SHIPPED;
+      return true;
+    } else {
+      return false;
+    }
+  }
+}
+```
 
 
 
 
 
 
-TODO then do **happened-or-not**. The example problem should be trying to cancel an order that is still being placed. Was the cancellation successful?
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+---
+
+TODO part 1 is:
+
+* Happened-or-not? example
+  * Finish by noting the similarity with exactly-once. The single-threaded solution was totally different, but the way we multithreaded and then distributed the two problems was exactly the same.
+* Introduce and motivate fault tolerance
+* Bully algorithm doesn't work, it can elect a failed node as coordinator, that breaks both our algorithms
+* Do you see an easy way out? I don't.
+* Imagine we had a fault-tolerant consensus algorithm, where consensus is a little handwaved as a conflict resolution algorithm
+  * `Future<T> consensus(T proposal)`
+* Show exactly-once and happened-or-not both can be trivially rebuilt on consensus, that's the link between them
+* Using those examples, derive agreement, integrity, termination
+* Show we implement consensus by factoring out the same basic strategy
+  * There is a variable
+  * Single-threaded solution sets the variable, resolving the future for everyone immediately
+  * Multithreaded solution sets the variable under a lock, resolving the future for everyone immediately
+  * Distributed hops over to the bully leader and does the multithreaded solution there
+* Fault tolerant consensus?
+  * First it seems easy. Then upon closer examination, it seems impossible. Luckily, there's a subtle workaround that makes it not quite impossible.
+
+
+Part 2 is called Voting Algorithms
+
+* Motivate one-shot red-vs-blue decision and how we should be able to generalize it later
+* A real-life fault-tolerant consensus algorithnm is majority rules voting
+* Explain the basic algorithm 
+* Split votes
+* Workaround to have an odd number of nodes fails if we lose a node
+* Tiebreakers
+* Workaround to use a tiebreaker can fail if no nodes fail!
+
+Part 3 is FLP, I had several thoughts of how to explain this without getting into the formal math
+
+* At a high level, the core claim they make is you have three bad choices
+  * Algorithm doesn't guarantee a decision is ever made => stupid, it doesn't terminate
+  * Algorithm has one way it can force a decision => can't be fault tolerant, that step may never execute
+  * Algorithm has 2+ ways to force a decision => it's broken in the case where no node fails
+* Most of the work in the proof is proving the 2+ case
+  * Intuition: you can't differentiate "never" from "not yet" i.e. "failed" vs "slow"
+  * Their system model precludes the existence of timeouts, but that is correct, we don't want to rely on brittle timeouts
+  * Kicked off theory around "what if I had a failure detector" => great, but IRL we don't have this failure detector
+* Apply this back into the language of the majority voting example
+  * Idea of a "one-way" vs "two-way" decision
+  * The bad case is "two-way"
+  * An algorithm which never makes a two-way vote never terminates, stupid
+  * Our initial algorithm had one two-way decision, but it wasn't fault tolerant (split votes)
+  * Adding a tiebreak added two two-way decisions, and introduced a race condition
+  * All of this is exactly as FLP predicted
+* Are we stuck? No, there's a suble workaround, we don't actually need termination as long as probabilities converge
+  * Doesn't matter if we don't guarantee termination if it becomes vanishingly unlikely to keep not terminating
+  * Quote the FLP paper which I believe direclty suggests this, but doesn't manage to find the algorithm to do it
+    * Eh probably they may also have thought this approach would not pan out?
+* So what does a majority voting algorithm that never forces a decision to be made? Let's examine one. It's called Paxos
+
+Part 4 is Paxos
+
+* Key ideas
+  * Voting progresses in rounds, potentially infinitely many rounds
+  * In each round, the vote is one-sided: either we choose this specific candidate, or we remain undecided
+
+
 

@@ -216,9 +216,13 @@ At first glance, the exactly-once and happened-or-not problems don't seem all th
 
 TODO part 1 is:
 
-* Happened-or-not? example
-  * Finish by noting the similarity with exactly-once. The single-threaded solution was totally different, but the way we multithreaded and then distributed the two problems was exactly the same.
 * Introduce and motivate fault tolerance
+  * I had some content for this already, but I want to do something a little more balanced
+  * It is true that we started with "all the nodes are always up" and "maintenance windows / planned downtime"
+  * It is true that "all the nodes are always up" stops working when you run enormous networks
+  * It is true that "maintenance windows" don't work for most cloud-native online businesses
+  * But there is a time and place for these solutions, and it is so attractive how simple they are
+  * Nothing else we do here will be `simple`
 * Bully algorithm doesn't work, it can elect a failed node as coordinator, that breaks both our algorithms
 * Do you see an easy way out? I don't.
 * Imagine we had a fault-tolerant consensus algorithm, where consensus is a little handwaved as a conflict resolution algorithm

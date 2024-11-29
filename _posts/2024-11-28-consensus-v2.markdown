@@ -130,7 +130,7 @@ boolean tryShip() {
 }
 ```
 
-We can also once again distribute the algorithm by using ab ully algorithm to elect a coordinator. However, we need to send network messages: `tryShip()` and `tryCancel()` will both be RPCs to the leader node selected by the bully algorithm. We can actually use the exact implementation above as the server side of the RPC, and implement the client side by just forwarding requests to the server like this:
+We can also once again distribute the algorithm by using a bully algorithm to elect a coordinator. However, we need to send network messages: `tryShip()` and `tryCancel()` will both be RPCs to the leader node selected by the bully algorithm. We can actually use the exact implementation above as the server side of the RPC, and implement the client side by just forwarding requests to the server like this:
 
 ```java
 boolean tryCancel(Collection<int> nodeIds) {
@@ -144,7 +144,56 @@ boolean tryShip(Collection<int> nodeIds) {
 }
 ```
 
-At first glance, the exactly-once and happened-or-not problems don't seem all that related: their single-threaded solutions are completely different. However, it's interesting that we could extend the respective single-threaded solutions to multithreded and distributed solutions using the same basic techniques: in both cases, we could multithread by putting the single-threaded solution behind a lock, and we could distribute by electing single coordinator node using a bully algorithm. That must mean these two problems have *something* in common, even if the solutions are totally different. We'll come back to that a little later.
+At first glance, the exactly-once and happened-or-not problems don't seem all that related: their single-threaded solutions are completely different. However, it's interesting that we could extend the respective single-threaded solutions to multithreded and distributed solutions using the same basic techniques: in both cases, we could multithread by putting the single-threaded solution behind a lock, and we could distribute by electing single coordinator node using a bully algorithm. That must mean these two problems have *something* in common, even if the solutions are totally different. We'll come back to that a little later. For now, I want to talk about something missing from our distributed solutions for these two problems: they're not fault tolerant.
+
+## Fault Tolerance
+
+Distributed algorithms are a lot like multithreaded algorithms. After all, every distributed algorithm already has multiple threads: there are multiple machines, and each machine has at least one thread. So all problems that exist in multithreaded algorithms also exist in distributed algorithms.
+
+The new dimension of problems distributing adds on top of multithreading is dealing with **faults** in the system: hardware can lose power, software can crash, and networks can degrade or become disconnected. Technically these problems also affect single-node systems, but single-node code generally doesn't care about these faults because, if one occurs, then the node has failed and the code is no longer running. In other words, these faults do cause a mess, but nobody expects single-node code to be able to deal with it. In a distributed system, a fault can affect a subset of the system's nodes while leaving code running on the remaining nodes to deal with the mess.
+
+Both our distributed solutions to the exactly-once and happened-or-not problems rely on a "coordinator" node to make progress, and neither can deal with a fault bringing the coordinator down: the bully algorithm will continue to pick that node as the coordinator, even though it's not online and can't do its work. In the exactly-once solution, the coordinator is the only node allowed to call `thingy()`, so if the coordinator crashes we never call `thingy()` and thus fail in our ultimate goal to call `thingy()` exactly once. In happened-or-not, the coordinator is the only node that stores the current cancellation state, so if it crashes, other nodes will either fail or hang in their `tryShip` / `tryCancel` calls. Neither of our distributed solutions so far is **fault tolerant**.
+
+This is certainly a limitation, but it may or may not be a problem! If you're operating a small 
+
+TODO however if it's a large network
+
+TODO if you have high avaialbiilty requirements
+
+TODO people who talk about consensus algorithms are generally in the "I require fault tolerance" bucket, usually for one or both of these reasons. So for the rest of this article, we will assume fault tolerance is a must. So we must find fault-tolerant solutions to the problems listed above.
+
+TODO segue out into what if I give you a fault tolerant primitive? I call it consensus.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+TODO this is a little tricky, I want to impress the importance of fault tolerance while not pushing it for situations where it doesn't make sense.
+
+* Static coordinator assignments are simple but they require all nodes to be up
+  * All the nodes need to stay up
+  * If you need to take nodes down, you must take an outage / downtime / do it in a maintenance window
+* That might be fine!
+* However, if the system is huge, keeping all the nodes up may not be practical. I had content for this already
+* Also, for many online businesses, downtime is not acceptable
+* If you're in either 
+* But people talking about consensus algorithms generally do care about fault tolerance, so for the remainder of our discussion we will assume we are building a system where fault tolerance is a requirement; it may be a large system, or require very high uptime, or both
+
+
 
 
 

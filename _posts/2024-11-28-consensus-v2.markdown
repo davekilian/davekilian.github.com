@@ -70,7 +70,7 @@ A situation that comes up a lot in online services is having two users try to do
 
 For example, maybe you have an online ordering system where an order, once placed, can be cancelled up to a certain point, but then becomes uncancelable later on when you ship the item. What do you do if someone tries to cancel their order at the same time the warehouse is marking the order uncancelable so they can ship the item? How do we know if the cancellation happened or not?
 
-Once again this is simple enough to solve in normal single-threaded code: we just need a variable with three states, "happened," "did not happened," and "still undecided." For order cancellation, those states might be called "cancelled," "shipped" and "pending" respectively:
+Once again this is simple enough to solve in normal single-threaded code: we just need a variable with three states, "happened," "did not `happen`," and "still undecided." For order cancellation, those states might be called "cancelled," "shipped" and "pending" respectively:
 
 ```java
 enum OrderState {

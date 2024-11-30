@@ -162,7 +162,7 @@ It turns out to be very difficult to come up with fault-tolerant solutions to th
 
 "Consensus" means "agreement," usually in the context of a group decision. In distributed systems, consensus is the problem of getting all nodes in a distributed system to agree upon the value of some variable.
 
-At its heart, a consensus algorithm is an asynchronous conflict-resolution algorithm: any number of threads input a 'propsed' value they each would like to set the variable to, the consensus algorithm runs and picks one of the proposed value arbitrarily, and then all threads learn the "accepted" value chosen by the consensus algorithm.
+At its heart, a consensus algorithm is an asynchronous conflict-resolution algorithm: any number of threads input a 'propsed' value they each would like to set the variable to, the consensus algorithm picks one of the proposed value arbitrarily, and then all threads stick the value the algorithm chose. Now all threads are in agreement!
 
 The interface for using a consensus algorithm might look something like this:
 
@@ -177,6 +177,8 @@ class Consensus<T> {
 ```
 
 Code that has an opinion of what value the algorithm should pick calls `resolve()`, passing in the proposed value it wants the algorithm to pick, and waits on the future to wait for the algorithm to finish executing. When the future resolves, it returns the value the consensus algorithm picked. Code that just wants to learn what value is picked without proposing anything calls `get()`.
+
+For now, let’s not worry about how to implement such a thing; let’s assume we have a fault-tolerant distributed algorithm implementing the interface above, figure out how to use it to solve our example problems.
 
 TODO walk through happened-or-not. This one first because the integration is downright trivial.
 

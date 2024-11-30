@@ -178,13 +178,15 @@ class Consensus<T> {
 
 Code that has an opinion of what value the algorithm should pick calls `resolve()`, passing in the proposed value it wants the algorithm to pick, and waits on the future to wait for the algorithm to finish executing. When the future resolves, it returns the value the consensus algorithm picked. Code that just wants to learn what value is picked without proposing anything calls `get()`.
 
-How does this relate to the two example problems we were looking at? Let’s see:
+Another way to see this is as a kind of "write-once" variable; threads try to write to the variable by calling `resolve()`, and read it by calling `get()`. Only the first attempt to write the variable (the first `resolve()` call) actually writes to the variable; any subsequent attempts to write the variable silently has no effect. If two threads attempt to do the first write at the same time, the consensus algorithm will arbitrarily pick one and reject the other(s). Since the consensus algorithm is distributed and fault tolerant, this interface is fully functional even if some machines on the network have faulted and are not fully functional.
 
-TODO walk through happened-or-not. This one first because the integration is downright trivial.
+So, assuming we have a fully distributed, fault-tolerant implementation of this write-once variable, how do we use it to solve our example problems? It may not be obvious at first, but the final solutions will both be somewhat simple:
 
 TODO walk through exactly-once. This one's a bit tricky, if `thingy()` has side effects then you have cross-domain transaction sort of problems. If we assume `thingy()` is a pure function and we just want the result saved, then the strategy is for everyone to call `thingy` and all try to resolve it to the return value, so only one invocation (arbitrarily) takes effect.
 
-TODO hints lots of other things are easy to build on consensus algorithms. There's a reason these are considered foundational to modern distributed systems.
+TODO walk through happened-or-not. This one also has a few complications, we have to use it only to decide whether cancelled or shipped but not pending. We can kind of hack around it by assuming uninitialied variable / never written to means the order is still pending.
+
+TODO hints lots of other problems can be solved using consensus algorithms for distributed fault tolerance. There's a reason these are considered foundational to modern distributed systems.
 
 ## Properties of a Consensus Algorithm
 

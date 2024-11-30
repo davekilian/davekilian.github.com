@@ -178,7 +178,7 @@ class Consensus<T> {
 
 Code that has an opinion of what value the algorithm should pick calls `resolve()`, passing in the proposed value it wants the algorithm to pick, and waits on the future to wait for the algorithm to finish executing. When the future resolves, it returns the value the consensus algorithm picked. Code that just wants to learn what value is picked without proposing anything calls `get()`.
 
-For now, let’s not worry about how to implement such a thing; let’s assume we have a fault-tolerant distributed algorithm implementing the interface above, figure out how to use it to solve our example problems.
+How does this relate to the two example problems we were looking at? Let’s see:
 
 TODO walk through happened-or-not. This one first because the integration is downright trivial.
 

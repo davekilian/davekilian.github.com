@@ -162,23 +162,23 @@ It turns out to be very difficult to come up with fault-tolerant solutions to th
 
 "Consensus" means "agreement," usually in the context of a group decision. In distributed systems, consensus is the problem of getting all nodes in a distributed system to agree upon the value of some variable.
 
-In practice, a consensus algorithm implements something like a write-once variable. The variable starts off uninitialized and therefore cannot be read. The first thread to try to write the value succeeds, and the variable is initialized ot the value that thread was trying to write. Afterwards, any attempt to write the value again silently fails; the variable stays set to the value that was first set. Once the variable has been written once, it can be read by any thread anywhere in the system, at any time. Assuming the algorithm is distributed and fault tolerant, all of the functions we just discussed continue to work even if some nodes of the network have failed.
+In practice, a consensus algorithm implements something like a write-once variable. The variable starts off uninitialized and therefore cannot be read. The first thread to try to write the value succeeds, and the variable is initialized ot the value that thread was trying to write. Afterwards, any attempt to write the value again silently fails; the variable stays set to the value that was first set. Once the variable has been written the first time, it can be read by any thread anywhere in the system, at any time. Assuming the algorithm is distributed and fault tolerant, all of these functions keep working even if some nodes of the network have failed.
 
 The interface for using a consensus algorithm might look something like this:
 
 ```java
 interface Consensus<T> {
-  /** Try to write a proposed value, return the actual value */
-  public Future<T> resolve(T proposal);
+  /** Try to write the given value, no-op if already initialized */
+  public void tryInitialize(T value);
   
   /** Reads the value once a value has been written */
   public Future<T> get();
 }
 ```
 
-TODO recapitulate the write-once paragraph in terms of the interface
+Initially the variable stored by a `Consensus` object is not initialized, so any thread calling `get()` will receive a future that has not yet resolved. The first thread to call `tryInitialize()` writes its proposed value to the variable and resolves all futures previously returned by `get()` to the value that was just written. Subsequent calls to `get()` return a resolved future, and subsequent `tryInitialize` calls do nothing, because the variable is already initialized.
 
-It might seem strange that we call this algorithm "consensus," if what we actually have built is a write-once distributed variable. The name consensus comes from the tricky part of the algorithm: what should happen if the variable is not yet initialized, and multiple threads try to initialize it at the same time? TODO introduce the conflict resolution aspect
+So if  what we have here a variable, why do we call this a "consensus" algorithm? The name *consensus* comes from the tricky part of this algorithm: how do we deal with the case where the variable is not yet initialized, and *multiple* threads try to initialize it at the same time? If that happens we must arbitrarily pick one of those `tryInitialize()` calls to accept and discard the rest. Since all nodes must *agree* which `tryInitialize` call is the one that succeeded, we call the algorithm *consensus*. In other words, the core of any distributed consensus algorithm is a mechanism for resolving a conflict and coming to agreement.
 
 So, assuming we have a fully distributed, fault-tolerant implementation of this write-once variable, how do we use it to solve our example problems? It may not be obvious at first, but the final solutions will both be somewhat simple:
 

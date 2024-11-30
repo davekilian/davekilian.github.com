@@ -162,29 +162,35 @@ It turns out to be very difficult to come up with fault-tolerant solutions to th
 
 "Consensus" means "agreement," usually in the context of a group decision. In distributed systems, consensus is the problem of getting all nodes in a distributed system to agree upon the value of some variable.
 
-At its heart, a consensus algorithm is an asynchronous conflict-resolution algorithm: any number of threads input a 'propsed' value they each would like to set the variable to, the consensus algorithm picks one of the proposed value arbitrarily, and then all threads stick the value the algorithm chose. Now all threads are in agreement!
+In practice, a consensus algorithm implements something like a write-once variable. The variable starts off uninitialized and therefore cannot be read. The first thread to try to write the value succeeds, and the variable is initialized ot the value that thread was trying to write. Afterwards, any attempt to write the value again silently fails; the variable stays set to the value that was first set. Once the variable has been written once, it can be read by any thread anywhere in the system, at any time. Assuming the algorithm is distributed and fault tolerant, all of the functions we just discussed continue to work even if some nodes of the network have failed.
 
 The interface for using a consensus algorithm might look something like this:
 
 ```java
-class Consensus<T> {
-  /** Input a proposed value, eventually learn the winning value */
+interface Consensus<T> {
+  /** Try to write a proposed value, return the actual value */
   public Future<T> resolve(T proposal);
   
-  /** Learn the winning value without proposing one */
+  /** Reads the value once a value has been written */
   public Future<T> get();
 }
 ```
 
-Code that has an opinion of what value the algorithm should pick calls `resolve()`, passing in the proposed value it wants the algorithm to pick, and waits on the future to wait for the algorithm to finish executing. When the future resolves, it returns the value the consensus algorithm picked. Code that just wants to learn what value is picked without proposing anything calls `get()`.
+TODO recapitulate the write-once paragraph in terms of the interface
 
-Another way to see this is as a kind of "write-once" variable; threads try to write to the variable by calling `resolve()`, and read it by calling `get()`. Only the first attempt to write the variable (the first `resolve()` call) actually writes to the variable; any subsequent attempts to write the variable silently has no effect. If two threads attempt to do the first write at the same time, the consensus algorithm will arbitrarily pick one and reject the other(s). Since the consensus algorithm is distributed and fault tolerant, this interface is fully functional even if some machines on the network have faulted and are not fully functional.
+It might seem strange that we call this algorithm "consensus," if what we actually have built is a write-once distributed variable. The name consensus comes from the tricky part of the algorithm: what should happen if the variable is not yet initialized, and multiple threads try to initialize it at the same time? TODO introduce the conflict resolution aspect
 
 So, assuming we have a fully distributed, fault-tolerant implementation of this write-once variable, how do we use it to solve our example problems? It may not be obvious at first, but the final solutions will both be somewhat simple:
 
+### Exactly-Once
+
 TODO walk through exactly-once. This one's a bit tricky, if `thingy()` has side effects then you have cross-domain transaction sort of problems. If we assume `thingy()` is a pure function and we just want the result saved, then the strategy is for everyone to call `thingy` and all try to resolve it to the return value, so only one invocation (arbitrarily) takes effect.
 
+### Happend-or-Not
+
 TODO walk through happened-or-not. This one also has a few complications, we have to use it only to decide whether cancelled or shipped but not pending. We can kind of hack around it by assuming uninitialied variable / never written to means the order is still pending.
+
+### ... and more!
 
 TODO hints lots of other problems can be solved using consensus algorithms for distributed fault tolerance. There's a reason these are considered foundational to modern distributed systems.
 

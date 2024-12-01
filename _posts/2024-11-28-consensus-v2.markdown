@@ -168,10 +168,10 @@ The interface for using a consensus algorithm might look something like this:
 
 ```java
 interface Consensus<T> {
-  /** Try to write the given value, no-op if already initialized */
+  /** Try to initialize to the given value, no-op if already initialized */
   public void tryInitialize(T value);
   
-  /** Reads the value once a value has been written */
+  /** Reads the value once the variable haa been initialized */
   public Future<T> get();
 }
 ```
@@ -180,11 +180,13 @@ Initially the variable stored by a `Consensus` object is not initialized, so any
 
 So if  what we have here a variable, why do we call this a "consensus" algorithm? The name *consensus* comes from the tricky part of this algorithm: how do we deal with the case where the variable is not yet initialized, and *multiple* threads try to initialize it at the same time? If that happens we must arbitrarily pick one of those `tryInitialize()` calls to accept and discard the rest. Since all nodes must *agree* which `tryInitialize` call is the one that succeeded, we call the algorithm *consensus*. In other words, the core of any distributed consensus algorithm is a mechanism for resolving a conflict and coming to agreement.
 
-So, assuming we have a fully distributed, fault-tolerant implementation of this write-once variable, how do we use it to solve our example problems? It may not be obvious at first, but the final solutions will both be somewhat simple:
+So, assuming we have a fully distributed, fault-tolerant implementation of this write-once variable, how do we use it to solve our example problems?
 
 ### Exactly-Once
 
-TODO walk through exactly-once. This one's a bit tricky, if `thingy()` has side effects then you have cross-domain transaction sort of problems. If we assume `thingy()` is a pure function and we just want the result saved, then the strategy is for everyone to call `thingy` and all try to resolve it to the return value, so only one invocation (arbitrarily) takes effect.
+TODO walk through exactly-once. This one's a bit tricky, if `thingy()` has side effects then you have cross-domain transaction sort of problems. If we assume `thingy()` is a pure function and we just want the result saved, then the strategy is for everyone to call `thingy` and all try to resolve it to the return value, so only one invocation (arbitrarily) takes effect. Use this as a chance to talk about how exactly once cannot really exist in a distributed system, the best approximation available is to make it happen lots of times but only take effect once.
+
+One way to help here is remove “thingy” and replace it with a function that is obviously pure, such as picking a random‘user of the day.’
 
 ### Happend-or-Not
 

@@ -5,6 +5,13 @@ author: Dave
 draft: true
 ---
 
+Two big edits:
+
+1. Make exactly-once generate a random ‘user of the day’ instead of just thingy. The point is to be something that is obviously a pure function plus a single global variable assignment
+2. Now we should be able to factor out “write once variable” before tackling fault tolerance or introducing the term consensus. 
+
+---
+
 Distributed consensus algorithms are a critical piece of modern computing infrastructure that almost nobody really understands. The very first one, *Paxos*, was initially met with met with indifference; people thought it was some kind of elaborate joke. (It probably did not help the presenter was dressed up in an Indiana Jones costume.) For the next 25 years, there was really only one vaible algorithm for distributed consensus, and that algorithm was Paxos. For systems built in the past decade, there has also been a second choice: *Raft*. Raft exists because Paxos is too difficult; in fact, the Raft paper is called *In Search of an Understandable Consensus Algorithm*. However, Raft is also fundamentally a lot like Paxos; it is better factored and the mechanics are a little easier to explain, but the fundamental approach to solving consensus is basically the same (and just as weird-looking) as Paxos.
 
 Not everyone thinks Paxos is impossible to understand. Its inventor for one claims that Paxos is "among the simplest and most obvious of distributed algorithms," and that it "follows unavoidably from the properties we want it to satisfy." Although it's fun to joke this is because Dr. Lamport exists in some astral plane that we mortals can only hope to one day glimpse, the fact remains that he's right: the confusing part about Paxos isn't Paxos, it's understanding the problem space and the solution space well enough to see why you end up needing to solve consensus exactly the way Paxos does it.

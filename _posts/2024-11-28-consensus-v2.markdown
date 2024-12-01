@@ -186,7 +186,7 @@ So, assuming we have a fully distributed, fault-tolerant implementation of this 
 
 TODO walk through exactly-once. This one's a bit tricky, if `thingy()` has side effects then you have cross-domain transaction sort of problems. If we assume `thingy()` is a pure function and we just want the result saved, then the strategy is for everyone to call `thingy` and all try to resolve it to the return value, so only one invocation (arbitrarily) takes effect. Use this as a chance to talk about how exactly once cannot really exist in a distributed system, the best approximation available is to make it happen lots of times but only take effect once.
 
-One way to help here is remove “thingy” and replace it with a function that is obviously pure, such as picking a random‘user of the day.’
+One way to help here is remove “thingy” and replace it with a function that is obviously pure, such as picking a random‘user of the day.’ That’s also nice because each example has a fundamental problem and a concrete example where it crops up.
 
 ### Happend-or-Not
 

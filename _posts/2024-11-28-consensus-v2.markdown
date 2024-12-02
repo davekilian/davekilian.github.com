@@ -13,7 +13,9 @@ I think the answer is that Paxos seems straightfoward to people who already know
 
 # Part 1: Consensus
 
-One of the fun (or maybe "fun") parts of programming distributed systems is that trivial things you normally do in normal code turn out to be really hard, or sometimes even impossible in distributed code. Let's take a look at a couple of problems like that.
+Just about every distributed system has a consensus algorithm running it in somewhere; even if your code doesn't do it, the dadtabases you're using probably do, and the cloud services you deploy your code on *definitely* do. But what makes consensus so fundamental? Why does it pop up everywhere?
+
+One of the fun (or maybe "fun") parts of programming distributed systems is that trivial things you normally do in normal code turn out to be really hard, or sometimes even impossible in distributed code. Consensus helps take those problems and turn them back into something tractable. To see what I mean, let's try a couple of examples:
 
 ## Example: Picking a Random User
 

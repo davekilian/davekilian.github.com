@@ -5,13 +5,6 @@ author: Dave
 draft: true
 ---
 
-Two big edits:
-
-1. Make exactly-once generate a random ‘user of the day’ instead of just thingy. The point is to be something that is obviously a pure function plus a single global variable assignment
-2. Now we should be able to factor out “write once variable” before tackling fault tolerance or introducing the term consensus. 
-
----
-
 Distributed consensus algorithms are a critical piece of modern computing infrastructure, but few people really understand how they work. When the first consensus algorithm, *Paxos*, was introduced to the world, it was met with vague confusion: people in the first presentation suspected they were being pulled into some kind of elaborate joke. (It probably did not help that Dr. Lamport, inventor and presentor, gave the talk dressed up as Indiana Jones.) For the next 25 years, Paxos remained the only viable algorithm for distributed consensus, and during that time it gained such notoriety for being impossible to understand that when a second viable consensus algorithm, *Raft*, finally came along, the paper was called *In Search of an Understandable Consensus Algorithm*. 
 
 Here's the thing about Raft, though: at its core, it's pretty similar to Paxos. It is better factored and much easier to describe, but the fundamental way it goes about solving the consensus problem is the same as Paxos. Dr. Lamport, who invented Paxos, once wrote that Paxos is "among the simplest and most obvious of distributed algorithms," and that it "follows unavoidably from the properties we want it to satisfy." The fundamental similarity between Raft and Paxos seems to support this. But if Paxos is so simple and falls directly out of the problem definition, why is it so hard to explain? Why do direct explanations and metaphors like the 'part-time parliament' alike fail to make the algorithm seem intuitive?
@@ -20,53 +13,93 @@ I think the answer is that Paxos seems straightfoward to people who already know
 
 # Part 1: Consensus
 
-One of the fun (or maybe "fun") parts of programming distributed systems is that trivial things you normally do in normal code turn out to be impossible, or borderline impossible in a distributed system. For example, how do you write code to make something happen exactly one time?
+One of the fun (or maybe "fun") parts of programming distributed systems is that trivial things you normally do in normal code turn out to be really hard, or sometimes even impossible in distributed code. Let's take a look at a couple of problems like that.
 
-## Example: Exactly-Once
+## Example: Picking a Random User
 
-For example, say we have a function called `thingy()` and we want to make sure the program calls `thingy()` exactly one time. This is incredibly simple to do in regular, single-threaded code: you just call `thingy()`:
+How do write code to make something happen one time? As a (somehat contrived) example, let's say we're writing code for a message board website, and we want to add a 'user of the day' function where we spotlight one particular user at random. How do write code to pick a user once, and only once?
+
+In normal code this couldn't be simpler: just write the code that picks a user:
 
 ```java
-thingy();
+App.userOfTheDay = users.get(randomUserId());
 ```
 
-In multithreaded code, it might be a bit trickier: maybe we have a bunch of threads that all *can* call `thingy()`, but we want to make sure only one thread actually does it. We could accomplish that by putting `thingy()` behind a lock:
+In regular code, making things happen exactly one time is the default: we have to use conditionals like the `if` statement to make things potentially happen less than once, and loops to make things happen more than once, but if we don't do anything else then code will execute once. 
+
+Let's say instead, for some reason, we have multithreaded code where multiple threads can potentially pick a random user of the day, but we still want only one thread to actually pick a user. We could do this by putting the single-threaded code behind a lock:
 
 ```java
-synchronized (thingyLock) {
-  if (!thingyAlreadyCalled) {
-    thingy();
-    thingyAlreadyCalled = true;
+synchronized (lock) {
+  if (!userOfTheDayPicked) {
+    App.userOfTheDay = users.get(randomUserId());
+    userOfTheDayPicked = true;
   }
 }
 ```
 
-The boilerplate is unfortunate, but otherwise the solution is simple.
+Let's ramp up the difficulty. What if we have distributed system?
 
-What about in a distrubted system? If we had some kind of 'distributed lock' primitive, maybe we could reuse the solution above, but for now let's assume we have no fancy abstractions or tools, just the ability to send and receive messages on the network. Then how do we ensure only one machine calls `thingy()`?
+In a way, a distributed system is lot like a multithreaded system; it's just that the different threads are on different computers, and can only communicate with one another by sending network messages. If we had some kind of 'distributed lock' abstaction, maybe we could use the multithreaded solution above verbatim, but let's assume we don't have any such thing. What can we do instead?
 
-Here's one idea: for most distributed systems running in data centers or in the cloud, we know ahead of time the full set of nodes that are going to participate in the distributed system. We can provision each node with a list of all nodes in the system, and then run an algorithm over that list to choose which node is the one that gets to call `thingy()`. One simple way to do this is the so-called *bully algorithm*, which works on the principle "the biggest guy wins:" pick some sort attribute of each node (maybe an integer "node ID") and then choose the node with either the largest or smallest value in that sort order. Example:
+Here's one idea: for most distributed systems running in data centers or in the cloud, we know ahead of time the full set of nodes that are going to participate in the distributed system. If we provision each node with that node list, we could have all nodes independently run the same deterministic algorithm over that list to pick which node will be responsible for choosing the user of the day. The classic algorithm for picking such a node is the *bully algorithm*, which works on the principle "the biggest guy wins:" pick some attribute on which to sort the node list, ad then choose the node that is largest or smallest in the resulting sort order:
 
 ```java
 int bullyAlgorithm(Collection<int> nodeIds) {
-  return Collections.max(nodeIds); // min() would work too!
+  return Collections.max(nodeIds);
+  // ... Collections.min() would work too!
 }
 ```
+
+Each node independently runs this algorithm to decide whether it will generate the user of the day:
+
+```java
+boolean iAmTheLeader = bullyAlgorithm(nodeList);
+if (iAmTheLeader) {
+  synchronized (thingyLock) {
+    if (!userOfTheDayPicked) {
+      App.userOfTheDay = users.get(randomUserId());
+      userOfTheDayPicked = true;
+    }
+  }
+}
+```
+
+This solution has a very nice property: we managed to distribute our algorithm without having to send or receive a single network message. The resulting code isn't too complex either!
+
+## Another Example: Order Cancellation
+
+
+
+
+
+---
+
+TODO continue refactoring: 
+
+* Rename happened-or-not, that is a dumb name. Just make the section about order cancllation and ask the question, what do you do when two conflicting things try to happen at the same time?
+* Change from previous flow starts here: at this point we factor out a "write-once variable" abstraction and show how both solutions can be rewritten around it. Start by pointing out we multithreaded and distributed two different problems the same way, so maybe there is a way to extract this way of multithreading and distributing. Suggest the write-once variable abstraction as the way to.
+* Point out so far everything has seemed quite achievable. This is because we are missing the fault tolerance aspect
+* Now thanks to this refactor step we have only one algorithm to make fault-tolerant, which is the write once variable. Intro that making a write-once variable fault tolerant is called the consensus problem, and explain how "agreement" relates to write-once semantics since that's really not clear at all.
+* Properties of a consensus algorithm from analysis of our example problems, how they rely on consensus.
+* 
+
+---
+
+
+
+
+
+
+
+
 
 This algorithm does not require nodes to send or receive any network messages to decide which node gets to be the one to call `thingy()`; instead, we give each node the same node list, and run the same determinstic algorithm over that list, which causes each node to independently come to the same conclusion as to which node should be the `thingy()` caller. 
 
 With this, we can now solve the exactly-once problem for distributed systems, even ones which use multithreading:
 
 ````java
-boolean iAmTheLeader = bullyAlgorithm(nodeList);
-if (iAmTheLeader) {
-  synchronized (thingyLock) {
-    if (!thingyAlreadyCalled) {
-      thingy();
-      thingyAlreadyCalled = true;
-    }
-  }
-}
+
 ````
 
 The code has gotten even more complex, and provisioning that node list is a little bit of an operational burden, but overall this seems pretty tractable! Let's move on to another related problem, which I'll call the **happened-or-not?** problem.

@@ -5,6 +5,18 @@ author: Dave
 draft: true
 ---
 
+TODO a couple things to check / correct here
+
+* Paxos was first submitted in '89 but not published until '98
+* Viewtamped replication may predate it?
+* I'm not sure it's fair to say Raft is just a refactoring of Paxos actually
+  * Leader election is just majority voting with timeout randomization to avoid split votes, that's like Paxos
+  * What about recovery of replicated log?
+  * Wikipedia's explanation sounds like you can lose quorum-committed entries if the new leader happened to never get that entry, which is clearly wrong / the explanation seems to be incomplete. Will have to check the paper
+  * Figure 7 looks related
+
+---
+
 Distributed consensus algorithms are a critical piece of modern computing infrastructure, but few people really understand how they work. When the first consensus algorithm, *Paxos*, was introduced to the world, it was met with vague confusion: people in the first presentation suspected they were being pulled into some kind of elaborate joke. (It probably did not help that Dr. Lamport, inventor and presentor, gave the talk dressed up as Indiana Jones.) For the next 25 years, Paxos remained the only viable algorithm for distributed consensus, and during that time it gained such notoriety for being impossible to understand that when a second viable consensus algorithm, *Raft*, finally came along, the paper was called *In Search of an Understandable Consensus Algorithm*. 
 
 Here's the thing about Raft, though: at its core, it's pretty similar to Paxos. It is better factored and much easier to describe, but the fundamental way it goes about solving the consensus problem is the same as Paxos. Dr. Lamport, who invented Paxos, once wrote that Paxos is "among the simplest and most obvious of distributed algorithms," and that it "follows unavoidably from the properties we want it to satisfy." The fundamental similarity between Raft and Paxos seems to support this. But if Paxos is so simple and falls directly out of the problem definition, why is it so hard to explain? Why do direct explanations and metaphors like the 'part-time parliament' alike fail to make the algorithm seem intuitive?
@@ -266,9 +278,7 @@ class WriteOnce<T> {
 }
 ```
 
-To make it distributed, 
-
-
+To make it distributed, TODO do I really want to try to show this? urgh, the future aspect makes it all boilerplatey.
 
 ## A Curveball: Fault Tolerance
 
@@ -280,8 +290,6 @@ To make it distributed,
 
 TODO continue refactoring: 
 
-* Rename happened-or-not, that is a dumb name. Just make the section about order cancllation and ask the question, what do you do when two conflicting things try to happen at the same time?
-* Change from previous flow starts here: at this point we factor out a "write-once variable" abstraction and show how both solutions can be rewritten around it. Start by pointing out we multithreaded and distributed two different problems the same way, so maybe there is a way to extract this way of multithreading and distributing. Suggest the write-once variable abstraction as the way to.
 * Point out so far everything has seemed quite achievable. This is because we are missing the fault tolerance aspect
 * Now thanks to this refactor step we have only one algorithm to make fault-tolerant, which is the write once variable. Intro that making a write-once variable fault tolerant is called the consensus problem, and explain how "agreement" relates to write-once semantics since that's really not clear at all.
 * Properties of a consensus algorithm from analysis of our example problems, how they rely on consensus.

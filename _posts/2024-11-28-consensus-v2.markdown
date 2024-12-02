@@ -19,6 +19,10 @@ One of the fun (or maybe "fun") parts of programming distributed systems is that
 
 ## Example: Picking a Random User
 
+TODO I think this is going to fall apart as soon as I try to change this to consensus, because we want to do one-shot consensus initially, and 
+
+---
+
 Llet's say we're writing code for a message board website, and we want to add a 'user of the day' function where we spotlight one particular user at random each day. How do write code to pick a user once, and only once each day?
 
 In normal code, this is pretty easy to do: just write code that picks a user:
@@ -51,11 +55,11 @@ User getUserOfTheDay() {
 
 Let's ramp up the difficulty. What if we have distributed system?
 
-In a way, a distributed system is lot like a multithreaded system, just with the different threads running on different computers. For us as programmers, what this changes in practice is how threads communicate: on a single machine, threads can just share variables, but once we have different threads on different machines we have to use the network. Our multithreaded solution above relies on sharing variables, so to adapt it to a distributed environment, we will need to use the network instead.
+In a way, a distributed system is lot like a multithreaded system, just with the different threads running on different computers. For us as programmers, what this changes in practice is how threads communicate: on a single machine threads can just share variables, but once we have different threads on different machines we have to use the network. Our multithreaded solution relies on sharing variables (while holding a lock), so to adapt it to a distributed environment, we will need to use the network instead. But otherwise it doesn't need to change all that much.
 
-Here's a simple way to do that: select one node to be responsible for the user of the day; we'll call that node the **coordinator**. The coordinator is the only node that stores the current user of the day, and is solely responsible for selecting new users of the day; all other nodes contact the coordinator when they need to know today's user of the day, or when they want to try and update it.
+Here's a simple approach: we'll select one node to be responsible for the user of the day. Let's call that node the **coordinator**. The coordinator is the only node that stores the current user of the day, and is solely responsible for selecting new users each day; all other nodes contact the coordinator when they need to know today's user of the day.
 
-We have a bootstrapping problem here: how do our nodes all figure out who the coordinator is? Here's an idea: for most distributed systems running in data centers or in the cloud, we know ahead of time the full set of nodes that are going to participate in the distributed system. If we provision each node with that node list, we could have all nodes independently run the same deterministic algorithm on that list to pick the coordinator. As long as all nodes have the same node list and run the same deterministic algorithm, they'll all end up picking the same coordinator &mdash; without ever sending a single network message!
+It's a good idea, but we have a bootstrapping problem: how do all our nodes figure out who the coordinator is? Here's an idea: for most distributed systems running in data centers or in the cloud, we know ahead of time the full set of nodes that are going to participate in the distributed system. If we provision each node with that node list, we could have all nodes independently run the same deterministic algorithm on that list to pick the coordinator. As long as all nodes have the same node list and run the same deterministic algorithm, they'll all end up picking the same coordinator &mdash; without ever sending a single network message!
 
 A simple algorithm we could run on the node list to select a coordinator is the so-called *bully algorithm*, which works on the principle, "the biggest guy wins." We pick some attribute on which to sort the node list, and then choose the node that is largest or smallest in the resulting sort order:
 
@@ -338,5 +342,10 @@ Part 4 is Paxos
   * Voting progresses in rounds, potentially infinitely many rounds
   * In each round, the vote is one-sided: either we choose this specific candidate, or we remain undecided
 
+Part 5 is about turning this into a write-many variable / state machine replication. We don't have to delve into the details, we basically just say
 
+1. Replicate a log where each entry is individually a write-once consensus variable
+2. Replaying the log deterministically rebuilds the state of any data structure
+3. Paxos includes further optimizations for this situation (multi-paxos)
+4. The way it does this is somewhat complex, and somewhat better factored in Raft
 

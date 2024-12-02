@@ -15,13 +15,11 @@ I think the answer is that Paxos seems straightfoward to people who already know
 
 Just about every distributed system has a consensus algorithm running it in somewhere; even if your code doesn't do it, the dadtabases you're using probably do, and the cloud services you deploy your code on *definitely* do. But what makes consensus so fundamental? Why does it pop up everywhere?
 
-One of the fun (or maybe "fun") parts of programming distributed systems is that trivial things you normally do in normal code turn out to be really hard, or sometimes even impossible in distributed code. Consensus helps take those problems and turn them back into something tractable. To see what I mean, let's try a couple of examples:
+One of the fun (or maybe "fun") parts of programming distributed systems is that trivial things you normally do in normal code turn out to be really hard, or maybe even impossible in distributed code. Consensus helps turn problems like that back into something tractable. To see what I mean, let's try a couple of examples:
 
 ## Example: Picking a Random User
 
-TODO: small note: it might be pedagogically easier to justify a write-once variable if we make user of the day a map from Date to user ID or something, i.e. the single threaded code is like `userOfTheDay.set(Date.today(), Users.randomUser())`. Bonus: this sets up for the "log of write-once variables" approach used for state machine replication
-
-TODO hm, should we change the distributed solution for this one to be to RPC to a coordinator, even though we don't need to necessarily? That makes it clearer what needs to be factored out later, but it results in this being less simple than it could be.
+TODO whoopsie this is a dumb example now that I've changed it, only one server sets the user of the day but nobody else can even get it LOL. We'll have to make this an RPC solution too.
 
 How do write code to make something happen one time? As a (somehat contrived) example, let's say we're writing code for a message board website, and we want to add a 'user of the day' function where we spotlight one particular user at random. How do write code to pick a user once, and only once?
 
@@ -137,7 +135,35 @@ boolean tryShip() {
 }
 ```
 
-How 
+How about turning this into a distributed solution? This time the bully algorithm isn't enough, because the algorithm relies on state (the current `OrderState`) 
+
+
+
+
+
+We can also once again distribute the algorithm by using a bully algorithm to elect a coordinator. However, we need to send network messages: `tryShip()` and `tryCancel()` will both be RPCs to the leader node selected by the bully algorithm. We can actually use the exact implementation above as the server side of the RPC, and implement the client side by just forwarding requests to the server like this:
+
+```java
+boolean tryCancel(Collection<int> nodeIds) {
+  int leaderId = bullyAlgorithm(nodeIds);
+  return rpc(leaderId, "tryCancel");
+}
+
+boolean tryShip(Collection<int> nodeIds) {
+  int leaderId = bullyAlgorithm(nodeIds);
+  return rpc(leaderId, "tryShip");
+}
+```
+
+At first glance, the exactly-once and happened-or-not problems don't seem all that related: their single-threaded solutions are completely different. However, it's interesting that we could extend the respective single-threaded solutions to multithreded and distributed solutions using the same basic techniques: in both cases, we could multithread by putting the single-threaded solution behind a lock, and we could distribute by electing single coordinator node using a bully algorithm. That must mean these two problems have *something* in common, even if the solutions are totally different. We'll come back to that a little later. For now, I want to talk about something missing from our distributed solutions for these two problems: they're not fault tolerant.
+
+
+
+## A Refactoring: Write-Once Variables
+
+
+
+## The Hard Thing: Fault Tolerance
 
 
 
@@ -156,27 +182,7 @@ TODO continue refactoring:
 
 ---
 
-Once again, we can extend this into a multithreaded solution by adding a lock:
 
-```java
-
-```
-
-We can also once again distribute the algorithm by using a bully algorithm to elect a coordinator. However, we need to send network messages: `tryShip()` and `tryCancel()` will both be RPCs to the leader node selected by the bully algorithm. We can actually use the exact implementation above as the server side of the RPC, and implement the client side by just forwarding requests to the server like this:
-
-```java
-boolean tryCancel(Collection<int> nodeIds) {
-  int leaderId = bullyAlgorithm(nodeIds);
-  return rpc(leaderId, "tryCancel");
-}
-
-boolean tryShip(Collection<int> nodeIds) {
-  int leaderId = bullyAlgorithm(nodeIds);
-  return rpc(leaderId, "tryShip");
-}
-```
-
-At first glance, the exactly-once and happened-or-not problems don't seem all that related: their single-threaded solutions are completely different. However, it's interesting that we could extend the respective single-threaded solutions to multithreded and distributed solutions using the same basic techniques: in both cases, we could multithread by putting the single-threaded solution behind a lock, and we could distribute by electing single coordinator node using a bully algorithm. That must mean these two problems have *something* in common, even if the solutions are totally different. We'll come back to that a little later. For now, I want to talk about something missing from our distributed solutions for these two problems: they're not fault tolerant.
 
 ## Fault Tolerance
 

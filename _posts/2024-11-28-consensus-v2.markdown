@@ -13,7 +13,7 @@ Leslie Lamport, who invented Paxos, [once described the synod algorithm](https:/
 
 # Part 1: Consensus
 
-Just about every distributed system has a consensus algorithm running it in somewhere; even if your code doesn't do it, the dadtabases you're using probably do, and the cloud services you deploy your code on *definitely* do. But what makes consensus so fundamental? Why does it pop up everywhere?
+Just about every distributed system has a consensus algorithm running it in somewhere; even if your code doesn't do it, the dadtabases you're using probably do, and the cloud services you deploy your code on definitely do. But what makes consensus so fundamental? Why does it pop up everywhere?
 
 One of the fun (or maybe "fun") parts of programming distributed systems is that trivial things you normally do in normal code turn out to be really hard, or maybe even impossible in distributed code. Consensus helps turn problems like that back into something tractable. To see what I mean, let's try a couple of examples:
 

@@ -98,7 +98,7 @@ if (bullyAlgorithm(App.nodeIds) == App.myNodeId()) {
 
 Phew! That took a lot of thinking, but fortuitiously we ended up with a small enough snippet of code to fit into a blog post. Problem tackled; let's try another.
 
-## Another Example: Order Cancellation
+## Example: Order Cancellation
 
 In networked server code with many users, it's not uncommon for two users to try to do incompatible things at the same time. How do we make sure we accept one action and reject the other? For example, let's say we have an online ordering system where an order, once placed, can be cancelled up until it is shipped from the warehouse. What if someone in the warehouse tries to mark the order as shipped (no longer cancellable) at exactly the same time the customer tries to cancel the order?
 
@@ -207,9 +207,66 @@ if (bullyAlgorithm(App.nodeIds) == App.myNodeId()) {
 }
 ```
 
-It's interesting that this problem could be multithreaded and distributed the same way as the user of the day example, even though the single-threaded implementations have nothing in common. Maybe there's some way we could factor out the part related to the lock and serving RPCs.
+It's interesting that this problem could be multithreaded and distributed the same way as the user of the day example, even though the single-threaded implementations have nothing in common. Maybe there's some way we could factor out the multithreading and distributed systems parts of our solutions to our two example problems. Here's how:
 
 ## A Refactoring: Write-Once Variables
+
+Say we have a primitive I'll call a **write-once variable**. The interface looks something like this::
+
+```java
+interface WriteOnce<T> {
+  /** Try to initialize to the given value, no-op if already initialized */
+  public void tryInitialize(T value);
+  
+  /** Reads the value once the variable haa been initialized */
+  public Future<T> get();
+}
+```
+
+This thing can be implemented using the exact same pattern we used for our two example problems. For single-thread code, we just implement the interface:
+
+```java
+class WriteOnce<T> {
+  private CompletableFuture<T> value = new CompletableFuture<>();
+  private boolean initialized = false;
+  
+  public void tryInitialize(T value) {
+    if (!initialized) {
+      value.complete(value);
+      initialized = true;
+    }
+  }
+  
+  public Future<T> get() {
+    return value;
+  }
+}
+```
+
+To multithread, we just add a lock:
+
+```java
+class WriteOnce<T> {
+  private Object lock = new Object();
+  private CompletableFuture<T> value = new CompletableFuture<>();
+  private boolean initialized = false;
+  
+  public void tryInitialize(T value) {
+    synchronized (lock) {
+      if (!initialized) {
+        value.complete(value);
+        initialized = true;
+      }
+    }
+  }
+  
+  public Future<T> get() {
+    return value;
+  }
+}
+```
+
+To make it distributed, 
 
 
 

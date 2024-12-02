@@ -17,7 +17,7 @@ TODO a couple things to check / correct here
 
 ---
 
-Distributed consensus algorithms are a critical piece of modern computing infrastructure, but few people really understand how they work. When the first consensus algorithm, *Paxos*, was introduced to the world, it was met with vague confusion: people in the first presentation suspected they were being pulled into some kind of elaborate joke. (It probably did not help that Dr. Lamport, inventor and presentor, gave the talk dressed up as Indiana Jones.) For the next 25 years, Paxos remained the only viable algorithm for distributed consensus, and during that time it gained such notoriety for being impossible to understand that when a second viable consensus algorithm, *Raft*, finally came along, the paper was called *In Search of an Understandable Consensus Algorithm*. 
+Distributed consensus algorithms are a critical piece of modern computing infrastructure, but few people really understand how they work. When the first consensus algorithm, *Paxos*, was introduced to the world in 1989, it was met with [indifferent confusion](https://www.microsoft.com/en-us/research/publication/part-time-parliament/): it took another 9 years before being picked up for publication by any major journall in 1998. As the world moved online and distributed systems became the norm, Paxos gained fame as the world's only real viable solution to the distributed consensus problem &mdash; and notoriety for being impossible for mortals to understand. When a second viable consensus algorithm, *Raft*, finally came along 20 years later, it was published in a paper called *In Search of an Understandable Consensus Algorithm*.
 
 Here's the thing about Raft, though: at its core, it's pretty similar to Paxos. It is better factored and much easier to describe, but the fundamental way it goes about solving the consensus problem is the same as Paxos. Dr. Lamport, who invented Paxos, once wrote that Paxos is "among the simplest and most obvious of distributed algorithms," and that it "follows unavoidably from the properties we want it to satisfy." The fundamental similarity between Raft and Paxos seems to support this. But if Paxos is so simple and falls directly out of the problem definition, why is it so hard to explain? Why do direct explanations and metaphors like the 'part-time parliament' alike fail to make the algorithm seem intuitive?
 
@@ -31,11 +31,7 @@ One of the fun (or maybe "fun") parts of programming distributed systems is that
 
 ## Example: Picking a Random User
 
-TODO I think this is going to fall apart as soon as I try to change this to consensus, because we want to do one-shot consensus initially, and 
-
----
-
-Llet's say we're writing code for a message board website, and we want to add a 'user of the day' function where we spotlight one particular user at random each day. How do write code to pick a user once, and only once each day?
+Let's say we're writing code for a message board website, and we want to add a 'user of the day' function where we spotlight one particular user at random each day. How do write code to pick a user once, and only once each day?
 
 In normal code, this is pretty easy to do: just write code that picks a user:
 
@@ -408,10 +404,17 @@ Part 4 is Paxos
   * Voting progresses in rounds, potentially infinitely many rounds
   * In each round, the vote is one-sided: either we choose this specific candidate, or we remain undecided
 
-Part 5 is about turning this into a write-many variable / state machine replication. We don't have to delve into the details, we basically just say
+Part 5 is about moving from the single-shot core Synod algorithm to a general state machine replication primitive (i.e. write-once variable to mutable variable semantics). 
 
-1. Replicate a log where each entry is individually a write-once consensus variable
-2. Replaying the log deterministically rebuilds the state of any data structure
-3. Paxos includes further optimizations for this situation (multi-paxos)
-4. The way it does this is somewhat complex, and somewhat better factored in Raft
-
+* In broad strokes
+  * Replicate a log where each entry is individually a write-once consensus variable
+  * Replaying the log deterministically rebuilds the state of any data structure
+  * Paxos includes further optimizations for this situation (multi-paxos)
+* We should boost Raft here
+  * The Paxos papers provide a broad strokes outline of how to do SMR but don't solve it completely
+  * The exercises left ot the reader are actually pretty hard
+  * Raft is a state machine algorithm, without the Paxos single-shot core, and is more explainable
+* So I will not delve into multi-paxos, but here is my recommendation
+  * If you want a state machine replication, probably starting with Raft is the best way to do it today
+  * However, the synod algorithm is worth understanding because it's small and fits nicely into other systems
+    * As a way of replicating writes to a database, for example

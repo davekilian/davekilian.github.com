@@ -69,6 +69,10 @@ This solution has a very nice property: we managed to distribute our algorithm w
 
 ## Another Example: Order Cancellation
 
+Let's try a second problem. In networked server code with many users, it's not uncommon for two users to try to do incompatible things at the same time. How do we make sure we accept one action and reject the other? For example, let's say we have an online ordering system where an order, once placed, can be cancelled up until it is shipped from the warehouse. What if someone in the warehouse tries to mark the order as shipped (no longer cancellable) at exactly the same time the customer tries to cancel the order?
+
+
+
 
 
 
@@ -85,26 +89,6 @@ TODO continue refactoring:
 * 
 
 ---
-
-
-
-
-
-
-
-
-
-This algorithm does not require nodes to send or receive any network messages to decide which node gets to be the one to call `thingy()`; instead, we give each node the same node list, and run the same determinstic algorithm over that list, which causes each node to independently come to the same conclusion as to which node should be the `thingy()` caller. 
-
-With this, we can now solve the exactly-once problem for distributed systems, even ones which use multithreading:
-
-````java
-
-````
-
-The code has gotten even more complex, and provisioning that node list is a little bit of an operational burden, but overall this seems pretty tractable! Let's move on to another related problem, which I'll call the **happened-or-not?** problem.
-
-## Another Example: Happened-or-Not?
 
 A situation that comes up a lot in online services is having two users try to do two incompatible things at the same time; since the actions are in conflict with one another, your code must resolve the conflict by accepting one and rejecting the other.
 

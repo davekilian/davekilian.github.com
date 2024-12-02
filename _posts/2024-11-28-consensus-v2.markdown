@@ -17,6 +17,8 @@ One of the fun (or maybe "fun") parts of programming distributed systems is that
 
 ## Example: Picking a Random User
 
+TODO: small note: it might be pedagogically easier to justify a write-once variable if we make user of the day a map from Date to user ID or something, i.e. the single threaded code is like `userOfTheDay.set(Date.today(), Users.randomUser())`. Bonus: this sets up for the "log of write-once variables" approach used for state machine replication
+
 How do write code to make something happen one time? As a (somehat contrived) example, let's say we're writing code for a message board website, and we want to add a 'user of the day' function where we spotlight one particular user at random. How do write code to pick a user once, and only once?
 
 In normal code this couldn't be simpler: just write the code that picks a user:

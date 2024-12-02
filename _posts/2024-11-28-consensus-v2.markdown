@@ -19,34 +19,79 @@ One of the fun (or maybe "fun") parts of programming distributed systems is that
 
 ## Example: Picking a Random User
 
-TODO whoopsie this is a dumb example now that I've changed it, only one server sets the user of the day but nobody else can even get it LOL. We'll have to make this an RPC solution too.
+Llet's say we're writing code for a message board website, and we want to add a 'user of the day' function where we spotlight one particular user at random each day. How do write code to pick a user once, and only once each day?
 
-How do write code to make something happen one time? As a (somehat contrived) example, let's say we're writing code for a message board website, and we want to add a 'user of the day' function where we spotlight one particular user at random. How do write code to pick a user once, and only once?
-
-In normal code this couldn't be simpler: just write the code that picks a user:
+In normal code, this is pretty easy to do: just write code that picks a user:
 
 ```java
-App.userOfTheDay = users.get(randomUserId());
+User getUserOfTheDay() {
+  if (!this.lastUpdated.equals(Date.today())) {
+    this.userOfTheDay = User.randomUser();
+    this.lastUpdated = Date.today();
+  }
+  
+  return this.userOfTheDay;
+}
 ```
 
-In regular code, making things happen exactly one time is the default: we have to use conditionals like the `if` statement to make things potentially happen less than once, and loops to make things happen more than once, but if we don't do anything else then code will execute once. 
-
-Let's say instead, for some reason, we have multithreaded code where multiple threads can potentially pick a random user of the day, but we still want only one thread to actually pick a user. We could do this by putting the single-threaded code behind a lock:
+What if we need to call this method from multithreaded code? Easy enough, just put it all behind a lock:
 
 ```java
-synchronized (lock) {
-  if (!userOfTheDayPicked) {
-    App.userOfTheDay = users.get(randomUserId());
-    userOfTheDayPicked = true;
+User getUserOfTheDay() {
+  synchronized (this.lock) {
+    if (!this.lastUpdated.equals(Date.today())) {
+      this.userOfTheDay = User.randomUser();
+      this.lastUpdated = Date.today();
+    }
+
+    return this.userOfTheDay;
   }
 }
 ```
 
 Let's ramp up the difficulty. What if we have distributed system?
 
-In a way, a distributed system is lot like a multithreaded system; it's just that the different threads are on different computers, and can only communicate with one another by sending network messages. If we had some kind of 'distributed lock' abstaction, maybe we could use the multithreaded solution above verbatim, but let's assume we don't have any such thing. What can we do instead?
+In a way, a distributed system is lot like a multithreaded system, just with the different threads running on different computers. For us as programmers, what this changes in practice is how threads communicate: on a single machine, threads can just share variables, but once we have different threads on different machines we have to use the network. Our multithreaded solution above relies on sharing variables, so to adapt it to a distributed environment, we will need to use the network instead.
 
-Here's one idea: for most distributed systems running in data centers or in the cloud, we know ahead of time the full set of nodes that are going to participate in the distributed system. If we provision each node with that node list, we could have all nodes independently run the same deterministic algorithm over that list to pick which node will be responsible for choosing the user of the day. The classic algorithm for picking such a node is the *bully algorithm*, which works on the principle "the biggest guy wins:" pick some attribute on which to sort the node list, ad then choose the node that is largest or smallest in the resulting sort order:
+Here's a simple way to do that: select one node to be responsible for the user of the day; we'll call that node the **coordinator**. The coordinator is the only node that stores the current user of the day, and is solely responsible for selecting new users of the day; all other nodes contact the coordinator when they need to know today's user of the day, or when they want to try and update it.
+
+We have a bootstrapping problem here: how do our nodes all figure out who the coordinator is? Here's an idea: for most distributed systems running in data centers or in the cloud, we know ahead of time the full set of nodes that are going to participate in the distributed system. If we provision each node with that node list, we could have all nodes independently run the same deterministic algorithm on that list to pick the coordinator. As long as all nodes have the same node list and run the same deterministic algorithm, they'll all end up picking the same coordinator &mdash; without ever sending a single network message!
+
+A simple algorithm we could run on the node list to select a coordinator is the so-called *bully algorithm*, which works on the principle, "the biggest guy wins." We pick some attribute on which to sort the node list, and then choose the node that is largest or smallest in the resulting sort order:
+
+````java
+int bullyAlgorithm(Collection<int> nodeIds) {
+  return Collections.max(nodeIds);
+  // ... Collections.min() would work too!
+}
+````
+
+Once the coordinator is known, all nodes in the system can do a remote method call to the coordinator node to ask it for the current user of the day, or to ask it to update the current user of the day:
+
+```java
+void selectUserOfTheDay() {
+  int coordinatorNodeId = bullyAlgorithm(App.nodeIds);
+  remoteCall(coordinatorNodeId, "selectUserOfTheDay");
+}
+```
+
+On startup, if a node runs the bully algorithm and realizes it is the coordinator, it starts the server side of this remote method call interface.  It implements the methods by using the same 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Here's one idea: for most distributed systems running in data centers or in the cloud, we know ahead of time the full set of nodes that are going to participate in the distributed system. If we provision each node with that node list, we could have all nodes independently run the same deterministic algorithm over that list to pick which node will be responsible for choosing the user of the day. The classic algorithm for picking such a node is the *bully algorithm*, which works on the principle "the biggest guy wins:" 
 
 ```java
 int bullyAlgorithm(Collection<int> nodeIds) {

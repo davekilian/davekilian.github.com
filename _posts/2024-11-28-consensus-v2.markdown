@@ -19,6 +19,8 @@ One of the fun (or maybe "fun") parts of programming distributed systems is that
 
 TODO: small note: it might be pedagogically easier to justify a write-once variable if we make user of the day a map from Date to user ID or something, i.e. the single threaded code is like `userOfTheDay.set(Date.today(), Users.randomUser())`. Bonus: this sets up for the "log of write-once variables" approach used for state machine replication
 
+TODO hm, should we change the distributed solution for this one to be to RPC to a coordinator, even though we don't need to necessarily? That makes it clearer what needs to be factored out later, but it results in this being less simple than it could be.
+
 How do write code to make something happen one time? As a (somehat contrived) example, let's say we're writing code for a message board website, and we want to add a 'user of the day' function where we spotlight one particular user at random. How do write code to pick a user once, and only once?
 
 In normal code this couldn't be simpler: just write the code that picks a user:
@@ -73,30 +75,7 @@ This solution has a very nice property: we managed to distribute our algorithm w
 
 Let's try a second problem. In networked server code with many users, it's not uncommon for two users to try to do incompatible things at the same time. How do we make sure we accept one action and reject the other? For example, let's say we have an online ordering system where an order, once placed, can be cancelled up until it is shipped from the warehouse. What if someone in the warehouse tries to mark the order as shipped (no longer cancellable) at exactly the same time the customer tries to cancel the order?
 
-
-
-
-
-
-
----
-
-TODO continue refactoring: 
-
-* Rename happened-or-not, that is a dumb name. Just make the section about order cancllation and ask the question, what do you do when two conflicting things try to happen at the same time?
-* Change from previous flow starts here: at this point we factor out a "write-once variable" abstraction and show how both solutions can be rewritten around it. Start by pointing out we multithreaded and distributed two different problems the same way, so maybe there is a way to extract this way of multithreading and distributing. Suggest the write-once variable abstraction as the way to.
-* Point out so far everything has seemed quite achievable. This is because we are missing the fault tolerance aspect
-* Now thanks to this refactor step we have only one algorithm to make fault-tolerant, which is the write once variable. Intro that making a write-once variable fault tolerant is called the consensus problem, and explain how "agreement" relates to write-once semantics since that's really not clear at all.
-* Properties of a consensus algorithm from analysis of our example problems, how they rely on consensus.
-* 
-
----
-
-A situation that comes up a lot in online services is having two users try to do two incompatible things at the same time; since the actions are in conflict with one another, your code must resolve the conflict by accepting one and rejecting the other.
-
-For example, maybe you have an online ordering system where an order, once placed, can be cancelled up to a certain point, but then becomes uncancelable later on when you ship the item. What do you do if someone tries to cancel their order at the same time the warehouse is marking the order uncancelable so they can ship the item? How do we know if the cancellation happened or not?
-
-Once again this is simple enough to solve in normal single-threaded code: we just need a variable with three states, "happened," "did not `happen`," and "still undecided." For order cancellation, those states might be called "cancelled," "shipped" and "pending" respectively:
+Once again this is simple enough to solve in normal single-threaded code: we just need a variable with three states: order pending (still shippable and cancellable), cancelled (no longer shippable), and shipped (no longer cancellable):
 
 ```java
 enum OrderState {
@@ -130,7 +109,7 @@ boolean tryShip() {
 }
 ```
 
-Once again, we can extend this into a multithreaded solution by adding a lock:
+Looks good to me. How about we multithread this? Once again, putting the key pieces behind locks seems to work:
 
 ```java
 boolean tryCancel() {
@@ -154,6 +133,31 @@ boolean tryShip() {
     }
   }
 }
+```
+
+How 
+
+
+
+
+
+---
+
+TODO continue refactoring: 
+
+* Rename happened-or-not, that is a dumb name. Just make the section about order cancllation and ask the question, what do you do when two conflicting things try to happen at the same time?
+* Change from previous flow starts here: at this point we factor out a "write-once variable" abstraction and show how both solutions can be rewritten around it. Start by pointing out we multithreaded and distributed two different problems the same way, so maybe there is a way to extract this way of multithreading and distributing. Suggest the write-once variable abstraction as the way to.
+* Point out so far everything has seemed quite achievable. This is because we are missing the fault tolerance aspect
+* Now thanks to this refactor step we have only one algorithm to make fault-tolerant, which is the write once variable. Intro that making a write-once variable fault tolerant is called the consensus problem, and explain how "agreement" relates to write-once semantics since that's really not clear at all.
+* Properties of a consensus algorithm from analysis of our example problems, how they rely on consensus.
+* 
+
+---
+
+Once again, we can extend this into a multithreaded solution by adding a lock:
+
+```java
+
 ```
 
 We can also once again distribute the algorithm by using a bully algorithm to elect a coordinator. However, we need to send network messages: `tryShip()` and `tryCancel()` will both be RPCs to the leader node selected by the bully algorithm. We can actually use the exact implementation above as the server side of the RPC, and implement the client side by just forwarding requests to the server like this:

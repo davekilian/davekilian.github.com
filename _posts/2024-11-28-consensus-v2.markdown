@@ -59,7 +59,7 @@ In a way, a distributed system is lot like a multithreaded system, just with the
 
 Here's a simple approach: we'll select one node to be responsible for the user of the day. Let's call that node the **coordinator**. The coordinator is the only node that stores the current user of the day, and is solely responsible for selecting new users each day; all other nodes contact the coordinator when they need to know today's user of the day.
 
-It's a good idea, but we have a bootstrapping problem: how do all our nodes figure out who the coordinator is? Here's an idea: for most distributed systems running in data centers or in the cloud, we know ahead of time the full set of nodes that are going to participate in the distributed system. If we provision each node with that node list, we could have all nodes independently run the same deterministic algorithm on that list to pick the coordinator. As long as all nodes have the same node list and run the same deterministic algorithm, they'll all end up picking the same coordinator &mdash; without ever sending a single network message!
+It's a good idea, but we have a bootstrapping problem: how do all our nodes figure out who the coordinator is? Well, for most distributed systems running in data centers or the cloud, we know ahead of time the full set of nodes that are going to participate in the distributed system. If we provision each node with that node list, we could have all nodes independently run the same deterministic algorithm on that list to pick the coordinator. As long as all nodes have the same node list and run the same deterministic algorithm, they'll all end up picking the same coordinator &mdash; without ever sending a single network message!
 
 A simple algorithm we could run on the node list to select a coordinator is the so-called *bully algorithm*, which works on the principle, "the biggest guy wins." We pick some attribute on which to sort the node list, and then choose the node that is largest or smallest in the resulting sort order:
 
@@ -73,56 +73,34 @@ int bullyAlgorithm(Collection<int> nodeIds) {
 Once the coordinator is known, all nodes in the system can do a remote method call to the coordinator node to ask it for the current user of the day, or to ask it to update the current user of the day:
 
 ```java
-void selectUserOfTheDay() {
+void getUserOfTheDay() {
   int coordinatorNodeId = bullyAlgorithm(App.nodeIds);
-  remoteCall(coordinatorNodeId, "selectUserOfTheDay");
+  remoteCall(coordinatorNodeId, "getUserOfTheDay");
 }
 ```
 
-On startup, if a node runs the bully algorithm and realizes it is the coordinator, it starts the server side of this remote method call interface.  It implements the methods by using the same 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-Here's one idea: for most distributed systems running in data centers or in the cloud, we know ahead of time the full set of nodes that are going to participate in the distributed system. If we provision each node with that node list, we could have all nodes independently run the same deterministic algorithm over that list to pick which node will be responsible for choosing the user of the day. The classic algorithm for picking such a node is the *bully algorithm*, which works on the principle "the biggest guy wins:" 
+On startup, if a node runs the bully algorithm and realizes it is the coordinator, it starts the server side of this remote method call interface, implementing it using the same implementaiton we've already seen a few times:
 
 ```java
-int bullyAlgorithm(Collection<int> nodeIds) {
-  return Collections.max(nodeIds);
-  // ... Collections.min() would work too!
-}
-```
+if (bullyAlgorithm(App.nodeIds) == App.myNodeId()) {
+  registerRemoteCall("getUserOfTheDay", () => {
+    synchronized (this.lock) {
+      if (!this.lastUpdated.equals(Date.today())) {
+        this.userOfTheDay = User.randomUser();
+        this.lastUpdated = Date.today();
+      }
 
-Each node independently runs this algorithm to decide whether it will generate the user of the day:
-
-```java
-boolean iAmTheLeader = bullyAlgorithm(nodeList);
-if (iAmTheLeader) {
-  synchronized (thingyLock) {
-    if (!userOfTheDayPicked) {
-      App.userOfTheDay = users.get(randomUserId());
-      userOfTheDayPicked = true;
+      return this.userOfTheDay;
     }
-  }
+  });
 }
 ```
 
-This solution has a very nice property: we managed to distribute our algorithm without having to send or receive a single network message. The resulting code isn't too complex either!
+Phew! That took a lot of thinking, but fortuitiously we ended up with a small enough snippet of code to fit into a blog post. Problem tackled; let's try another.
 
 ## Another Example: Order Cancellation
 
-Let's try a second problem. In networked server code with many users, it's not uncommon for two users to try to do incompatible things at the same time. How do we make sure we accept one action and reject the other? For example, let's say we have an online ordering system where an order, once placed, can be cancelled up until it is shipped from the warehouse. What if someone in the warehouse tries to mark the order as shipped (no longer cancellable) at exactly the same time the customer tries to cancel the order?
+In networked server code with many users, it's not uncommon for two users to try to do incompatible things at the same time. How do we make sure we accept one action and reject the other? For example, let's say we have an online ordering system where an order, once placed, can be cancelled up until it is shipped from the warehouse. What if someone in the warehouse tries to mark the order as shipped (no longer cancellable) at exactly the same time the customer tries to cancel the order?
 
 Once again this is simple enough to solve in normal single-threaded code: we just need a variable with three states: order pending (still shippable and cancellable), cancelled (no longer shippable), and shipped (no longer cancellable):
 
@@ -184,35 +162,58 @@ boolean tryShip() {
 }
 ```
 
-How about turning this into a distributed solution? This time the bully algorithm isn't enough, because the algorithm relies on state (the current `OrderState`) 
-
-TODO FIXME: the below was written for back when this was called 'happened-or-not' but I abandoned that name. Also this used to introduce the idea of using RPCs but I have reformulated exactly-once in a way that needs RPCs anyways, so this should be old hat now.
-
-
-
-We can also once again distribute the algorithm by using a bully algorithm to elect a coordinator. However, we need to send network messages: `tryShip()` and `tryCancel()` will both be RPCs to the leader node selected by the bully algorithm. We can actually use the exact implementation above as the server side of the RPC, and implement the client side by just forwarding requests to the server like this:
+How about turning this into a distributed solution? We can do it the same way we did before: expose the implementation above as an RPC call from some coordinator node, and have all other nodes call into the coordinator when they need to deal with the order state. The client side might look like this:
 
 ```java
-boolean tryCancel(Collection<int> nodeIds) {
-  int leaderId = bullyAlgorithm(nodeIds);
-  return rpc(leaderId, "tryCancel");
+OrderState getOrderState() {
+  int coordinatorNodeId = bullyAlgorithm(App.nodeIds);
+  return remoteCall(coordinatorNodeId, "getOrderState");
 }
 
-boolean tryShip(Collection<int> nodeIds) {
-  int leaderId = bullyAlgorithm(nodeIds);
-  return rpc(leaderId, "tryShip");
+boolean tryCancel() {
+  int coordinatorNodeId = bullyAlgorithm(App.nodeIds);
+  remoteCall(coordinatorNodeId, "tryCancel");
+}
+
+boolean tryShip() {
+  int coordinatorNodeId = bullyAlgorithm(App.nodeIds);
+  remoteCall(coordinatorNodeId, "tryShip");
 }
 ```
 
-At first glance, the exactly-once and happened-or-not problems don't seem all that related: their single-threaded solutions are completely different. However, it's interesting that we could extend the respective single-threaded solutions to multithreded and distributed solutions using the same basic techniques: in both cases, we could multithread by putting the single-threaded solution behind a lock, and we could distribute by electing single coordinator node using a bully algorithm. That must mean these two problems have *something* in common, even if the solutions are totally different. We'll come back to that a little later. For now, I want to talk about something missing from our distributed solutions for these two problems: they're not fault tolerant.
+\And the server might look like this:
 
+```java
+if (bullyAlgorithm(App.nodeIds) == App.myNodeId()) {
+  registerRemoteCall("getOrderState", () => {
+    synchronized (orderStateLock) {
+      return orderState;
+    }
+  });
+  registerRemoteCall("tryCancel", () => {
+    synchronized (orderStateLock) {
+      if (orderState == OrderState.PENDING) {
+        orderState = OrderState.CANCELLED;
+      }
+    }
+  });
+  registerRemoteCall("tryShip", () => {
+    synchronized (orderStateLock) {
+      if (orderState == OrderState.PENDING) {
+        orderState = OrderState.SHIPPED;
+      }
+    }
+  });
+}
+```
 
+It's interesting that this problem could be multithreaded and distributed the same way as the user of the day example, even though the single-threaded implementations have nothing in common. Maybe there's some way we could factor out the part related to the lock and serving RPCs.
 
 ## A Refactoring: Write-Once Variables
 
 
 
-## The Hard Thing: Fault Tolerance
+## A Curveball: Fault Tolerance
 
 
 

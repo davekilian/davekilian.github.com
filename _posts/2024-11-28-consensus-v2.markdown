@@ -137,7 +137,7 @@ boolean tryShip() {
 
 How about turning this into a distributed solution? This time the bully algorithm isn't enough, because the algorithm relies on state (the current `OrderState`) 
 
-
+TODO FIXME: the below was written for back when this was called 'happened-or-not' but I abandoned that name. Also this used to introduce the idea of using RPCs but I have reformulated exactly-once in a way that needs RPCs anyways, so this should be old hat now.
 
 
 

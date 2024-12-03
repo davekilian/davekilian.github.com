@@ -553,19 +553,33 @@ The final value is the value which received a majorify of the system's votes. A 
 
 ## Split Votes
 
+Majority-rules voting (as a system, not just our algorithm) is vulnerable to a situation called a **split vote**, where no candidate receives a majority of the votes, even once all votes have been cast and counted. Our algorithm is prone to the same problem: it is possible for every node to cast its vote, and still not have a winner.
 
+For example, say we have a network with 25 nodes, and we are voting on one of three different colors: red, green or blue. If all three proposals (`tryInitialize` calls) for all three colors are made at around the same time, we could end up with the following tally:
 
-TODO explain the problem, a diagram might help, emphasize this is a deadlock
+| Candidate Value | Number of Votes | Winner? |
+| --------------- | --------------- | ------- |
+| Red             | 9               | No      |
+| Blue            | 5               | No      |
+| Green           | 11              | No      |
 
-TODO pose question of how to handle it. Consider mentioning timeout-based retry here, but point out timeouts are tricky because it's possible consensus was reached, restarting the algorithm at that point will lead to a change of mind and hence an agreement violation. Plus there's no guarantee of termination after N restarts anyways. 
+Here no candidate is the winner because it takes at least 13 votes to reach a majority, and no candidate received 13 votes. Since we do not have a winner, the `finalValue()` future has not resolved. However, since all votes have been cast, the tally will never change either. So we have not finished and also cannot progress. We're deadlocked!
 
-TODO better, simpler idea: a tiebreaking rule. 
+We'll have to find some kind of workaround. That's okay, this was our very first stab, it was likely we would run into some kind of stumbling block. But how we do deal with split votes?
+
+One thing we could do is add the notion of a "do-over" to our algorithm: if we get to the end of voting and determine it's a split vote, just start over and hold a new vote. We might have more luck and reach a majority the next time around. This is not a bad idea, but I want to avoid it if possible for a few reasons. First, having restarts in a consensus algorithm requires great care: if the algorithm does manage to reach consensus, then restarts and reaches consensus with a different answer, we end up violating the Agreement property. Plus, we're just kind of retrying and hoping for the best; there's no guarantee this will ever result in termiantion, and we can't even put a reasonable bound on how many times we will have to retry.
+
+A different approach that avoids both of these problems is to have a **tiebreaker**: just add a deterministic rule that chooses a winning value arbitrarily, and run it once all votes are in. Every node has the same tally of votes, so if we run a deterministic rule over that tally to pick a winner on every node, every node will pick the same winner.
 
 ## Tiebreaking
 
-TODO augment the implementaton to with a tiebreaker. Once all votes are in, pick the plurality. If there is a tie for plurality, run a bully algorithm to pick an item.
+TODO propose plurality as a tiebreaker, but then show there are vote result with multiple pluralities, that would necessitate a tiebreaker of tiebreakers, which could itself be a tiebreaker
 
-TODO now we win on agreement, validity, termination, but not fault tolerance, because we waited for all votes to be in.
+TODO another tiebreaker is basically the bully algorithm again. We require that the generic type `T` be comparable / sortable and then run the bully algorithm over all candidate items to 
+
+TODO to guarantee safety, we only wait until the end of voting before running the tiebreaker.
+
+TODO finally, code.
 
 ## Fault-Tolerant Tiebreaking 
 

@@ -15,13 +15,13 @@ Leslie Lamport, who invented Paxos, [once described the synod algorithm](https:/
 
 Just about every distributed system has a consensus algorithm running it in somewhere. Even if you have never written code to call into a consensus algorithm, the fancy distributed replicated database you're using probably depend on consensus internally, as do any cloud services you might be using. But what makes consensus so fundamental? Why do so many systems rely on one?
 
-One of the fun (or maybe "fun") parts of programming distributed systems is that some common tasks that are trivial in normal code turn out to be really hard in distributed code. Consensus helps turn problems like that back into something more tractable. To see what I mean, let's try a couple of examples:
+One of the fun (or maybe "fun") parts of programming distributed systems is that quite a few common tasks that are trivial in normal code turn out to be really hard in distributed code. Consensus helps turn problems like that back into something more tractable. To see what I mean, let's try a couple of examples:
 
 ## Example: Picking a Random User
 
 Let's say we're writing code for a message board website, and we want to add a 'user of the day' function where we spotlight one particular user at random each day. How do write code to pick a user once, and only once each day?
 
-In normal code, this is pretty easy to do: just write code that picks a user:
+In normal code, the solution is pretty simple, it might look like this:
 
 ```java
 User getUserOfTheDay() {
@@ -49,15 +49,15 @@ User getUserOfTheDay() {
 }
 ```
 
-Let's ramp up the difficulty. What if we have distributed system?
+What if we have distributed system? In a way, a distributed system is lot like a multithreaded system, just with the different threads running on different computers. So hopefully we should be able to reuse most of our multithreaded solution above.
 
-In a way, a distributed system is lot like a multithreaded system, just with the different threads running on different computers. For us as programmers, what this changes in practice is how threads communicate: on a single machine threads can just share variables, but once we have different threads on different machines we have to use the network. Our multithreaded solution relies on sharing variables (while holding a lock), so to adapt it to a distributed environment, we will need to use the network instead. But otherwise it doesn't need to change all that much.
+For us as programmers, what's new and different about distributed systems is how threads communicate: on a single machine, threads can just share variables, but once we have different threads on different machines we need to use the network. Our multithreaded solution relies on sharing variables, so we'll have to use the network instead now that we're distributed.
 
-Here's a simple approach: we'll select one node to be responsible for the user of the day. Let's call that node the **coordinator**. The coordinator is the only node that stores the current user of the day, and is solely responsible for selecting new users each day; all other nodes contact the coordinator when they need to know today's user of the day.
+Here's a simple approach: we can assign to one node the job of managing the user of the day. It'll decide who is the user of the day and remember that decision all day; then, any time any other node needs to know who is the current user of the day, it'll ask this one. We'll call this special node the **coordinator**.
 
-It's a good idea, but we have a bootstrapping problem: how do all our nodes figure out who the coordinator is? Well, for most distributed systems running in data centers or the cloud, we know ahead of time the full set of nodes that are going to participate in the distributed system. If we provision each node with that node list, we could have all nodes independently run the same deterministic algorithm on that list to pick the coordinator. As long as all nodes have the same node list and run the same deterministic algorithm, they'll all end up picking the same coordinator &mdash; without ever sending a single network message!
+Now we have a bootstrapping problem: how do all the nodes figure out which one is the coordinator?  Well, for most distributed systems running in data centers or the cloud, we know ahead of time the full set of nodes that are going to participate in the distributed system. If we provision each node with a copy of that node list, we could have all nodes independently run the same deterministic algorithm on that list to pick the coordinator. As long as all nodes run the same deterministic algorithm with the same node list as input, they'll all end up picking the same coordinator &mdash; without ever sending a single network message!
 
-A simple algorithm we could run on the node list to select a coordinator is the so-called *bully algorithm*, which works on the principle, "the biggest guy wins." We pick some attribute on which to sort the node list, and then choose the node that is largest or smallest in the resulting sort order:
+What algorithm could we run on the node list? A common answer is the so-called *bully algorithm*, which works on the principle, "the biggest guy wins." We pick some attribute on which to sort the nodes in the node list, and then choose the node that is largest or smallest in the resulting sort order:
 
 ````java
 int bullyAlgorithm(Collection<int> nodeIds) {
@@ -69,9 +69,9 @@ int bullyAlgorithm(Collection<int> nodeIds) {
 Once the coordinator is known, all nodes in the system can do a remote method call to the coordinator node to ask it for the current user of the day, or to ask it to update the current user of the day:
 
 ```java
-void getUserOfTheDay() {
+User getUserOfTheDay() {
   int coordinatorId = bullyAlgorithm(App.nodeIds);
-  remoteCall(coordinatorId, "getUserOfTheDay");
+  return remoteCall(coordinatorId, "getUserOfTheDay");
 }
 ```
 
@@ -92,17 +92,17 @@ if (bullyAlgorithm(App.nodeIds) == myNodeId()) {
 }
 ```
 
-Phew! That took a lot of thinking, but fortuitiously we ended up with a small enough snippet of code to fit into a blog post. Problem tackled; let's try another.
+Phew! That took a lot of thinking, but fortuitiously we ended up with a small enough snippet of code to fit into a blog post. Problem tackled! Let's try another.
 
 ## Example: Order Cancellation
 
-In networked server code with many users, it's not uncommon for two users to try to do incompatible things at the same time. How do we make sure we accept one action and reject the other? For example, let's say we have an online ordering system where an order, once placed, can be cancelled up until it is shipped from the warehouse. What if someone in the warehouse tries to mark the order as shipped (no longer cancellable) at exactly the same time the customer tries to cancel the order?
+In server code, lots of tings are happening all at the same time; sometimes two users try to do two conflicting things at the same time. How do we make sure we accept one user's action and reject the other? For example, let's say we have an online ordering system where an order, once placed, can be cancelled up until it is shipped from the warehouse. What if someone in the warehouse tries to mark the order as shipped (no longer cancellable) at exactly the same time the customer tries to cancel the order?
 
-Once again this is simple enough to solve in normal single-threaded code: we just need a variable with three states: order pending (still shippable and cancellable), cancelled (no longer shippable), and shipped (no longer cancellable):
+Once again this is simple enough to solve in normal single-threaded code: we just need a variable with three states, order pending (not yet shipped, can still be cancelled), cancelled (no longer can be shipped), and shipped (no longer can be cancelled):
 
 ```java
 enum OrderState {
-  PENDING, // cancellable
+  PENDING, // not yet shipped, can be cancelled
   SHIPPED, // no longer cancellable
   CANCELLED, // no longer shippable
 }
@@ -113,46 +113,34 @@ We can use an instance of this enum to ensure a shipped order cannot be cancelle
 ```java
 OrderState orderState = OrderState.PENDING;
 
-boolean tryCancel() {
+void tryCancel() {
   if (orderState == OrderState.PENDING) {
     orderState = OrderState.CANCELLED;
-    return true;
-  } else {
-    return false;
   }
 }
 
-boolean tryShip() {
+void tryShip() {
   if (orderState == OrderState.PENDING) {
     orderState = OrderState.SHIPPED;
-    return true;
-  } else {
-    return false;
   }
 }
 ```
 
-Looks good to me. How about we multithread this? Once again, putting the key pieces behind locks seems to work:
+Looks good to me. How about we multithread this? Once again, putting the key pieces behind locks works pretty well:
 
 ```java
-boolean tryCancel() {
+void tryCancel() {
   synchronized (orderStateLock) {
     if (orderState == OrderState.PENDING) {
       orderState = OrderState.CANCELLED;
-      return true;
-    } else {
-      return false;
     }
   }
 }
 
-boolean tryShip() {
+void tryShip() {
   synchronized (orderStateLock) {
     if (orderState == OrderState.PENDING) {
       orderState = OrderState.SHIPPED;
-      return true;
-    } else {
-      return false;
     }
   }
 }
@@ -203,9 +191,9 @@ if (bullyAlgorithm(App.nodeIds) == App.myNodeId()) {
 }
 ```
 
-It's interesting that this problem could be multithreaded and distributed the same way as the user of the day example, even though the single-threaded implementations have nothing in common. Maybe there's some way we could factor out the multithreading and distributed systems parts of our solutions to our two example problems. Here's how:
+It's interesting that we have two different problems, both with completely different single-threaded solutions, which could nonetheless be multithreaded and then distributed the same way. Maybe there's some way we could factor out the multithreaded / distributed part from both algorithms ...
 
-## A Refactoring: Write-Once Variables
+## Refactoring With Write-Once Variables
 
 Say we have a primitive I'll call a **write-once variable**. The interface looks something like this::
 

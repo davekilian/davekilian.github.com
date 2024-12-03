@@ -60,7 +60,7 @@ This'll work, but now we have a bootstrapping problem: how do all nodes figure o
 As to what algorithm we should run on the node list, a common choice is the so-called *bully algorithm*, which works on the principle, "the biggest guy wins." We pick some attribute on which to sort the nodes in the node list, and then choose the node that is largest or smallest in the resulting sort order:
 
 ````java
-int bullyAlgorithm(Collection<int> nodeIds) {
+int bullyAlgorithm(Collection<Integer> nodeIds) {
   return Collections.max(nodeIds);
   // ... Collections.min() would work too!
 }
@@ -256,7 +256,7 @@ Then to make it distributed, we store the variable on a coordinator and have all
 class DistributedWriteOnce<T> implements WriteOnce<T> {
   private int coordinatorId;
   
-  private int bullyAlgorithm(Collection<int> nodeIds) {
+  private int bullyAlgorithm(Collection<Integer> nodeIds) {
     return Collections.max(nodeIds);
   }
   
@@ -434,6 +434,58 @@ For example, think of a group of friends that want to go to the movies, and need
 Interesting &mdash; majority-rules voting is an algorithm that does not require a leader, and does lead a disagreeing group into agreement. Maybe we could code voting into a consensus algorithm? Let's try it.
 
 # Part 2: Voting
+
+
+
+
+
+TODO
+
+```java
+class MajorityRulesVoting<T> implements WriteOnce<T> {
+  private Object lock = new Object();
+  private Optional<T> myVote = Optional.empty();
+  private Map<T, Integer> voteCounts = new HashMap<>();
+  private CompletableFuture<T> outcome = new CompletableFuture<>();
+    
+  public MajorityRulesVoting() {
+    registerRemoteCall("voteFor", this::voteFor);   
+    registerRemoteCall("onResult", this::onResult);
+  }
+  
+  public void tryInitialize(T value) {
+    for (int nodeId : App.nodeIds()) {
+      remoteCall(nodeId, "voteFor", value);
+    }
+  }
+  
+  private void voteFor(T value) {
+    synchronized (lock) {
+      if (myVote.isEmpty()) {
+        myVote = Optional.of(value);
+        for (int nodeId : App.nodeIds()) {
+          remoteCall(nodeId, "onResult", value);
+        }
+      }
+    }
+  }
+  
+  private void onResult(T value) {
+    synchronized (lock) {
+      voteCounts.set(value, 1 + voteCounts.getOrDefault(value, 0));
+      if (voteCounts.get(value) > App.nodeIds().size() / 2) {
+        outcome.complete(value);
+      }
+    }
+  }
+
+  public Future<T> finalValue() {
+    return outcome;
+  }
+}
+```
+
+
 
 
 

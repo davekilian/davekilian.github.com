@@ -293,7 +293,7 @@ class DistributedWriteOnce<T> implements WriteOnce<T> {
 
 Once again we were able to multithread the initial solution with a lock and distribute the multithreaded solution by selecting a coordinator node. Now let's see how this lets us *remove* the lock and the coordinator from our other two problem solutions by rewriting them on top of the `WriteOnce<T>` abstractions.
 
-## Refactoring with Write-Once Variables
+## Using Write-Once Variables
 
 Let's start with the random user-of-the-day problem. The core question behind that one was how to make something happen once; in this case, namely, how to make sure one, and only one random user is picked each day.
 
@@ -352,7 +352,7 @@ That's a good high-level description, but we should dig deeper. What guarantees 
 
 ## Properties of a Consenus Algorithm
 
-Let's take a second look at the `WriteOnce` interface that a consensus algorithm must implement:
+Let's take a second look at the `WriteOnce` interface that we now know a consensus algorithm must implement:
 
 ```java
 interface WriteOnce<T> {
@@ -364,7 +364,7 @@ interface WriteOnce<T> {
 }
 ```
 
-What hidden assumptions exist inside of this interface? In other words, what rules govern the relationship between what gets passed to `tryInitialize` and what is returned by `finalValue`? What behaviors, if not maintained, would break our write-once-based example solutions?  We will consider any such rule a property of a consensus algorithm.
+What hidden assumptions exist behind this interface? In other words, what rules govern the relationship between what gets passed to `tryInitialize` and what is returned by `finalValue`? What expected behaviors, if violated, would the example solutions we built on top of this interface?  Any such rule is a property of a consensus algorithm.
 
 
 

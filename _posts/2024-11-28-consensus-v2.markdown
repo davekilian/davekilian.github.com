@@ -262,7 +262,7 @@ The coordinator's server side of the RPC interface might look like this
 // TODO
 ```
 
-
+TODO
 
 ## The Curveball: Fault Tolerance
 

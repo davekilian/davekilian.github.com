@@ -472,7 +472,7 @@ class MajorityRulesVoting<T> implements WriteOnce<T> {
   
   private void onVote(T value) {
     synchronized (lock) {
-      voteCounts.set(value, 1 + voteCounts.getOrDefault(value, 0));
+      voteCounts.put(value, 1 + voteCounts.getOrDefault(value, 0));
       if (voteCounts.get(value) > App.nodeIds().size() / 2) {
         outcome.complete(value);
       }

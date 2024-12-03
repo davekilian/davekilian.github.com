@@ -376,54 +376,19 @@ TODO old content to adapt here:
 
 ## Implementing Fault-Tolerant Consensus
 
-TODO this is entirely a lead up to section 2. 
+TODO this is entirely a lead up to section 2. Point out that having a coordinator is a problem, we must become peer-to-peer. What real life algorithms do you know groups can use to come to consensus? Oh yeah, voting. Maybe we can write a voting algorithm?
+
+# Part 2: Voting
 
 
 
 
 
 
-
-
-
----
-
-TODO continue refactoring: 
-
-* Point out so far everything has seemed quite achievable. This is because we are missing the fault tolerance aspect
-* Now thanks to this refactor step we have only one algorithm to make fault-tolerant, which is the write once variable. Intro that making a write-once variable fault tolerant is called the consensus problem, and explain how "agreement" relates to write-once semantics since that's really not clear at all.
-* Properties of a consensus algorithm from analysis of our example problems, how they rely on consensus.
-* 
-
----
-
-
-
-## Fault Tolerance
-
-
-
-## Properties of a Consensus Algorithm
-
-TODO exploring how the algorithm is used in the examples above, derive agreement, validity, termination
-
-## Implementing Consensus
-
-TODO redo the same basic ladder as with the other two examples:
-
-* There is a variable
-* Single-threaded solution sets the variable, resolving the future for everyone immediately
-* Multithreaded solution sets the variable under a lock, resolving the future for everyone immediately
-* Distributed (not fault tolerant) hops over to the bully leader and does the multithreaded solution there
-* Fault tolerant consensus?
-  * First it seems easy. Then upon closer examination, it seems impossible. Luckily, there's a subtle workaround that makes it not quite impossible.
-* Segue out into section 2
 
 ---
 
 TODO
-
-Part 2 is called Voting Algorithms
 
 * Motivate one-shot red-vs-blue decision and how we should be able to generalize it later
 * A real-life fault-tolerant consensus algorithnm is majority rules voting

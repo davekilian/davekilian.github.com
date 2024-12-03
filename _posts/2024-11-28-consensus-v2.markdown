@@ -5,17 +5,17 @@ author: Dave
 draft: true
 ---
 
-Distributed consensus algorithms are a critical piece of modern computing infrastructure, but few people really understand how they work. When the first consensus algorithm, *Paxos*, was introduced to the world in 1989, it was met with a sort of [indifferent confusion](https://www.microsoft.com/en-us/research/publication/part-time-parliament/): it took another 9 years before Paxos was picked up for publication by any major journal. As the world moved online and distributing systems became the way critical infrastructure is built and operated, Paxos found its way into the foundation of almost every one of these systems &mdash; but at the same time, it also gained notoriety for being impossible for mere mortals to understand. When a second viable consensus algorithm, *Raft*, finally came along over a decade later, the paper was called *In Search of an Understandable Consensus Algorithm* for a reason.
+Distributed consensus algorithms are a critical piece of modern computing infrastructure, but few people really understand how they work. When the first consensus algorithm, *Paxos*, was introduced to the world in 1989, it was met with a sort of [indifferent confusion](https://www.microsoft.com/en-us/research/publication/part-time-parliament/), and it wasn't until 9 years later that it had garnered enough grassroots recognition to be published in its first major journal. As the world moved online and distributing systems became the way critical infrastructure is built and operated, Paxos found its way into the foundation of almost every one of these systems &mdash; but at the same time, it also gained notoriety for being impossible for mere mortals to understand. When a second viable consensus algorithm, *Raft*, finally came along over a decade later, the paper was called *In Search of an Understandable Consensus Algorithm*, for good reason.
 
-I like Raft. I think Raft does what it does better than Paxos, and if you're starting from scratch today and you need to choose between Raft and multi-Paxos, I think Raft is the better choice. At least Raft is fully specified in a single paper! At the same time, however, I don't think Paxos should be skipped over completely. Although the full multi-Paxos algorithm is complex and under-specified, the core of Paxos (a little protocol called the *synod* algorithm) is small, well-specified, insightful, and broadly applicable: it has applications beyond the 'state machine replication' problem that Raft and multi-Paxos both solve.
+I like Raft. I think if you're starting from scratch today and you need to choose between Raft and multi-Paxos, I think Raft is the better choice. Multi-Paxos is a rough sketch in the original Paxos paper, with the blanks filled in by a hodpodge of other papers; at least with Raft, the original paper explains the whole thing! Despite all this, I don't think Paxos should be skipped over entirely. It's true the full multi-Paxos algorithm is complex and under-specified, but the core of Paxos (a little protocol called the *synod algorithm*) is small, well-specified, insightful, and broadly applicable, with use cases in a variety of other domains (e.g. database replication algorithms).
 
-Leslie Lamport, who invented Paxos, [once described the synod algorithm](https://lamport.azurewebsites.net/pubs/paxos-simple.pdf) as "among the simplest and most obvious of distributed algorithms," and claimed that it "follows unavoidably from the properties we want it to satisfy." He's right, although it certainly doesn't feel this way on first read-through of the algorithm. The core synod algorithm is only obvious once you have a very good grasp of the problem space: you need to really understand what problem we are trying to solve, why obvious solutions  don't work, and how one works around that to end up with a viable solution. So that's what we'll do: let's take a fresh look at the problm, try to solve it the obvious way, see how it doesn't work, and then find a nice workaround.  We should end up re-inventing the core "synod" algorithm of Paxos, which is the part of Paxos I think is most worth learning. Along the way we'll also cover the FLP result, which bridges the gap from obvious algorithms that don't work, and Paxos.
+Leslie Lamport, who invented Paxos, [once described the synod algorithm](https://lamport.azurewebsites.net/pubs/paxos-simple.pdf) as "among the simplest and most obvious of distributed algorithms," and claimed that it "follows unavoidably from the properties we want it to satisfy." He's right, although it certainly might not seem the way on the first read-through of the algorithm. The core synod algorithm falls out of a lot of hidden context: you need to really understand the problem we are solving, why obvious solutions fail, and what must be done to work around those failures. Only once you understand what to avoid does the Paxos/synod algorithm start to seem like the simplest possible way to do it. So that's what we'll do: let's take a fresh look at the problem of consensus, try to solve it, get stuck, get un-stuck, and end up reinventing the core of Paxos. Along the way we'll also cover the FLP result, which bridges the gap from obvious algorithms that don't work, and less-obvious algorithm, like Paxos, that do.
 
 # Part 1: Consensus
 
-Just about every distributed system has a consensus algorithm running it in somewhere; even if your code doesn't do it, the dadtabases you're using probably do, and the cloud services you deploy your code on definitely do. But what makes consensus so fundamental? Why does it pop up everywhere?
+Just about every distributed system has a consensus algorithm running it in somewhere. Even if you have never written code to call into a consensus algorithm, the fancy distributed replicated databases you're using probably do it internally, and any cloud services you deploy to to definitely do it. But what makes consensus so fundamental? Why does it pop up everywhere?
 
-One of the fun (or maybe "fun") parts of programming distributed systems is that trivial things you normally do in normal code turn out to be really hard, or maybe even impossible in distributed code. Consensus helps turn problems like that back into something tractable. To see what I mean, let's try a couple of examples:
+One of the fun (or maybe "fun") parts of programming distributed systems is that trivial things you normally do in normal code turn out to be really hard in distributed code. Consensus helps turn problems like that back into something tractable. To see what I mean, let's try a couple of examples:
 
 ## Example: Picking a Random User
 
@@ -70,15 +70,15 @@ Once the coordinator is known, all nodes in the system can do a remote method ca
 
 ```java
 void getUserOfTheDay() {
-  int coordinatorNodeId = bullyAlgorithm(App.nodeIds);
-  remoteCall(coordinatorNodeId, "getUserOfTheDay");
+  int coordinatorId = bullyAlgorithm(App.nodeIds);
+  remoteCall(coordinatorId, "getUserOfTheDay");
 }
 ```
 
 On startup, if a node runs the bully algorithm and realizes it is the coordinator, it starts the server side of this remote method call interface, implementing it using the same implementaiton we've already seen a few times:
 
 ```java
-if (bullyAlgorithm(App.nodeIds) == App.myNodeId()) {
+if (bullyAlgorithm(App.nodeIds) == myNodeId()) {
   registerRemoteCall("getUserOfTheDay", () => {
     synchronized (this.lock) {
       if (!this.lastUpdated.equals(Date.today())) {
@@ -162,18 +162,18 @@ How about turning this into a distributed solution? We can do it the same way we
 
 ```java
 OrderState getOrderState() {
-  int coordinatorNodeId = bullyAlgorithm(App.nodeIds);
-  return remoteCall(coordinatorNodeId, "getOrderState");
+  int coordinatorId = bullyAlgorithm(App.nodeIds);
+  return remoteCall(coordinatorId, "getOrderState");
 }
 
-boolean tryCancel() {
-  int coordinatorNodeId = bullyAlgorithm(App.nodeIds);
-  remoteCall(coordinatorNodeId, "tryCancel");
+void tryCancel() {
+  int coordinatorId = bullyAlgorithm(App.nodeIds);
+  remoteCall(coordinatorId, "tryCancel");
 }
 
-boolean tryShip() {
-  int coordinatorNodeId = bullyAlgorithm(App.nodeIds);
-  remoteCall(coordinatorNodeId, "tryShip");
+void tryShip() {
+  int coordinatorId = bullyAlgorithm(App.nodeIds);
+  remoteCall(coordinatorId, "tryShip");
 }
 ```
 
@@ -264,7 +264,7 @@ class WriteOnce<T> {
 
 To make it distributed, TODO do I really want to try to show this? urgh, the future aspect makes it all boilerplatey.
 
-## A Curveball: Fault Tolerance
+## The Curveball: Fault Tolerance
 
 
 

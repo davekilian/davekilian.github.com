@@ -415,13 +415,17 @@ Now, the lack of fault tolerance is certainly a limitation, but depending on you
 
 If you're dealing with a small system that admits maintenance windows, you can probably get away with something like `DistributedWriteOnce<T>`, which is pretty nice: `DistributedWriteOnce<T>` is much simpler than anything else we're about to discuss, so really you'd be quitting while you're ahead. However, if you have a really big system, or you really can't accept any downtime at all (e.g. maybe you're running the city's E911 or something), then you require fault tolerance, and `DistributedWriteOnce<T>` is too simplistic to meet your needs.
 
-Most of the time, when people talk about consensus algorithms, they mean fault tolerant consensus algorithms. So we are going to worry about making our consensus algorithms fault-tolerant too. So on top of our Agreement, Validity and Termination rules, we'll add a fourth:
+Most of the time, when people talk about consensus algorithms, they mean fault tolerant consensus algorithms. So we are going to worry about making our consensus algorithms fault-tolerant too. Thus, on top of our Agreement, Validity and Termination rules, we'll add a fourth:
 
 > **Fault Tolerance**: The presence of faults in hardware, software or the network do not cause the algorithm to violate the other properties (Agreement, Validity or Termination)
 
-There is some wiggle room in determining how many faults the algorithm needs to be able to survive; for example, if every machine in the network loses power, there is no code running anywhere, so of course there is nothing the algorithm can do about it. Typically you either count the number of crashes your algorithm can withstand (1-3, usually), or you choose some percentage of machines which are allowed to fail (often, "less than half").
+There is some wiggle room in choosing how many faults the algorithm needs to be able to survive. Obviously there is nothing the software can do if every machine in the network loses power simultaneously; typically you either give a constant number of node faults your system can tolerate (typically between 1 and 3) or you say some percentage of machines are allowed to fail ("less than half" is typical).
 
 ## Implementing Fault-Tolerant Consensus
+
+
+
+
 
 TODO this is entirely a lead up to section 2. Point out that having a coordinator is a problem, we must become peer-to-peer. What real life algorithms do you know groups can use to come to consensus? Oh yeah, voting. Maybe we can write a voting algorithm?
 

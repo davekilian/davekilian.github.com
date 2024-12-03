@@ -419,15 +419,19 @@ Most of the time, when people talk about consensus algorithms, they mean fault t
 
 > **Fault Tolerance**: The presence of faults in hardware, software or the network do not cause the algorithm to violate the other properties (Agreement, Validity or Termination)
 
-There is some wiggle room in choosing how many faults the algorithm needs to be able to survive. Obviously there is nothing the software can do if every machine in the network loses power simultaneously; typically you either give a constant number of node faults your system can tolerate (typically between 1 and 3) or you say some percentage of machines are allowed to fail ("less than half" is typical).
+There is some wiggle room in choosing how many faults the algorithm needs to be able to survive. Obviously there is nothing the software can do if every machine in the network loses power simultaneously; typically you either give a constant number of node faults your system can tolerate (typically between 1 and 3) or you say some percentage of machines are allowed to fail ("less than half" is pretty common).
 
 ## Implementing Fault-Tolerant Consensus
 
+Our previous strategy of implementing distributed consensus was not fault tolerant because it relied  a single coordinator node to be solely responsible for storing and managing the varible. If we want something fault tolerant, we will have to do away with the coordinator and come up with an entirely peer-to-peer algorithm. Every node needs to have its own copy of the variable, and we need to come up with some protocol for them all to come into agreement as to what value they should store.
 
+Do you know any real-life leaderless, peer-to-peer algorithms for groups to come to consensus?
 
+For example, think of a group of friends that want to go to the movies, and need to deicide what movie to see. That's an agreement problem. What might happen next? Maybe someone throws out an idea, someone throws out another, some people agree, others disagree, eventually a group opinion starts to form. The tide starts to turn when someone says
 
+<center>"I vote we (blah blah blah . . .)"</center>
 
-TODO this is entirely a lead up to section 2. Point out that having a coordinator is a problem, we must become peer-to-peer. What real life algorithms do you know groups can use to come to consensus? Oh yeah, voting. Maybe we can write a voting algorithm?
+Interesting &mdash; majority-rules voting is an algorithm that does not require a leader, and does lead a disagreeing group into agreement. Maybe we could code voting into a consensus algorithm? Let's try it.
 
 # Part 2: Voting
 

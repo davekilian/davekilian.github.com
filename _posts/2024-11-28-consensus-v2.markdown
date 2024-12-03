@@ -55,7 +55,7 @@ For us as programmers, what's different about distributed systems is how threads
 
 Here's a simple approach: we can assign to one node the job of managing the user of the day. It'll decide who is the user of the day and remember that decision all day; then, any time any other node needs to know who is the current user of the day, it'll ask this one. We'll call this special node the **coordinator**.
 
-Now we have a bootstrapping problem: how do all the nodes figure out which one is the coordinator?  Well, for most distributed systems running in data centers or the cloud, we know ahead of time the full set of nodes that are going to participate in the distributed system. If we provision each node with a copy of that node list, we could have all nodes independently run the same deterministic algorithm on that list to pick the coordinator. As long as all nodes run the same deterministic algorithm with the same node list as input, they'll all end up picking the same coordinator &mdash; without ever sending a single network message!
+Now we have a bootstrapping problem: how do all the nodes figure out which one is the coordinator?  Well, for most distributed systems running in data centers or the cloud, we know ahead of time the full set of nodes that are going to participate in the system. If we provision each node with a copy of that node list, we could have all nodes independently run the same deterministic algorithm on that list to pick the coordinator. As long as all nodes run the same deterministic algorithm with the same node list as input, they'll all end up picking the same coordinator &mdash; without ever sending a single network message!
 
 What algorithm could we run on the node list? A common answer is the so-called *bully algorithm*, which works on the principle, "the biggest guy wins." We pick some attribute on which to sort the nodes in the node list, and then choose the node that is largest or smallest in the resulting sort order:
 
@@ -259,7 +259,7 @@ class DistributedWriteOnce<T> implements WriteOnce<T> {
   public DistributedWriteOnce(int coordinatorId) {
     this.coordinatorId = coordinatorId;
     if (coordinatorId == App.myNodeId()) {
-      setupCoordinator();
+      runCoordinator();
     }
   }
   
@@ -271,7 +271,7 @@ class DistributedWriteOnce<T> implements WriteOnce<T> {
     return remoteCall(coordinatorId, "get");
   }
   
-  private void setupCoordinator() {
+  private void runCoordinator() {
     WriteOnce<T> impl = new MultithreadedWriteOnce<>();
     
     registerRemoteCall("tryInitialize", (value) => {
@@ -286,6 +286,49 @@ class DistributedWriteOnce<T> implements WriteOnce<T> {
   }
 }
 ```
+
+Once again we were able to multithread the initial solution with a lock and distribute the multithreaded solution by selecting a coordinator node. Now let's see how this lets us *remove* the lock and the coordinator from the original problems.
+
+### Picking a Random User
+
+TODO
+
+```java
+User getUserOfTheDay() {
+  WriteOnce<User> userOfTheDay = // ...
+  userOfTheDay.tryInitialize(User.randomUser());
+  return userOfTheDay.get();
+}
+```
+
+
+
+### Order Cancellation
+
+TODO
+
+```java
+WriteOnce<OrderState> orderResult = // ...
+
+void tryCancel() {
+  orderResult.tryInitialize(OrderState.CANCELLED);
+}
+
+void tryShip() {
+  orderResult.tryInitialize(OrderState.SHIPPED);
+}
+
+OrderState getOrderState() {
+  Future<OrderResult> resultFuture = orderResult.get();
+  if (!resultFuture.isDone()) {
+    return OrderState.PENDING;
+  } else {
+    return resultFuture.get();
+  }
+}
+```
+
+
 
 
 

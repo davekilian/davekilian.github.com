@@ -352,6 +352,24 @@ That's a good high-level description, but we should dig deeper. What guarantees 
 
 ## Properties of a Consenus Algorithm
 
+Let's take a second look at the `WriteOnce` interface that a consensus algorithm must implement:
+
+```java
+interface WriteOnce<T> {
+  /** Try to initialize to the given value, no-op if already initialized */
+  public void tryInitialize(T value);
+  
+  /** Reads the value once the variable haa been initialized */
+  public Future<T> finalValue();
+}
+```
+
+What hidden assumptions exist inside of this interface? In other words, what rules govern the relationship between what gets passed to `tryInitialize` and what is returned by `finalValue`? What behaviors, if not maintained, would break our write-once-based example solutions?  We will consider any such rule a property of a consensus algorithm.
+
+
+
+
+
 TODO we should be able to frame this as an examination of hidden assumptions in the interface
 
 * Validity: that finalValue() has to be a value that someone tryInitialized

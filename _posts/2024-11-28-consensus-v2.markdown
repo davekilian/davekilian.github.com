@@ -336,8 +336,6 @@ Once again, the internal guarantees of thread safety / distribution provided by 
 
 As you might be imaginging by now, there are quite a few problems that can be reduced to trying to initialize a `WriteOnce<T>`, which vastly simplifies the process of threading / distributing the logic. If you see why that is, then you also already see why consensus is so foundational &mdash; because, drumroll please . . .
 
-<center><h2>Consensus Algorithms are Implementations of Distributed Write-Once Variables</h2></center>
-
 ## Consensus Algorithms are Implementations of Distributed Write-Once Variables
 
 That's right, `DistributedWriteOnce<T>` is a full-blown consensus algorithm!
@@ -348,11 +346,37 @@ So what does consensus have to do with distributed write-once variables? In that
 
 If you check our write-once solutions to the random user selection and order cancellation problems, you'll see this in action. In both cases we start out with different threads in disagreement (different values are being passed to `tryInitialize`), and we end up with all threads in agreement (we forget what value we passed to `tryInitialize` and just trust the value returned by `finalValue` instead). Somewhere between `tryInitialize` and `finalValue`, the disagreement was resolved (arbitrarily, by picking the first `tryInitialize` call), and the final result was total agreement acrss all threads &mdash; consensus.
 
-Anyways, we've managed to write a consensus algorithm already &mdash; namely, `DistributedWriteOnce<T>`. We could end this blog post right here if we wanted to. (And if we did, we'd be quitting while we're ahead.) But clearly this cannot be the whole story. We managed to write a consensus algorithm already, without all that much thinking or code; aren't consensus algorithms supposed to be notoriously difficult for mere mortals to comprehend? I'm a mere mortal, and I comprehend `DistributedWriteOnce<T>` just fine . . .
+TODO segue me
+
+## Properties of a Consenus Algorithm
+
+TODO we should be able to frame this as an examination of hidden assumptions in the interface
+
+* Validity: that finalValue() has to be a value that someone tryInitialized
+* Agreement: all futures always resolve to the same value
+  * Has both a spatial requirement (for all threads) and a temporal requirement (for all calls)
+  * Legalese: if finalValue returns a value, then no other call to finalValue anywhere else in the system has returned or will return any other value
+* Termination: the future must resolve eventually
+
+TODO the segue out to fault tolerance: `DistributedWriteOnce<T>` already satisfies all of the above. Observe that means we have already done the impossible in creating a valid consensus algorithm. Something is wrong. A requirement is missing. Old content to potentially adapt here:
+
+> Anyways, we've managed to write a consensus algorithm already &mdash; namely, `DistributedWriteOnce<T>`. We could end this blog post right here if we wanted to. (And if we did, we'd be quitting while we're ahead.) But clearly this cannot be the whole story. We managed to write a consensus algorithm already, without all that much thinking or code; aren't consensus algorithms supposed to be notoriously difficult for mere mortals to comprehend? I'm a mere mortal, and I comprehend `DistributedWriteOnce<T>` just fine . . .
 
 ## The Curveball: Fault Tolerance
 
+TODO old content to adapt here:
 
+> The new dimension of problems distributing adds on top of multithreading is dealing with **faults** in the system: hardware can lose power, software can crash, and networks can degrade or become disconnected. Technically these problems also affect single-node systems, but single-node code generally doesn't care about these faults because, if one occurs, then the node has failed and the code is no longer running. In other words, these faults do cause a mess, but nobody expects single-node code to be able to deal with that mess because the computer running the code is down. In a distributed system, a fault can affect a subset of the system's nodes while leaving code running on the remaining nodes to deal with the mess.
+>
+> Both our distributed solutions to the exactly-once and happened-or-not problems rely on a "coordinator" node to make progress, and neither can deal with a fault bringing the coordinator down: the bully algorithm will continue to pick that node as the coordinator, even though it's not online and can't do its work. In the exactly-once solution, the coordinator is the only node allowed to call `thingy()`, so if the coordinator crashes we never call `thingy()` and thus fail in our ultimate goal to call `thingy()` exactly once. In happened-or-not, the coordinator is the only node that stores the current cancellation state, so if it crashes, other nodes will either fail or hang in their `tryShip` / `tryCancel` calls. Neither of our distributed solutions so far is **fault tolerant**.
+>
+> The lack of fault tolerance is certainly a limitation, but it may not actually be a problem! If you're operating a small network of nodes, in a highly controlled environment such as a data center, and you have the option to regularly schedule "maintenance windows" for taking the whole system offline and doing upgrades, then non-fault-tolerant distributed algorithms may work for you. As we have already seen, non-fault-tolerant distributed algorithms are often pretty simple, much more so than any of the algorithms we're going to go on and build in the rest of this article. However, at a certain network size it becomes infeasible to ensure all nodes are always online, and in many Internet-facing services it is not feasible to take the system down for maintenance, ever. In these situations, the only option is to design software that can tolerate faults that affect a subset of the system. Consensus algorithms are usually employed by people trying to make fault-tolerant systems, so for the rest of this article, we will assume fault tolerance is a non-negotaible requirement.
+>
+> It turns out to be very difficult to come up with fault-tolerant solutions to the exactly-once and happened-or-not problems. However, there is a nifty way to factor out the fault tolerance part of the problems, such that we build one fault-tolerant primitive and use it to solve these completely different problems (and many others). That fault-tolerant primitive is called a **consensus algorithm**.
+
+## Implementing Fault-Tolerant Consensus
+
+TODO this is entirely a lead up to section 2. 
 
 
 
@@ -377,13 +401,7 @@ TODO continue refactoring:
 
 ## Fault Tolerance
 
-The new dimension of problems distributing adds on top of multithreading is dealing with **faults** in the system: hardware can lose power, software can crash, and networks can degrade or become disconnected. Technically these problems also affect single-node systems, but single-node code generally doesn't care about these faults because, if one occurs, then the node has failed and the code is no longer running. In other words, these faults do cause a mess, but nobody expects single-node code to be able to deal with that mess because the computer running the code is down. In a distributed system, a fault can affect a subset of the system's nodes while leaving code running on the remaining nodes to deal with the mess.
 
-Both our distributed solutions to the exactly-once and happened-or-not problems rely on a "coordinator" node to make progress, and neither can deal with a fault bringing the coordinator down: the bully algorithm will continue to pick that node as the coordinator, even though it's not online and can't do its work. In the exactly-once solution, the coordinator is the only node allowed to call `thingy()`, so if the coordinator crashes we never call `thingy()` and thus fail in our ultimate goal to call `thingy()` exactly once. In happened-or-not, the coordinator is the only node that stores the current cancellation state, so if it crashes, other nodes will either fail or hang in their `tryShip` / `tryCancel` calls. Neither of our distributed solutions so far is **fault tolerant**.
-
-The lack of fault tolerance is certainly a limitation, but it may not actually be a problem! If you're operating a small network of nodes, in a highly controlled environment such as a data center, and you have the option to regularly schedule "maintenance windows" for taking the whole system offline and doing upgrades, then non-fault-tolerant distributed algorithms may work for you. As we have already seen, non-fault-tolerant distributed algorithms are often pretty simple, much more so than any of the algorithms we're going to go on and build in the rest of this article. However, at a certain network size it becomes infeasible to ensure all nodes are always online, and in many Internet-facing services it is not feasible to take the system down for maintenance, ever. In these situations, the only option is to design software that can tolerate faults that affect a subset of the system. Consensus algorithms are usually employed by people trying to make fault-tolerant systems, so for the rest of this article, we will assume fault tolerance is a non-negotaible requirement.
-
-It turns out to be very difficult to come up with fault-tolerant solutions to the exactly-once and happened-or-not problems. However, there is a nifty way to factor out the fault tolerance part of the problems, such that we build one fault-tolerant primitive and use it to solve these completely different problems (and many others). That fault-tolerant primitive is called a **consensus algorithm**.
 
 ## Properties of a Consensus Algorithm
 

@@ -495,7 +495,7 @@ Putting it all together, we get a `WriteOnce<T>` implementation that looks like 
 class MajorityRulesVoting<T> implements WriteOnce<T> {
   private Object lock = new Object();
   private Optional<T> myVote = Optional.empty();
-  private Map<T, Integer> tallies = new HashMap<>();
+  private Map<T, Integer> tally = new HashMap<>();
   private CompletableFuture<T> outcome = new CompletableFuture<>();
     
   public MajorityRulesVoting() {
@@ -522,9 +522,11 @@ class MajorityRulesVoting<T> implements WriteOnce<T> {
   
   private void onVote(T value) {
     synchronized (lock) {
-      tallies.put(value, 1 + tallies.getOrDefault(value, 0));
-      if (tallies.get(value) > App.nodeIds().size() / 2) {
-        outcome.complete(value);
+      tally.put(value, 1 + tally.getOrDefault(value, 0));
+      if (!outcome.isDone()) {
+        if (tally.get(value) > App.nodeIds().size() / 2) {
+          outcome.complete(value);
+        }
       }
     }
   }
@@ -549,7 +551,9 @@ If a candidate value receives more than half of the votes, then less than half o
 
 The final value is the value which received a majorify of the system's votes. A value can only receive any votes if it was a candidate, which in turn can only happen if someone passed that value to `tryInitialize`. Therefore the final value is always a value that was passed to `tryInitialize`.
 
-**Termination**: ... uh oh, we have a problem here. Do we guarantee that some vote eventually reaches a majority? I don't think we do.
+**Termination**: ❌
+
+We only terminate when a candidate value receives a majority of votes. Is that guaranteed to eventually happen? I don't think so.
 
 ## Split Votes
 
@@ -567,19 +571,120 @@ Here no candidate is the winner because it takes at least 13 votes to reach a ma
 
 We'll have to find some kind of workaround. That's okay, this was our very first stab, it was likely we would run into some kind of stumbling block. But how we do deal with split votes?
 
-One thing we could do is add the notion of a "do-over" to our algorithm: if we get to the end of voting and determine it's a split vote, just start over and hold a new vote. We might have more luck and reach a majority the next time around. This is not a bad idea, but I want to avoid it if possible for a few reasons. First, having restarts in a consensus algorithm requires great care: if the algorithm does manage to reach consensus, then restarts and reaches consensus with a different answer, we end up violating the Agreement property. Plus, we're just kind of retrying and hoping for the best; there's no guarantee this will ever result in termiantion, and we can't even put a reasonable bound on how many times we will have to retry.
+One thing we could do is add the notion of a "do-over" to our algorithm: if we get to the end of voting and determine it's a split vote, just start over and hold a new vote. We might have more luck and reach a majority the next time around. This is not a bad idea, but I want to avoid it if possible for a few reasons. First, having restarts in a consensus algorithm requires great care: if the algorithm does manage to reach consensus, then restarts and reaches consensus again with a different answer, we end up violating the Agreement property. Plus, retrying is just hoping for the best; there's no guarantee this will ever result in termiantion, and we can't even put a reasonable bound on how many times we will have to retry before we can terminate.
 
-A different approach that avoids both of these problems is to have a **tiebreaker**: just add a deterministic rule that chooses a winning value arbitrarily, and run it once all votes are in. Every node has the same tally of votes, so if we run a deterministic rule over that tally to pick a winner on every node, every node will pick the same winner.
+A different approach that avoids both of these problems is to have a **tiebreaker**: just add a deterministic rule that chooses a winning value arbitrarily, and run it once all votes are in. Every node has the same tally of votes, so if every node runs the same deterministic rule over that tally to pick a winner, every node will pick the same winner.
 
 ## Tiebreaking
 
-TODO propose plurality as a tiebreaker, but then show there are vote result with multiple pluralities, that would necessitate a tiebreaker of tiebreakers, which could itself be a tiebreaker
+Let's take another look at the example tally from the previous section:
 
-TODO another tiebreaker is basically the bully algorithm again. We require that the generic type `T` be comparable / sortable and then run the bully algorithm over all candidate items to 
+| Candidate Value | Number of Votes | Winner? |
+| --------------- | --------------- | ------- |
+| Red             | 9               | No      |
+| Blue            | 5               | No      |
+| Green           | 11              | No      |
 
-TODO to guarantee safety, we only wait until the end of voting before running the tiebreaker.
+Looking at the results, what seems like a good tiebreaking rule?
 
-TODO finally, code.
+The first one that jumps out to me is "pick the one that got the most votes," which is Green in the example above. In other words, instead of *majority* voting, implement *plurality* voting, where the candidate that got the most votes wins even if it didn't manage to reach a majority.
+
+Plurality voting would work in the example above, but it doesn't work in this case:
+
+| Candidate Value | Number of Votes | Winner? |
+| --------------- | --------------- | ------- |
+| Red             | 10              | No      |
+| Blue            | 10              | No      |
+| Green           | 5               | No      |
+
+Here we have two winning candidates but plurality voting rules; to narrow it down further, we would need another tiebreaking rule (a tiebreaker for the tiebreaker). But, whatever rule we use as the tiebreaker-of-tiebreakers would probably work as a tiebreaker in its own right. So let's not use plurality voting.
+
+I think we've actually already discussed a rule that we could use as an alternate tiebreaker here: it's the bully algorithm! Why don't we take all the candidates that got any votes, sort them in some arbitrary order, and then pick the first or last one in the sort order?
+
+```java
+class Tiebreaker<T extends Comparable> {
+  T tiebreak(Map<T, Integer> tally) {
+    return Collections.max(tally.keySet());
+  }
+}
+```
+
+I think this'll work. Once integrating this into our original voting algorithm, we get an implementation something like this:
+
+```java
+class TiebreakVoting<T extends Comparable> implements WriteOnce<T> {
+  private Object lock = new Object();
+  private Optional<T> myVote = Optional.empty();
+  private Map<T, Integer> tally = new HashMap<>();
+  private int votesTallied = 0;
+  private CompletableFuture<T> outcome = new CompletableFuture<>();
+    
+  public MajorityRulesVoting() {
+    registerRemoteCall("onCandidate", this::onCandidate);   
+    registerRemoteCall("onVote", this::onVote);
+  }
+  
+  public void tryInitialize(T value) {
+    for (int nodeId : App.nodeIds()) {
+      remoteCall(nodeId, "onCandidate", value);
+    }
+  }
+  
+  private void onCandidate(T value) {
+    synchronized (lock) {
+      if (myVote.isEmpty()) {
+        myVote = Optional.of(value);
+        for (int nodeId : App.nodeIds()) {
+          remoteCall(nodeId, "onVote", value);
+        }
+      }
+    }
+  }
+  
+  private void onVote(T value) {
+    synchronized (lock) {
+      tally.put(value, 1 + tally.getOrDefault(value, 0));
+      votesTallied++;
+      
+      if (!outcome.isDone()) {
+        if (tally.get(value) > App.nodeIds().size() / 2) {
+          // This value has reached a majority
+          outcome.complete(value);
+        } else if (votesTallied == App.nodeIds().size()) {
+          // All votes in with no majority, use bully algorithm
+          outcome.complete(Collections.min(tally.keySet()));
+        }
+      }
+    }
+  }
+
+  public Future<T> finalValue() {
+    return outcome;
+  }
+}
+```
+
+How are we looking now?
+
+**Agreement**: ✅
+
+Case: some candidate value reaches a majority. In this case, each node learns of the majority winner before ever trying to run the tiebreak rule, so our analysis from before still holds. 
+
+Case: no candidate reaches a majority. In this case, every node has the same tally and runs the same deterministic rule to pick a winner from among the candidates, so all nodes pick the same winner. Since we wait until all votes are in before running the tiebreaking rule, we cannot change our minds later.
+
+**Validity**: ✅
+
+Whether voting ends because a value reached majority or by the tiebreaking rule, we only ever select a candidate value which received at least one vote. To receive a vote, a candidate must be broadcast to `onCandidate`, which only happens if it was ever passed to `tryInitialize`. Thus the accepted value is always one that was proposed.
+
+**Termination**: ✅
+
+Case: some candidate value reaches a majority. Then the algorithm terminates once the majority is reached.
+
+Case: no candidate reaches a majority. Then the algorithm terminates once all votes have been cast.
+
+**Fault Tolerance**: ❌
+
+Oops, this isn't fault tolerant, is it? We don't run the tiebreaker until all votes are in ... but if a fault takes down any node before that node casts its vote, then we'll never have all votes in, and then we won't terminate, will we?
 
 ## Fault-Tolerant Tiebreaking 
 

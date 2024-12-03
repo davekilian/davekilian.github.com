@@ -553,21 +553,25 @@ The final value is the value which received a majorify of the system's votes. A 
 
 ## Split Votes
 
+TODO explain the problem, a diagram might help, emphasize this is a deadlock
 
+TODO pose question of how to handle it. Consider mentioning timeout-based retry here, but point out timeouts are tricky because it's possible consensus was reached, restarting the algorithm at that point will lead to a change of mind and hence an agreement violation.
 
-TODO correctness proof sketch for each property. Agreement is from single majority. Validity is from voting for some value broadcasted by tryInitialize. Termination is ... oops. Split votes don't terminate do they?
+TODO better, simpler idea: a tiebreaking rule. 
 
+## Tiebreakers
 
+TODO augment the implementaton to ask the caller for a tiebreaking rule, which executes once all votes are in.
+
+TODO now we win on agreement, validity, termination, but not fault tolerance, because we waited for all votes to be in.
+
+## Running the Tiebreaker Early
+
+TODO we need to show the tiebreaking rule before all votes are in necessarily creates an agremenet violation in some situations.
+
+TODO justify we are now stuck, and segue out to FLP
 
 ---
-
-TODO
-
-* Explain the basic algorithm 
-* Split votes
-* Workaround to have an odd number of nodes fails if we lose a node
-* Tiebreakers
-* Workaround to use a tiebreaker can fail if no nodes fail!
 
 Part 3 is FLP, I had several thoughts of how to explain this without getting into the formal math
 

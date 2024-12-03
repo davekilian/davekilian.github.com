@@ -291,7 +291,7 @@ Once again we were able to multithread the initial solution with a lock and dist
 
 ### Picking a Random User
 
-TODO
+The basic question behind picking a random user was how to ensure one, and only one random user is picked per day. Here's one way to do it with a write-once variable:
 
 ```java
 User getUserOfTheDay() {
@@ -301,7 +301,9 @@ User getUserOfTheDay() {
 }
 ```
 
+The idea is that any thread that wants to get a user of the day picks a random user ID, but only the first pick of the day actually takes effect and becomes the random user of the day; all other `tryInitialize()` calls silently do nothing because the user of the day has already been initialized.
 
+TODO walk through what happens normally, multithreaded, distributed
 
 ### Order Cancellation
 

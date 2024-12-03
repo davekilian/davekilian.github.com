@@ -334,11 +334,19 @@ Once again, the internal guarantees of thread safety / distribution provided by 
 
 ### ... And More!
 
-As you might be imaginging by now, there are quite a few problems that can be reduced to trying to initialize a `WriteOnce<T>`, which vastly simplifies the process of threading / distributing the logic. And that's why consensus is so useful: **a consensus algorithm is just a distributed implementation of a write-once variable**. That's right, `DistributedWriteOnce<T>` is actually a full-blown consensus algorithm! Surprise!
+As you might be imaginging by now, there are quite a few problems that can be reduced to trying to initialize a `WriteOnce<T>`, which vastly simplifies the process of threading / distributing the logic. If you see why that is, then you also already see why consensus is so foundational &mdash; because, drumroll please . . .
 
-Huh, I thought writing consensus algorithms was supposed to be really hard to design . . .
+## Consensus Algorithms are Implementations of Distributed Write-Once Variables
+
+That's right, `DistributedWriteOnce<T>` is actually a full-blown consensus algorithm. We wrote a consensus algorithm!
+
+Huh, I thought designing a consensus algorithm was supposed to be really, really difficult?
 
 ## The Curveball: Fault Tolerance
+
+
+
+
 
 
 
@@ -358,8 +366,6 @@ TODO continue refactoring:
 
 
 ## Fault Tolerance
-
-Distributed algorithms are a lot like multithreaded algorithms. After all, every distributed algorithm already has multiple threads: there are multiple machines, and each machine has at least one thread. So all problems that exist in multithreaded algorithms also exist in distributed algorithms.
 
 The new dimension of problems distributing adds on top of multithreading is dealing with **faults** in the system: hardware can lose power, software can crash, and networks can degrade or become disconnected. Technically these problems also affect single-node systems, but single-node code generally doesn't care about these faults because, if one occurs, then the node has failed and the code is no longer running. In other words, these faults do cause a mess, but nobody expects single-node code to be able to deal with that mess because the computer running the code is down. In a distributed system, a fault can affect a subset of the system's nodes while leaving code running on the remaining nodes to deal with the mess.
 

@@ -203,7 +203,7 @@ interface WriteOnce<T> {
   public void tryInitialize(T value);
   
   /** Reads the value once the variable haa been initialized */
-  public Future<T> get();
+  public Future<T> finalValue();
 }
 ```
 
@@ -221,7 +221,7 @@ class BasicWriteOnce<T> implements WriteOnce<T> {
     }
   }
   
-  public Future<T> get() {
+  public Future<T> finalValue() {
     return value;
   }
 }
@@ -244,7 +244,7 @@ class MultithreadedWriteOnce<T> implements WriteOnce<T> {
     }
   }
   
-  public Future<T> get() {
+  public Future<T> finalValue() {
     return value;
   }
 }
@@ -267,8 +267,8 @@ class DistributedWriteOnce<T> implements WriteOnce<T> {
     return remoteCall(coordinatorId, "tryInitialize");
   }
   
-  public Future<T> get() {
-    return remoteCall(coordinatorId, "get");
+  public Future<T> finalValue() {
+    return remoteCall(coordinatorId, "finalValue");
   }
   
   private void runCoordinator() {
@@ -278,7 +278,7 @@ class DistributedWriteOnce<T> implements WriteOnce<T> {
       impl.tryInitialize(value);
     });
 
-    registerRemoteCall("get", () => {
+    registerRemoteCall("finalValue", () => {
       AsyncResponse<T> response = new AsyncResponse<>();
       impl.get().thenAccept(val => response.respond(val));
       return response;
@@ -297,7 +297,7 @@ TODO
 User getUserOfTheDay() {
   WriteOnce<User> userOfTheDay = // ...
   userOfTheDay.tryInitialize(User.randomUser());
-  return userOfTheDay.get();
+  return userOfTheDay.finalValue().get();
 }
 ```
 
@@ -319,7 +319,7 @@ void tryShip() {
 }
 
 OrderState getOrderState() {
-  Future<OrderResult> resultFuture = orderResult.get();
+  Future<OrderResult> resultFuture = orderResult.finalValue();
   if (resultFuture.isDone()) {
     return resultFuture.get();
   } else {
@@ -328,7 +328,7 @@ OrderState getOrderState() {
 }
 ```
 
-
+### ... And More!
 
 
 

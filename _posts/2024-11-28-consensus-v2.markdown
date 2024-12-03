@@ -346,7 +346,7 @@ So what does consensus have to do with distributed write-once variables? In that
 
 If you check our write-once solutions to the random user selection and order cancellation problems, you'll see this in action. In both cases we start out with different threads in disagreement (different values are being passed to `tryInitialize`), and we end up with all threads in agreement (we forget what value we passed to `tryInitialize` and just trust the value returned by `finalValue` instead). Somewhere between `tryInitialize` and `finalValue`, the disagreement was resolved (arbitrarily, by picking the first `tryInitialize` call), and the final result was total agreement acrss all threads &mdash; consensus.
 
-TODO segue me
+So, a consensus algorithm implements a write-once variable for a distributed system. That's a good high-level description, but we should dig deeper. What guarantees does a consensus algorithm need to provide? We should be able to glean everything we need from re-examining how the two example problems were built on top of `WriteOnce<T>`, and what implicit guarantees they were expecting `WriteOnce<T>` to provide.
 
 ## Properties of a Consenus Algorithm
 
@@ -379,10 +379,6 @@ TODO old content to adapt here:
 TODO this is entirely a lead up to section 2. Point out that having a coordinator is a problem, we must become peer-to-peer. What real life algorithms do you know groups can use to come to consensus? Oh yeah, voting. Maybe we can write a voting algorithm?
 
 # Part 2: Voting
-
-
-
-
 
 
 

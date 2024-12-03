@@ -320,10 +320,10 @@ void tryShip() {
 
 OrderState getOrderState() {
   Future<OrderResult> resultFuture = orderResult.get();
-  if (!resultFuture.isDone()) {
-    return OrderState.PENDING;
-  } else {
+  if (resultFuture.isDone()) {
     return resultFuture.get();
+  } else {
+    return OrderState.PENDING;
   }
 }
 ```

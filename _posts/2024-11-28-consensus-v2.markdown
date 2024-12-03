@@ -393,15 +393,29 @@ By the three rules above, `DistributedWriteOnce<T>` is a valid implementation of
 
 ## The Curveball: Fault Tolerance
 
-TODO old content to adapt here:
+Earlier, we said the main complexity that distributing an algorithm adds on top of multithreading is that threads in a distributed system must communicate through a network, since they can't share variables. When I said that, I glossed over a really important problem that introduces: it is impossible to communication via variable-sharing to fail, but you bet communiating over a network can.
 
-> The new dimension of problems distributing adds on top of multithreading is dealing with **faults** in the system: hardware can lose power, software can crash, and networks can degrade or become disconnected. Technically these problems also affect single-node systems, but single-node code generally doesn't care about these faults because, if one occurs, then the node has failed and the code is no longer running. In other words, these faults do cause a mess, but nobody expects single-node code to be able to deal with that mess because the computer running the code is down. In a distributed system, a fault can affect a subset of the system's nodes while leaving code running on the remaining nodes to deal with the mess.
->
-> Both our distributed solutions to the exactly-once and happened-or-not problems rely on a "coordinator" node to make progress, and neither can deal with a fault bringing the coordinator down: the bully algorithm will continue to pick that node as the coordinator, even though it's not online and can't do its work. In the exactly-once solution, the coordinator is the only node allowed to call `thingy()`, so if the coordinator crashes we never call `thingy()` and thus fail in our ultimate goal to call `thingy()` exactly once. In happened-or-not, the coordinator is the only node that stores the current cancellation state, so if it crashes, other nodes will either fail or hang in their `tryShip` / `tryCancel` calls. Neither of our distributed solutions so far is **fault tolerant**.
->
-> The lack of fault tolerance is certainly a limitation, but it may not actually be a problem! If you're operating a small network of nodes, in a highly controlled environment such as a data center, and you have the option to regularly schedule "maintenance windows" for taking the whole system offline and doing upgrades, then non-fault-tolerant distributed algorithms may work for you. As we have already seen, non-fault-tolerant distributed algorithms are often pretty simple, much more so than any of the algorithms we're going to go on and build in the rest of this article. However, at a certain network size it becomes infeasible to ensure all nodes are always online, and in many Internet-facing services it is not feasible to take the system down for maintenance, ever. In these situations, the only option is to design software that can tolerate faults that affect a subset of the system. Consensus algorithms are usually employed by people trying to make fault-tolerant systems, so for the rest of this article, we will assume fault tolerance is a non-negotaible requirement.
->
-> It turns out to be very difficult to come up with fault-tolerant solutions to the exactly-once and happened-or-not problems. However, there is a nifty way to factor out the fault tolerance part of the problems, such that we build one fault-tolerant primitive and use it to solve these completely different problems (and many others). That fault-tolerant primitive is called a **consensus algorithm**.
+Distribution introduces the problems of **faults** in the system. Hardware can lose power, software can crash, and networks can degrade or disconnect. Technically these problems also affect single-node software, but nobody ever expects single-node code to be able to deal with a fault: for example, if the machine running some code crashes, the code is no longer running, and thus can't do anything about it. Since single-node code is no longer running and can't do anything if the hardware faults, it can largely pretend faults don't exist. In a distributed system, a fault can affect some nodes while leaving others online to deal with the consequences.
+
+Distributed system code that keeps working even if some nodes fault is called **fault tolerant**. The distributed consensus algorithm we previously implemented, `DistributedWriteOnce<T>` is not fault tolerant because it relies on a single coordinator node and cannot recover if that coordinator node crashes. In normal operation, all non-coordinator nodes contact the coordinator any time they need to read or write the write-once variable:
+
+TODO diagram
+
+There is no provision ever to not use the coordinator node, so if the coordinator crashes, the other nodes continue to ask it about the variable. They will never get a response, because the coordinator node is no longer running:
+
+TODO diagram
+
+In this situation, it took just one fault &mdash; one node crash &mdash; to break the `DistributedWriteOnce` consensus algorithm. Thus it is not fault tolerant.
+
+Now, the lack of fault tolerance is certainly a limitation, but depending on your use case that may not be a problem. Plenty of systems run on a small number of nodes, and if you have a small network with just a few machines, hardware and software is reliable enough that you won't see problems very often. Rare hardware and software faults only become a nuisance if you have a large enough system to start hitting rare problems frequently. Also, many systems do not need to be highly available: you can take them offline from time to time to do regular maintenance like upgrading software, replacing hardware, etc.
+
+If you're dealing with a small system that admits maintenance windows, you can probably get away with something like `DistributedWriteOnce<T>`, which is pretty nice: `DistributedWriteOnce<T>` is much simpler than anything else we're about to discuss, so really you'd be quitting while you're ahead. However, if you have a really big system, or you really can't accept any downtime at all (e.g. maybe you're running the city's E911 or something), then you require fault tolerance, and `DistributedWriteOnce<T>` is too simplistic to meet your needs.
+
+Most of the time, when people talk about consensus algorithms, they mean fault tolerant consensus algorithms. So we are going to worry about making our consensus algorithms fault-tolerant too. So on top of our Agreement, Validity and Termination rules, we'll add a fourth:
+
+> **Fault Tolerance**: The presence of faults in hardware, software or the network do not cause the algorithm to violate the other properties (Agreement, Validity or Termination)
+
+There is some wiggle room in determining how many faults the algorithm needs to be able to survive; for example, if every machine in the network loses power, there is no code running anywhere, so of course there is nothing the algorithm can do about it. Typically you either count the number of crashes your algorithm can withstand (1-3, usually), or you choose some percentage of machines which are allowed to fail (often, "less than half").
 
 ## Implementing Fault-Tolerant Consensus
 

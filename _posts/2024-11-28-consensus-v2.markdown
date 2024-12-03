@@ -541,11 +541,11 @@ One important caveat with this implementation: to be fault tolerant, we actually
 
 With that, it seems we have a complete `WriteOnce<T>`. So does this meet our needs? Let's check:
 
-**Agreement**: :white_check_mark: 
+**Agreement**: ✅
 
 If a candidate value receives more than half of the votes, then less than half of the votes remain for other candidates, which means only one candidate can reach a majority can become the `finalValue()` of the system. Every node ends up tallying the same set of votes. so they all independently reach the same determination of which candidate wins.
 
-**Validity**: :white_check_mark:
+**Validity**: ✅
 
 The final value is the value which received a majorify of the system's votes. A value can only receive any votes if it was a candidate, which in turn can only happen if someone passed that value to `tryInitialize`. Therefore the final value is always a value that was passed to `tryInitialize`.
 

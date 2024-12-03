@@ -435,20 +435,67 @@ Interesting &mdash; majority-rules voting is an algorithm that does not require
 
 # Part 2: Voting
 
-TODO explain the basic algorithm
+Let's write a consensus algorithm where nodes throw out proposals and vote on them, just like in the movie example above. However, this won't be messy like the real world, where people have preferences; each of our nodes will just vote for whatever option it heard about first, and never change its mind. Let's try it out:
 
-* Try-initialize broadcasts that value to all nodes in the system
-* Each node votes for the first value it hears about and never changes its mind
-* When a node votes, it tells all its peers what value it voted for
-* Each node independently determines the final value it sees a value has reached a majority
+## Basic Voting Algorithm
 
-TODO
+To get started, we'll implement `tryInitialize()` by broadcasting a message to every node in the system, offering the caller's value as a candidate for voting on:
+
+```java
+public void tryInitialize(T value) {
+  for (int nodeId : App.nodeIds()) {
+    remoteCall(nodeId, "onCandidate", value);
+  }
+}
+```
+
+When a node receives one of these messages for the first time, it votes for that value, and also broadcasts a message to its peers saying it voted for that candidate. After this point, the node is no longer allowed to change its vote, so if more candidates are received we silently ignore them, which is achieved by the `isEmpty()` check below:
+
+```java
+private void onCandidate(T value) {
+  synchronized (lock) {
+    if (myVote.isEmpty()) {
+      myVote = Optional.of(value);
+      for (int nodeId : App.nodeIds()) {
+        remoteCall(nodeId, "onVote", value);
+      }
+    }
+  }
+}
+```
+
+Finally, each time a node receives a notification that a peer has voted, it increases its local tally of votes for candidate values. Once it sees some candidate has received a majority (more than half) of votes, it deems that value to be the winner, and sends that value to all pending and future `finalValue()` calls.
+
+```java
+CompletableFuture<T> outcome = new CompletableFuture<>();
+
+// ...
+
+private void onVote(T value) {
+  synchronized (lock) {
+    voteCounts.put(value, 1 + voteCounts.getOrDefault(value, 0));
+    if (voteCounts.get(value) > App.nodeIds().size() / 2) {
+      outcome.complete(value);
+    }
+  }
+}
+```
+
+Finally, we implement `finalValue()` just by passing along the outcome future:
+
+```java
+public Future<T> finalValue() {
+  return outcome;
+}
+```
+
+Putting it all together, we get a `WriteOnce<T>` implementation that looks like this:
 
 ```java
 class MajorityRulesVoting<T> implements WriteOnce<T> {
   private Object lock = new Object();
   private Optional<T> myVote = Optional.empty();
-  private Map<T, Integer> voteCounts = new HashMap<>();
+  private Map<T, Integer> tallies = new HashMap<>();
   private CompletableFuture<T> outcome = new CompletableFuture<>();
     
   public MajorityRulesVoting() {
@@ -475,8 +522,8 @@ class MajorityRulesVoting<T> implements WriteOnce<T> {
   
   private void onVote(T value) {
     synchronized (lock) {
-      voteCounts.put(value, 1 + voteCounts.getOrDefault(value, 0));
-      if (voteCounts.get(value) > App.nodeIds().size() / 2) {
+      tallies.put(value, 1 + tallies.getOrDefault(value, 0));
+      if (tallies.get(value) > App.nodeIds().size() / 2) {
         outcome.complete(value);
       }
     }
@@ -488,7 +535,25 @@ class MajorityRulesVoting<T> implements WriteOnce<T> {
 }
 ```
 
-Be careful to note this is not a complete fault-tolerant algorithm, we actually need to keep rebroadcasting onCandidate and onVote forever so that nodes which were out of the system for a while and come back can catch up. But the code above is a pretty good sketch of what this needs to look like.
+Note in the implemenation above, the node running the code is itself included in the `App.nodeIds()` list, which means it always sends `onCandidate` and `onVote` messages to itself via the network in addition to informing its peers. I did it this way mostly to save on space so the code would fit nicely in a page of this blog post.
+
+One important caveat with this implementation: to be fault tolerant, we actually need to keep broadcasting `onCandidate` and `onVote` messages forever instead of just sending each message once, so that nodes which were offline for a while and come back can learn of candidates and votes and thereby catch up. For the sake of keeping the code snippets clean, let's just pretend our `remoteCall()` interface internally rebroadcasts messages until they are delivered.
+
+With that, it seems we have a complete `WriteOnce<T>`. So does this meet our needs? Let's check:
+
+**Agreement**: :white_check_mark: 
+
+If a candidate value receives more than half of the votes, then less than half of the votes remain for other candidates, which means only one candidate can reach a majority can become the `finalValue()` of the system. Every node ends up tallying the same set of votes. so they all independently reach the same determination of which candidate wins.
+
+**Validity**: :white_check_mark:
+
+The final value is the value which received a majorify of the system's votes. A value can only receive any votes if it was a candidate, which in turn can only happen if someone passed that value to `tryInitialize`. Therefore the final value is always a value that was passed to `tryInitialize`.
+
+**Termination**: ... uh oh, we have a problem here. Do we guarantee that some vote eventually reaches a majority? I don't think we do.
+
+## Split Votes
+
+
 
 TODO correctness proof sketch for each property. Agreement is from single majority. Validity is from voting for some value broadcasted by tryInitialize. Termination is ... oops. Split votes don't terminate do they?
 

@@ -287,11 +287,11 @@ class DistributedWriteOnce<T> implements WriteOnce<T> {
 }
 ```
 
-Once again we were able to multithread the initial solution with a lock and distribute the multithreaded solution by selecting a coordinator node. Now let's see how this lets us *remove* the lock and the coordinator from the original problems.
+Once again we were able to multithread the initial solution with a lock and distribute the multithreaded solution by selecting a coordinator node. Now let's see how this lets us *remove* the lock and the coordinator from our other two problem solutions.
 
 ### Picking a Random User
 
-The basic question behind picking a random user was how to ensure one, and only one random user is picked per day. Here's one way to do it with a write-once variable:
+The basic question behind picking a random user was how to make something happen once, e.g. how to ensure ensure one, and only one random user is picked per day. Here's a way to do that with a write-once variable:
 
 ```java
 User getUserOfTheDay() {
@@ -301,9 +301,9 @@ User getUserOfTheDay() {
 }
 ```
 
-The idea is that any thread that wants to get a user of the day picks a random user ID, but only the first pick of the day actually takes effect and becomes the random user of the day; all other `tryInitialize()` calls silently do nothing because the user of the day has already been initialized.
+The idea here is that any thread that wants to get a user of the day picks a random user ID, but only the first pick of the day actually takes effect and becomes the random user of the day; all other `tryInitialize()` calls silently do nothing because the write-once variable for today has already been picked. (Of course, we need some way to get a new `WriteOnce<User>` each day, but we won't worry about that for now.)
 
-TODO walk through what happens normally, multithreaded, distributed
+Just as we wanted, the guarantees provided by the `WriteOnce<T>` are conferred to the calling code: passing in a thread-safe `WriteOnce` above makes `getUserOfTheDay` thread-safe, and passing in a distrubted `WriteOnce` makes `getUserOfTheDay` distributed with no further work on the part of `getUserOfTheDay()`. Pretty nifty, huh? Now let's try it again on the other solution.
 
 ### Order Cancellation
 

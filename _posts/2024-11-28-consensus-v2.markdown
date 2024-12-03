@@ -51,7 +51,7 @@ User getUserOfTheDay() {
 
 What if we have distributed system? In a way, a distributed system is lot like a multithreaded system, just with the different threads running on different computers. So hopefully we should be able to reuse most of our multithreaded solution above.
 
-For us as programmers, what's new and different about distributed systems is how threads communicate: on a single machine, threads can just share variables, but once we have different threads on different machines we need to use the network. Our multithreaded solution relies on sharing variables, so we'll have to use the network instead now that we're distributed.
+For us as programmers, what's different about distributed systems is how threads communicate: on a single machine, threads can just share variables, but once we have different threads on different machines we need to use the network. Our multithreaded solution relies on sharing variables, so we'll have to use the network instead now that we're distributed.
 
 Here's a simple approach: we can assign to one node the job of managing the user of the day. It'll decide who is the user of the day and remember that decision all day; then, any time any other node needs to know who is the current user of the day, it'll ask this one. We'll call this special node the **coordinator**.
 
@@ -210,7 +210,7 @@ interface WriteOnce<T> {
 The way we implement this thing should look pretty similar by now. First we write the obvious single-threaded implementation:
 
 ```java
-class BasicWriteOnce<T> {
+class BasicWriteOnce<T> implements WriteOnce<T> {
   private CompletableFuture<T> value = new CompletableFuture<>();
   private boolean initialized = false;
   
@@ -230,7 +230,7 @@ class BasicWriteOnce<T> {
 To multithread, we just add a lock:
 
 ```java
-class MultithreadedWriteOnce<T> {
+class MultithreadedWriteOnce<T> implements WriteOnce<T> {
   private Object lock = new Object();
   private CompletableFuture<T> value = new CompletableFuture<>();
   private boolean initialized = false;
@@ -250,19 +250,44 @@ class MultithreadedWriteOnce<T> {
 }
 ```
 
-Then to make it distributed, we store the variable on a coordinator and have all other threads contact the coordinator for each operation:
+Then to make it distributed, we store the variable on a coordinator and have all other threads contact the coordinator for each operation. The full client and server side are given in one class below:
 
 ```java
-// TODO
+class DistributedWriteOnce<T> implements WriteOnce<T> {
+  private int coordinatorId;
+  
+  public DistributedWriteOnce(int coordinatorId) {
+    this.coordinatorId = coordinatorId;
+    if (coordinatorId == App.myNodeId()) {
+      setupCoordinator();
+    }
+  }
+  
+  public void tryInitialize(T value) {
+    return remoteCall(coordinatorId, "tryInitialize");
+  }
+  
+  public Future<T> get() {
+    return remoteCall(coordinatorId, "get");
+  }
+  
+  private void setupCoordinator() {
+    WriteOnce<T> impl = new MultithreadedWriteOnce<>();
+    
+    registerRemoteCall("tryInitialize", (value) => {
+      impl.tryInitialize(value);
+    });
+
+    registerRemoteCall("get", () => {
+      AsyncResponse<T> response = new AsyncResponse<>();
+      impl.get().thenAccept(val => response.respond(val));
+      return response;
+    });
+  }
+}
 ```
 
-The coordinator's server side of the RPC interface might look like this
 
-```java
-// TODO
-```
-
-TODO
 
 ## The Curveball: Fault Tolerance
 

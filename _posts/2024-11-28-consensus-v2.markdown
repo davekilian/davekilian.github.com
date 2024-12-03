@@ -207,10 +207,10 @@ interface WriteOnce<T> {
 }
 ```
 
-This thing can be implemented using the exact same pattern we used for our two example problems. For single-thread code, we just implement the interface:
+The way we implement this thing should look pretty similar by now. First we write the obvious single-threaded implementation:
 
 ```java
-class WriteOnce<T> {
+class BasicWriteOnce<T> {
   private CompletableFuture<T> value = new CompletableFuture<>();
   private boolean initialized = false;
   
@@ -230,7 +230,7 @@ class WriteOnce<T> {
 To multithread, we just add a lock:
 
 ```java
-class WriteOnce<T> {
+class MultithreadedWriteOnce<T> {
   private Object lock = new Object();
   private CompletableFuture<T> value = new CompletableFuture<>();
   private boolean initialized = false;
@@ -250,7 +250,19 @@ class WriteOnce<T> {
 }
 ```
 
-To make it distributed, TODO do I really want to try to show this? urgh, the future aspect makes it all boilerplatey.
+Then to make it distributed, we store the variable on a coordinator and have all other threads contact the coordinator for each operation:
+
+```java
+// TODO
+```
+
+The coordinator's server side of the RPC interface might look like this
+
+```java
+// TODO
+```
+
+
 
 ## The Curveball: Fault Tolerance
 

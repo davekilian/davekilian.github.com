@@ -559,13 +559,13 @@ TODO pose question of how to handle it. Consider mentioning timeout-based retry 
 
 TODO better, simpler idea: a tiebreaking rule. 
 
-## Tiebreakers
+## Tiebreaker: Plurality Voting
 
-TODO augment the implementaton to ask the caller for a tiebreaking rule, which executes once all votes are in.
+TODO augment the implementaton to with a tiebreaker. Once all votes are in, pick the plurality. If there is a tie for plurality, run a bully algorithm to pick an item.
 
 TODO now we win on agreement, validity, termination, but not fault tolerance, because we waited for all votes to be in.
 
-## Running the Tiebreaker Early
+## Fault-Tolerant Tiebreaking 
 
 TODO we need to show the tiebreaking rule before all votes are in necessarily creates an agremenet violation in some situations.
 

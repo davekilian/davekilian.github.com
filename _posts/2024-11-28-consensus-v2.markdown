@@ -340,11 +340,17 @@ As you might be imaginging by now, there are quite a few problems that can be re
 
 ## Consensus Algorithms are Implementations of Distributed Write-Once Variables
 
-That's right, `DistributedWriteOnce<T>` is actually a full-blown consensus algorithm. We wrote a consensus algorithm!
+That's right, `DistributedWriteOnce<T>` is a full-blown consensus algorithm!
 
-Huh, I thought consensus algorithms were notoriously difficult for mere mortals to comprehend? I comprehend `DistributedWriteOnce` pretty good . . .
+The word "consensus" means "agreement." It implies a sort of story: once upon a time, there was a group, where not all members of the group initially agreed. Then, they all came into agreement. That kind of agreement is called "consensus." So what does consensus have to do with distributed write-once variables? In that context, the group is a group of threads running on different machines, rather than a group of people. The initial disagreement comes from different threads calling `tryInitialize` with different values. The final agreement comes from all threads receiving the same value from `finalValue`.
+
+If you check our write-once solutions to the random user selection and order cancellation problems, you'll see in both cases we start out with different threads in disagreement (different values being passed to `tryInitialize`), and end up with all threads in agreement (all forget what value they passed to `tryInitialize` and just trust the value returned by `finalValue` instead). Somewhere inside of the `WriteOnce<>` object, the disagreement was resolved, arbitrarily, by picking the first `tryInitialize` call, and the final result was total agreement &mdash; consensus.
+
+But anyways, it would seem we managed to come up with a pretty good consensus algorithm, `DistributedWriteOnce<T>`, without all that much thinking or writing all that much code. Aren't consensus algorithms supposed to be notoriously difficult for mere mortals to comprehend? I'm a mere mortal, and I comprehend `DistributedWriteOnce<T>` pretty good . . .
 
 ## The Curveball: Fault Tolerance
+
+We could stop here if we wanted to. (And we'd be quitting while we're ahead.) But there is another requirement we really ought to consider before declaring victory on consensus algorithms.
 
 
 

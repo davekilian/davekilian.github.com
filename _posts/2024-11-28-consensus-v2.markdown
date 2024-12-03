@@ -575,10 +575,21 @@ TODO justify we are now stuck, and segue out to FLP
 
 Part 3 is FLP, I had several thoughts of how to explain this without getting into the formal math
 
+* Their model
+  * For now let's focus with a consensus model with just two possible outputs: 0 or 1
+  * A system has three possible consensus states: 0, 1 or undecided
+  * Each step of the algorithm that runs while state is undecided can result in subset of (0, 1, undecided)
+  * Once the consensus state is (0, 1) no step can transition it to anything else
+  * Every step runs on a single node
+
+* My model: a decision
+  * A decision is a step that runs in state (undecided) and cannot result in state (undecided)
+
 * At a high level, the core claim they make is you have three bad choices
-  * Algorithm doesn't guarantee a decision is ever made => stupid, it doesn't terminate
-  * Algorithm has one way it can force a decision => can't be fault tolerant, that step may never execute
-  * Algorithm has 2+ ways to force a decision => it's broken in the case where no node fails
+  * Algorithm doesn't guarantee any decision steps => stupid, it doesn't terminate
+  * Algorithm guarantees just one decision step => it isn't fault tolerant, that step may never execute
+  * Algorithm guarantees up to 2 decision steps => they can disagree with one another
+
 * Most of the work in the proof is proving the 2+ case
   * Intuition: you can't differentiate "never" from "not yet" i.e. "failed" vs "slow"
   * Their system model precludes the existence of timeouts, but that is correct, we don't want to rely on brittle timeouts

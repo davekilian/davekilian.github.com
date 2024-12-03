@@ -450,7 +450,7 @@ class MajorityRulesVoting<T> implements WriteOnce<T> {
     
   public MajorityRulesVoting() {
     registerRemoteCall("voteFor", this::voteFor);   
-    registerRemoteCall("onResult", this::onResult);
+    registerRemoteCall("peerVoted", this::peerVoted);
   }
   
   public void tryInitialize(T value) {
@@ -464,13 +464,13 @@ class MajorityRulesVoting<T> implements WriteOnce<T> {
       if (myVote.isEmpty()) {
         myVote = Optional.of(value);
         for (int nodeId : App.nodeIds()) {
-          remoteCall(nodeId, "onResult", value);
+          remoteCall(nodeId, "peerVoted", value);
         }
       }
     }
   }
   
-  private void onResult(T value) {
+  private void peerVoted(T value) {
     synchronized (lock) {
       voteCounts.set(value, 1 + voteCounts.getOrDefault(value, 0));
       if (voteCounts.get(value) > App.nodeIds().size() / 2) {

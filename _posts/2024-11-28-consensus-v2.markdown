@@ -571,7 +571,7 @@ Here no candidate is the winner because it takes at least 13 votes to reach a ma
 
 We'll have to find some kind of workaround. That's okay, this was our very first stab, it was likely we would run into some kind of stumbling block. But how we do deal with split votes?
 
-One thing we could do is add the notion of a "do-over" to our algorithm: if we get to the end of voting and determine it's a split vote, just start over and hold a new vote. We might have more luck and reach a majority the next time around. This is not a bad idea, but I want to avoid it if possible for a few reasons. First, having restarts in a consensus algorithm requires great care: if the algorithm does manage to reach consensus, then restarts and reaches consensus again with a different answer, we end up violating the Agreement property. Plus, retrying is just hoping for the best; there's no guarantee this will ever result in termiantion, and we can't even put a reasonable bound on how many times we will have to retry before we can terminate.
+One thing we could do is add the notion of a "do-over" to our algorithm: if we get to the end of voting and determine it's a split vote, just start over and hold a new vote. We might have more luck and reach a majority the next time around. This is not a bad idea, but I want to avoid it if possible for a few reasons. First, having restarts in a consensus algorithm requires great care: if the algorithm does manage to reach consensus, then restarts and reaches consensus again with a different answer, we end up violating the Agreement property. Second, we are solving the problem of not guaranteeing termination, and retrying doesn't guarantee termination anyways. We can't even put a reasonable bound on how many times we will have to retry before we can terminate.
 
 A different approach that avoids both of these problems is to have a **tiebreaker**: just add a deterministic rule that chooses a winning value arbitrarily, and run it once all votes are in. Every node has the same tally of votes, so if every node runs the same deterministic rule over that tally to pick a winner, every node will pick the same winner.
 
@@ -687,6 +687,8 @@ Case: no candidate reaches a majority. Then the algorithm terminates once all vo
 Oops, this isn't fault tolerant, is it? We don't run the tiebreaker until all votes are in ... but if a fault takes down any node before that node casts its vote, then we'll never have all votes in, and then we won't terminate, will we?
 
 ## Fault-Tolerant Tiebreaking 
+
+All right, so we've found out that we need a tiebreaker, and then we've found out that tiebreaker must be made to work even if some nodes have faulted. How do we do that?
 
 TODO we need to show the tiebreaking rule before all votes are in necessarily creates an agremenet violation in some situations.
 

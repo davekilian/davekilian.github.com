@@ -332,7 +332,9 @@ OrderState getOrderState() {
 
 ### ... And More!
 
+TODO - as you can imagine, many problems can likely be reduced to getting and setting a single `WriteOnce<T>`. And by doing that, you automatically get the multithreading / distribution support baked into `WriteOnce<T>` for free. That's pretty neat!
 
+And that's why consensus is so useful: **a consensus algorithm is just a distributed implementation of a write-once variable**. That's right, `DistributedWriteOnce<T>` is actually a full-blown consensus algorithm! Huh, I thought writing consensus algorithms was supposed to be harder than that . . .
 
 ## The Curveball: Fault Tolerance
 

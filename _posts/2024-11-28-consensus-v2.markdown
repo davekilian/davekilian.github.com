@@ -352,7 +352,7 @@ That's a good high-level description, but we should dig deeper. What guarantees 
 
 ## Properties of a Consenus Algorithm
 
-Let's take a second look at the `WriteOnce` interface that we now know a consensus algorithm must implement:
+Let's take a second look at the `WriteOnce` interface a consensus algorithm must implement:
 
 ```java
 interface WriteOnce<T> {
@@ -366,13 +366,23 @@ interface WriteOnce<T> {
 
 What hidden assumptions exist behind this interface? In other words, what rules govern the relationship between what gets passed to `tryInitialize` and what is returned by `finalValue`? What expected behaviors, if violated, would the example solutions we built on top of this interface?  Any such rule is a property of a consensus algorithm.
 
+Here's one I can see: the value returned by `finalValue` has to be the value somebody previously passed to `tryInitialize`. It can't be some other nonsense value, random value, or something picked arbitrarily. For example, an execution like this should not be allowed, as it would break the write-once-based solution code from earlier.
+
+* `WriteOnce<Integer>` created
+* Thread 1 calls `tryInitialize()` passing in a value of 1
+* Thread 2 calls `tryInitialize()` passing in a value of 2
+* Thread 3 calls `finalValue()`, which returns 4 [*](https://xkcd.com/221/)
+
+In papers and textbooks, this rule is sometimes called **validity**:
+
+> **Validity**: The value chosen by a consensus algorithm must be some value that was previously proposed. That is: the value returned by `finalValue()` must be a value previously passed to `tryInitialize()`. 
+
 
 
 
 
 TODO we should be able to frame this as an examination of hidden assumptions in the interface
 
-* Validity: that finalValue() has to be a value that someone tryInitialized
 * Agreement: all futures always resolve to the same value
   * Has both a spatial requirement (for all threads) and a temporal requirement (for all calls)
   * Legalese: if finalValue returns a value, then no other call to finalValue anywhere else in the system has returned or will return any other value

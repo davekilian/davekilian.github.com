@@ -449,28 +449,28 @@ class MajorityRulesVoting<T> implements WriteOnce<T> {
   private CompletableFuture<T> outcome = new CompletableFuture<>();
     
   public MajorityRulesVoting() {
-    registerRemoteCall("voteFor", this::voteFor);   
-    registerRemoteCall("peerVoted", this::peerVoted);
+    registerRemoteCall("onCandidate", this::onCandidate);   
+    registerRemoteCall("onVote", this::onVote);
   }
   
   public void tryInitialize(T value) {
     for (int nodeId : App.nodeIds()) {
-      remoteCall(nodeId, "voteFor", value);
+      remoteCall(nodeId, "onCandidate", value);
     }
   }
   
-  private void voteFor(T value) {
+  private void onCandidate(T value) {
     synchronized (lock) {
       if (myVote.isEmpty()) {
         myVote = Optional.of(value);
         for (int nodeId : App.nodeIds()) {
-          remoteCall(nodeId, "peerVoted", value);
+          remoteCall(nodeId, "onVote", value);
         }
       }
     }
   }
   
-  private void peerVoted(T value) {
+  private void onVote(T value) {
     synchronized (lock) {
       voteCounts.set(value, 1 + voteCounts.getOrDefault(value, 0));
       if (voteCounts.get(value) > App.nodeIds().size() / 2) {

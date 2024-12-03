@@ -342,15 +342,17 @@ As you might be imaginging by now, there are quite a few problems that can be re
 
 That's right, `DistributedWriteOnce<T>` is a full-blown consensus algorithm!
 
-The word "consensus" means "agreement." It implies a sort of story: once upon a time, there was a group, where not all members of the group initially agreed. Then, they all came into agreement. That kind of agreement is called "consensus." So what does consensus have to do with distributed write-once variables? In that context, the group is a group of threads running on different machines, rather than a group of people. The initial disagreement comes from different threads calling `tryInitialize` with different values. The final agreement comes from all threads receiving the same value from `finalValue`.
+The word "consensus" means "agreement." Calling something consensus implies a sort of story: once upon a time, there was a group, where not all members of the group initially agreed. Then, they all came into agreement. That kind of agreement is called "consensus." 
 
-If you check our write-once solutions to the random user selection and order cancellation problems, you'll see in both cases we start out with different threads in disagreement (different values being passed to `tryInitialize`), and end up with all threads in agreement (all forget what value they passed to `tryInitialize` and just trust the value returned by `finalValue` instead). Somewhere inside of the `WriteOnce<>` object, the disagreement was resolved, arbitrarily, by picking the first `tryInitialize` call, and the final result was total agreement &mdash; consensus.
+So what does consensus have to do with distributed write-once variables? In that context, the group is made up of threads running on different machines, rather than people; the initial disagreement comes from different threads calling `tryInitialize` with different values, and the final agreement comes from all threads receiving the same value from `finalValue`.
 
-But anyways, it would seem we managed to come up with a pretty good consensus algorithm, `DistributedWriteOnce<T>`, without all that much thinking or writing all that much code. Aren't consensus algorithms supposed to be notoriously difficult for mere mortals to comprehend? I'm a mere mortal, and I comprehend `DistributedWriteOnce<T>` pretty good . . .
+If you check our write-once solutions to the random user selection and order cancellation problems, you'll see this in action. In both cases we start out with different threads in disagreement (different values are being passed to `tryInitialize`), and we end up with all threads in agreement (we forget what value we passed to `tryInitialize` and just trust the value returned by `finalValue` instead). Somewhere between `tryInitialize` and `finalValue`, the disagreement was resolved (arbitrarily, by picking the first `tryInitialize` call), and the final result was total agreement acrss all threads &mdash; consensus.
+
+We could end this blog post right here if we wanted do. (And we quit now, we'd be quitting while we're ahead.) But this cannot be the whole story. We managed to write a consensus algorithm, namely `DistributedWriteOnce<T>`, without all that much thinking or code. Aren't consensus algorithms supposed to be notoriously difficult for mere mortals to comprehend? I'm a mere mortal, and I comprehend `DistributedWriteOnce<T>` just fine.
 
 ## The Curveball: Fault Tolerance
 
-We could stop here if we wanted to. (And we'd be quitting while we're ahead.) But there is another requirement we really ought to consider before declaring victory on consensus algorithms.
+
 
 
 
@@ -382,44 +384,6 @@ Both our distributed solutions to the exactly-once and happened-or-not problems 
 The lack of fault tolerance is certainly a limitation, but it may not actually be a problem! If you're operating a small network of nodes, in a highly controlled environment such as a data center, and you have the option to regularly schedule "maintenance windows" for taking the whole system offline and doing upgrades, then non-fault-tolerant distributed algorithms may work for you. As we have already seen, non-fault-tolerant distributed algorithms are often pretty simple, much more so than any of the algorithms we're going to go on and build in the rest of this article. However, at a certain network size it becomes infeasible to ensure all nodes are always online, and in many Internet-facing services it is not feasible to take the system down for maintenance, ever. In these situations, the only option is to design software that can tolerate faults that affect a subset of the system. Consensus algorithms are usually employed by people trying to make fault-tolerant systems, so for the rest of this article, we will assume fault tolerance is a non-negotaible requirement.
 
 It turns out to be very difficult to come up with fault-tolerant solutions to the exactly-once and happened-or-not problems. However, there is a nifty way to factor out the fault tolerance part of the problems, such that we build one fault-tolerant primitive and use it to solve these completely different problems (and many others). That fault-tolerant primitive is called a **consensus algorithm**.
-
-## Consensus
-
-"Consensus" means "agreement," usually in the context of a group decision. In distributed systems, consensus is the problem of getting all nodes in a distributed system to agree upon the value of some variable.
-
-In practice, a consensus algorithm implements something like a write-once variable. The variable starts off uninitialized and therefore cannot be read. The first thread to try to write the value succeeds, and the variable is initialized ot the value that thread was trying to write. Afterwards, any attempt to write the value again silently fails; the variable stays set to the value that was first set. Once the variable has been written the first time, it can be read by any thread anywhere in the system, at any time. Assuming the algorithm is distributed and fault tolerant, all of these functions keep working even if some nodes of the network have failed.
-
-The interface for using a consensus algorithm might look something like this:
-
-```java
-interface Consensus<T> {
-  /** Try to initialize to the given value, no-op if already initialized */
-  public void tryInitialize(T value);
-  
-  /** Reads the value once the variable haa been initialized */
-  public Future<T> get();
-}
-```
-
-Initially the variable stored by a `Consensus` object is not initialized, so any thread calling `get()` will receive a future that has not yet resolved. The first thread to call `tryInitialize()` writes its proposed value to the variable and resolves all futures previously returned by `get()` to the value that was just written. Subsequent calls to `get()` return a resolved future, and subsequent `tryInitialize` calls do nothing, because the variable is already initialized.
-
-So if  what we have here a variable, why do we call this a "consensus" algorithm? The name *consensus* comes from the tricky part of this algorithm: how do we deal with the case where the variable is not yet initialized, and *multiple* threads try to initialize it at the same time? If that happens we must arbitrarily pick one of those `tryInitialize()` calls to accept and discard the rest. Since all nodes must *agree* which `tryInitialize` call is the one that succeeded, we call the algorithm *consensus*. In other words, the core of any distributed consensus algorithm is a mechanism for resolving a conflict and coming to agreement.
-
-So, assuming we have a fully distributed, fault-tolerant implementation of this write-once variable, how do we use it to solve our example problems?
-
-### Exactly-Once
-
-TODO walk through exactly-once. This one's a bit tricky, if `thingy()` has side effects then you have cross-domain transaction sort of problems. If we assume `thingy()` is a pure function and we just want the result saved, then the strategy is for everyone to call `thingy` and all try to resolve it to the return value, so only one invocation (arbitrarily) takes effect. Use this as a chance to talk about how exactly once cannot really exist in a distributed system, the best approximation available is to make it happen lots of times but only take effect once.
-
-One way to help here is remove “thingy” and replace it with a function that is obviously pure, such as picking a random‘user of the day.’ That’s also nice because each example has a fundamental problem and a concrete example where it crops up.
-
-### Happend-or-Not
-
-TODO walk through happened-or-not. This one also has a few complications, we have to use it only to decide whether cancelled or shipped but not pending. We can kind of hack around it by assuming uninitialied variable / never written to means the order is still pending.
-
-### ... and more!
-
-TODO hints lots of other problems can be solved using consensus algorithms for distributed fault tolerance. There's a reason these are considered foundational to modern distributed systems.
 
 ## Properties of a Consensus Algorithm
 

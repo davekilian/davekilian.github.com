@@ -616,6 +616,8 @@ Part 4 is Paxos
 * Key ideas
   * Voting progresses in rounds, potentially infinitely many rounds
   * In each round, the vote is one-sided: either we choose this specific candidate, or we remain undecided
+* Show an implementation just called `Paxos<T> implements WriteOnce<T>` which implements the basic strategy with symmetric peers and not much code
+* Add the bells and whistles to "grow" it into the synod algorithm you would recognize from Paxos Made Simple or Wikipedia
 
 Part 5 is about moving from the single-shot core Synod algorithm to a general state machine replication primitive (i.e. write-once variable to mutable variable semantics). 
 

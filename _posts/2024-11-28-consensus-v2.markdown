@@ -348,7 +348,7 @@ So what does consensus have to do with distributed write-once variables? In that
 
 If you check our write-once solutions to the random user selection and order cancellation problems, you'll see this in action. In both cases we start out with different threads in disagreement (different values are being passed to `tryInitialize`), and we end up with all threads in agreement (we forget what value we passed to `tryInitialize` and just trust the value returned by `finalValue` instead). Somewhere between `tryInitialize` and `finalValue`, the disagreement was resolved (arbitrarily, by picking the first `tryInitialize` call), and the final result was total agreement acrss all threads &mdash; consensus.
 
-We could end this blog post right here if we wanted do. (And we quit now, we'd be quitting while we're ahead.) But this cannot be the whole story. We managed to write a consensus algorithm, namely `DistributedWriteOnce<T>`, without all that much thinking or code. Aren't consensus algorithms supposed to be notoriously difficult for mere mortals to comprehend? I'm a mere mortal, and I comprehend `DistributedWriteOnce<T>` just fine.
+Anyways, we've managed to write a consensus algorithm already &mdash; namely, `DistributedWriteOnce<T>`. We could end this blog post right here if we wanted to. (And if we did, we'd be quitting while we're ahead.) But clearly this cannot be the whole story. We managed to write a consensus algorithm already, without all that much thinking or code; aren't consensus algorithms supposed to be notoriously difficult for mere mortals to comprehend? I'm a mere mortal, and I comprehend `DistributedWriteOnce<T>` just fine . . .
 
 ## The Curveball: Fault Tolerance
 

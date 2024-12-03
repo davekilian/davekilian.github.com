@@ -688,11 +688,17 @@ Oops, this isn't fault tolerant, is it? We don't run the tiebreaker until all vo
 
 ## Fault-Tolerant Tiebreaking 
 
-All right, so we've found out that we need a tiebreaker, and then we've found out that tiebreaker must be made to work even if some nodes have faulted. How do we do that?
+Okay, so we've realized we need a tiebreaker to force the algorithm to eventually terminate, and we now realize that tiebreaker needs to execute before all votes are in if we want it to be fault tolerant.
 
 TODO we need to show the tiebreaking rule before all votes are in necessarily creates an agremenet violation in some situations.
 
 TODO justify we are now stuck, and segue out to FLP
+
+# Part 3: The FLP Result
+
+Thank you for making so far on this journey with me. You have now seen why consensus is ubiquitous, what a consensus algorithm needs to look like, you understand the importance and difficulty of making an algorithm fault-tolerant, and you have now seen several approaches to fault-tolerant consensus that don't work. We are almost ready to reach Paxos. There is but one more stepping stone to cross: we need to understand why we got stuck designing our voting algorithm, so we can figure out the workaround that lets us sidestep the problem we're running into.
+
+The funny thing about the FLP result is it doesn't really tell us anything we don't already know; it just generalizes the problem we are having with voting in a way that shows it affects *every* possible fault-tolerant consensus algorithm you might try to design, and it uses the language of formal mathematics to explain why all approaches are broken. Spoiler alert: they're all broken in the same way we have already encountered. (I may have steered the design discussion in Part 2 along a path that mimics the FLP proof.)
 
 ---
 

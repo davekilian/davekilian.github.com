@@ -336,7 +336,11 @@ Once again, the internal guarantees of thread safety / distribution provided by 
 
 As you might be imaginging by now, there are quite a few problems that can be reduced to trying to initialize a `WriteOnce<T>`, which vastly simplifies the process of threading / distributing the logic. If you see why that is, then you also already see why consensus is so foundational &mdash; because, drumroll please . . .
 
+<center>
+
 ## Consensus Algorithms are Implementations of Distributed Write-Once Variables
+
+</center>
 
 That's right, `DistributedWriteOnce<T>` is actually a full-blown consensus algorithm. We wrote a consensus algorithm!
 

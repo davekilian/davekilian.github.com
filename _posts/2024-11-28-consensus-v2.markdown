@@ -5,23 +5,23 @@ author: Dave
 draft: true
 ---
 
-Distributed consensus algorithms are a critical piece of modern computing infrastructure, but few people really understand how they work. When the first consensus algorithm, *Paxos*, was introduced to the world in 1989, it was met with a sort of [indifferent confusion](https://www.microsoft.com/en-us/research/publication/part-time-parliament/), and it wasn't until 9 years later that it had gained enough grassroots popularity to be published in a major journal. As the world moved online and everyone started building and operating their critical infrastructure as distributed systems, Paxos found its way into the foundation of almost everyone of those newly built systems &mdash; but at the same time, it also grew notorious for being beyond the comprehension of mere mortals. When a second viable consensus algorithm, *Raft*, finally came along well over a decade later, the paper was called *In Search of an Understandable Consensus Algorithm*, for good reason.
+Distributed consensus algorithms are a critical piece of modern computing infrastructure, but few people really understand how they work. When the first consensus algorithm, *Paxos*, was introduced to the world in 1989, it was met with a sort of [indifferent confusion](https://www.microsoft.com/en-us/research/publication/part-time-parliament/), and it wasn't until 9 years later that it had gained enough grassroots popularity to be published in a major journal. As the world moved online and everyone started building their critical infrastructure as distributed systems, Paxos found its way into the foundation of almost everyone of those newly built systems. But, at the same time, it also grew notorious for being beyond the comprehension of mere mortals &mdash; so much so that, when a second viable consensus algorithm, *Raft*, finally came along well over a decade later, the paper was called *In Search of an Understandable Consensus Algorithm*.
 
-I like Raft, and I think if you're choosing between Raft and multi-Paxos for a project today, Raft is probably the better choice. Multi-Paxos is presented as a rough sketch in the original Paxos paper, and so a hodgepodge of other papers have tried to fill in the blanks, but aren't completely consistent with one another; at least with Raft, there's a complete algorithm explained in one place! And yet, I don't think Paxos should be skipped over entirely. It's true the full multi-Paxos algorithm is complex and under-specified, but the core of Paxos (a little protocol called the *synod algorithm*) is small, well-specified, insightful, and can be embedded into other systems and algorithms. (TODO: doesn't Aurora do some kind of row-level Paxos? Maybe I'm misremembering.)
+I like Raft, and I think if you're choosing between Raft and multi-Paxos for a project today, Raft is very like to be the better choice. Multi-Paxos is presented only as a rough sketch in the original Paxos paper, and although a hodgepodge of other papers try to fill in the blanks, they aren't completely consistent with one another, so it's up to you to partially reinvent the wheel. At least with Raft, there's a complete algorithm spelled out in one place! Even so, I don't think Paxos should be skipped over entirely. It's true the full multi-Paxos algorithm is complex and under-specified, but the core of Paxos (a little protocol called the *synod algorithm*) is small, well-specified, insightful, and can be embedded into other systems and algorithms in a way that the full Raft and multi-Paxos cannot. (TODO: Find an example. I thought Aurora does some kind of row-level Paxos using the synod algorithm? Am I misremembering?)
 
-Leslie Lamport, who invented Paxos, [once described the synod algorithm](https://lamport.azurewebsites.net/pubs/paxos-simple.pdf) as "among the simplest and most obvious of distributed algorithms," and claimed that it "follows unavoidably from the properties we want it to satisfy." He's right of course, although it might not feel the way on a first read-through of the algorithm. The core synod algorithm falls out of a lot of invisible context: you need to really understand the problem we are solving, why obvious solutions fail, and what must be done to work around those failures for the synod algorithm to start looking like the simplest possible solution. So that's what we'll do: let's take a fresh look at the problem of consensus, try to solve it, get stuck, and then get un-stuck; we should end up reinventing the core of Paxos. Along the way we'll cover the FLP result, which bridges the gap from obvious algorithms that don't work, and less-obvious algoriths (like Paxos) that do.
+Leslie Lamport, who invented Paxos, [once described Paxos's core synod algorithm](https://lamport.azurewebsites.net/pubs/paxos-simple.pdf) as "among the simplest and most obvious of distributed algorithms," and claimed that it "follows unavoidably from the properties we want it to satisfy." He's right, although it might not seem that way on a first read-through of the algorithm. Paxos's core algorithm falls out of a lot of invisible context: you need to really understand the problem we are solving, why obvious solutions fail, and what must be done to work around those failures, for the synod algorithm to start looking like a clear and minimal solution. So that's what we'll do: let's take a fresh look at the problem of consensus, try to solve it, get stuck, and then get un-stuck; we should end up reinventing the synod algorithm, which is the core of Paxos. Along the way we'll cover the FLP result, which bridges the gap from obvious algorithms that don't work, and algorithms (like Paxos) that do.
 
 # Part 1: Consensus
 
-Just about every distributed system has a consensus algorithm running it in somewhere. Even if you have never written code to call into a consensus algorithm, the fancy distributed replicated database you're using probably depend on consensus internally, as do any cloud services you might be using. But what makes consensus so fundamental? Why do so many systems rely on one?
+Just about every distributed system has a consensus algorithm running it in somewhere. Even if you have never written code to use a consensus algorithm directly, the fancy distributed replicated database you're using itself relies on a consensus algorithm, as do any cloud services you might be using. But what makes consensus so fundamental? Why are they ubiquitous in distributed systems?
 
-One of the fun (or maybe "fun") parts of programming distributed systems is that quite a few common tasks that are trivial in normal code turn out to be really hard in distributed code. Consensus helps turn problems like that back into something more tractable. To see what I mean, let's try a couple of examples:
+One of the fun (or maybe "fun") parts of programming distributed systems is that quite a few common tasks that are trivial in normal code turn out to be really, really hard in distributed code. Consensus algorithms help turn problems like that back into something more tractable. To see what I mean, let's lay a couple of examples where a consensus algorithm might be helpful:
 
 ## Example: Picking a Random User
 
 Let's say we're writing code for a message board website, and we want to add a 'user of the day' function where we spotlight one particular user at random each day. How do write code to pick a user once, and only once each day?
 
-In normal code, the solution is pretty simple, it might look like this:
+In normal code, the solution is not too complex. It might look like this:
 
 ```java
 User getUserOfTheDay() {
@@ -34,7 +34,7 @@ User getUserOfTheDay() {
 }
 ```
 
-What if we need to call this method from multithreaded code? Easy enough, just put it all behind a lock:
+What if we need to call this method from multithreaded code? Easy enough, to make it thread-safe just put all the logic behind a lock:
 
 ```java
 User getUserOfTheDay() {
@@ -49,15 +49,15 @@ User getUserOfTheDay() {
 }
 ```
 
-What if we have distributed system? In a way, a distributed system is lot like a multithreaded system, just with the different threads running on different computers. So hopefully we should be able to reuse most of our multithreaded solution above.
+What if we have distributed system? In a way, a distributed system is lot like multithreading, just with the different threads running on different computers. So hopefully we should be able to reuse most of our multithreaded solution above.
 
-For us as programmers, what's different about distributed systems is how threads communicate: on a single machine, threads can just share variables, but once we have different threads on different machines we need to use the network. Our multithreaded solution relies on sharing variables, so we'll have to use the network instead now that we're distributed.
+For us as programmers, what's different about distributed systems is how threads communicate: on a single machine, threads can just share variables, but once we have different threads on different machines we need to use the network. Our multithreaded solution relies on sharing variables, so we'll have to use the network now that we're distributed.
 
-Here's a simple approach: we can assign to one node the job of managing the user of the day. It'll decide who is the user of the day and remember that decision all day; then, any time any other node needs to know who is the current user of the day, it'll ask this one. We'll call this special node the **coordinator**.
+Here's an approach: we can assign to one node the job of managing the user of the day. Let's call that node the **coordinator**. The coordinator decides who is the user of the day, and remembers that decision all day. Any time some other node needs to know who is the current user of the day, it asks the coordinator.
 
-Now we have a bootstrapping problem: how do all the nodes figure out which one is the coordinator?  Well, for most distributed systems running in data centers or the cloud, we know ahead of time the full set of nodes that are going to participate in the system. If we provision each node with a copy of that node list, we could have all nodes independently run the same deterministic algorithm on that list to pick the coordinator. As long as all nodes run the same deterministic algorithm with the same node list as input, they'll all end up picking the same coordinator &mdash; without ever sending a single network message!
+This'll work, but now we have a bootstrapping problem: how do all nodes figure out which one is the coordinator? Well, for most distributed systems running in data centers or the cloud, we know ahead of time the full set of nodes that are going to participate in the system. If we provision each node with a copy of that node list, we could have all nodes independently run the same deterministic algorithm on that list to pick the coordinator. As long as all nodes run the same deterministic algorithm with the same node list as input, they'll all end up picking the same coordinator &mdash; without ever sending a single network message!
 
-What algorithm could we run on the node list? A common answer is the so-called *bully algorithm*, which works on the principle, "the biggest guy wins." We pick some attribute on which to sort the nodes in the node list, and then choose the node that is largest or smallest in the resulting sort order:
+As to what algorithm we should run on the node list, a common choice is the so-called *bully algorithm*, which works on the principle, "the biggest guy wins." We pick some attribute on which to sort the nodes in the node list, and then choose the node that is largest or smallest in the resulting sort order:
 
 ````java
 int bullyAlgorithm(Collection<int> nodeIds) {
@@ -66,7 +66,7 @@ int bullyAlgorithm(Collection<int> nodeIds) {
 }
 ````
 
-Once the coordinator is known, all nodes in the system can do a remote method call to the coordinator node to ask it for the current user of the day, or to ask it to update the current user of the day:
+Once the coordinator is known, all nodes in the system can do a remote method call to the coordinator node to ask it for the current user of the day:
 
 ```java
 User getUserOfTheDay() {
@@ -75,10 +75,10 @@ User getUserOfTheDay() {
 }
 ```
 
-On startup, if a node runs the bully algorithm and realizes it is the coordinator, it starts the server side of this remote method call interface, implementing it using the same implementaiton we've already seen a few times:
+On startup, if a node runs the bully algorithm and realizes it itself is the coordinator, it starts the server side of this remote method call interface, which it implements the same way we did for multithreading:
 
 ```java
-if (bullyAlgorithm(App.nodeIds) == myNodeId()) {
+if (bullyAlgorithm(App.nodeIds) == App.myNodeId()) {
   registerRemoteCall("getUserOfTheDay", () => {
     synchronized (this.lock) {
       if (!this.lastUpdated.equals(Date.today())) {
@@ -92,13 +92,13 @@ if (bullyAlgorithm(App.nodeIds) == myNodeId()) {
 }
 ```
 
-Phew! That took a lot of thinking, but fortuitiously we ended up with a small enough snippet of code to fit into a blog post. Problem tackled! Let's try another.
+Phew! That took a lot of thinking, but fortuitiously we ended up with a small enough snippet of code to fit into a blog post. Handwaving away all the gnarly networking code sure helped with keeping the implementation simple. But anyways, problem tackled! Let's try another.
 
 ## Example: Order Cancellation
 
 In server code, lots of tings are happening all at the same time; sometimes two users try to do two conflicting things at the same time. How do we make sure we accept one user's action and reject the other? For example, let's say we have an online ordering system where an order, once placed, can be cancelled up until it is shipped from the warehouse. What if someone in the warehouse tries to mark the order as shipped (no longer cancellable) at exactly the same time the customer tries to cancel the order?
 
-Once again this is simple enough to solve in normal single-threaded code: we just need a variable with three states, order pending (not yet shipped, can still be cancelled), cancelled (no longer can be shipped), and shipped (no longer can be cancelled):
+Once again this is simple enough to solve in regular, run-of-the-mill single-threaded code. We just need a variable with three states, order pending (not yet shipped, can still be cancelled), cancelled (no longer can be shipped), and shipped (no longer can be cancelled):
 
 ```java
 enum OrderState {
@@ -146,7 +146,7 @@ void tryShip() {
 }
 ```
 
-How about turning this into a distributed solution? We can do it the same way we did before: expose the implementation above as an RPC call from some coordinator node, and have all other nodes call into the coordinator when they need to deal with the order state. The client side might look like this:
+How about turning this into a distributed solution? We can do it the same way we did before: expose the implementation above as an RPC call from some coordinator node, and have all other nodes call into the coordinator when they need to get or updatethe order state. The client side might look like this:
 
 ```java
 OrderState getOrderState() {
@@ -165,7 +165,7 @@ void tryShip() {
 }
 ```
 
-\And the server might look like this:
+And the server might look like this:
 
 ```java
 if (bullyAlgorithm(App.nodeIds) == App.myNodeId()) {
@@ -191,9 +191,9 @@ if (bullyAlgorithm(App.nodeIds) == App.myNodeId()) {
 }
 ```
 
-It's interesting that we have two different problems, both with completely different single-threaded solutions, which could nonetheless be multithreaded and then distributed the same way. Maybe there's some way we could factor out the multithreaded / distributed part from both algorithms ...
+It's interesting that we have two different problems, both with completely different single-threaded solutions, which could nonetheless be multithreaded and then distributed using the exact same approaches. In fact, there is an opportunity for refactoring here: we can isolate the code that does the multithreaded / distributed parts of these solutions by introducing a new abstraction, which I'll call a *write-once variable*.
 
-## Refactoring With Write-Once Variables
+## Write-Once Variables
 
 Say we have a primitive I'll call a **write-once variable**. The interface looks something like this::
 
@@ -207,7 +207,7 @@ interface WriteOnce<T> {
 }
 ```
 
-The way we implement this thing should look pretty similar by now. First we write the obvious single-threaded implementation:
+The way we implement this thing should look pretty similar by now. First we write a single-threaded implementation:
 
 ```java
 class BasicWriteOnce<T> implements WriteOnce<T> {
@@ -227,7 +227,7 @@ class BasicWriteOnce<T> implements WriteOnce<T> {
 }
 ```
 
-To multithread, we just add a lock:
+To make it thread-safe for multithreading, we just add a lock:
 
 ```java
 class MultithreadedWriteOnce<T> implements WriteOnce<T> {
@@ -250,14 +250,18 @@ class MultithreadedWriteOnce<T> implements WriteOnce<T> {
 }
 ```
 
-Then to make it distributed, we store the variable on a coordinator and have all other threads contact the coordinator for each operation. The full client and server side are given in one class below:
+Then to make it distributed, we store the variable on a coordinator and have all other threads contact the coordinator for each operation. The full distributed solution, including client and server, might look like this:
 
 ```java
 class DistributedWriteOnce<T> implements WriteOnce<T> {
   private int coordinatorId;
   
-  public DistributedWriteOnce(int coordinatorId) {
-    this.coordinatorId = coordinatorId;
+  private int bullyAlgorithm(Collection<int> nodeIds) {
+    return Collections.max(nodeIds);
+  }
+  
+  public DistributedWriteOnce() {
+    coordinatorId = bullyAlgorithm(App.nodeIds());
     if (coordinatorId == App.myNodeId()) {
       runCoordinator();
     }
@@ -287,27 +291,29 @@ class DistributedWriteOnce<T> implements WriteOnce<T> {
 }
 ```
 
-Once again we were able to multithread the initial solution with a lock and distribute the multithreaded solution by selecting a coordinator node. Now let's see how this lets us *remove* the lock and the coordinator from our other two problem solutions.
+Once again we were able to multithread the initial solution with a lock and distribute the multithreaded solution by selecting a coordinator node. Now let's see how this lets us *remove* the lock and the coordinator from our other two problem solutions by rewriting them on top of the `WriteOnce<T>` abstractions.
 
-### Picking a Random User
+## Refactoring with Write-Once Variables
 
-The core question behind picking a random user was how to make something happen once, e.g. how to ensure ensure one, and only one random user is picked per day. Here's a way to do that with a write-once variable:
+Let's start with the random user-of-the-day problem. The core question behind that one was how to make something happen once; in this case, namely, how to make sure one, and only one random user is picked each day.
+
+Here's a way to do that with a write-once variable:
 
 ```java
 User getUserOfTheDay() {
+  User randomUser = User.randomUser();
+  
   WriteOnce<User> userOfTheDay = // ...
-  userOfTheDay.tryInitialize(User.randomUser());
+  userOfTheDay.tryInitialize(randomUser);
   return userOfTheDay.finalValue().get();
 }
 ```
 
-The idea here is that any thread that wants to get a user of the day picks a random user ID, but only the first pick of the day actually takes effect and becomes the random user of the day; all other `tryInitialize()` calls silently do nothing because the write-once variable for today has already been picked. (Of course, we need some way to get a new `WriteOnce<User>` each day, but we won't worry about that for now.)
+The idea is to have every thread generate a random user of the day, but only allow the first such generated user to become today's user of the day; all other `tryInitialize()` calls silently have no effect because the write-once variable has already been picked. (To complete the solution, we would need a way to get a new `WriteOnce<User>` each day, but that's not important for this discussion so I'm going to handwave it.)
 
-Just as we wanted, the guarantees provided by the `WriteOnce<T>` are conferred to the calling code: passing in a thread-safe `WriteOnce` above makes `getUserOfTheDay` thread-safe, and passing in a distrubted `WriteOnce` makes `getUserOfTheDay` distributed with no further work on the part of `getUserOfTheDay()`. Pretty nifty, huh? Now let's try it again on the other solution.
+Do you see how the multithreaded / distributed guarantees of `WriteOnce<T>` are automatically conferred onto this implementation of `getUserOfTheDay()`, without us having to do anything special? If we pass in a thread-safe `WriteOnce`, that makes `getUserOfTheDay()` thread-safe, and if we pass in a distributed `WriteOnce` then `getUserOfTheDay` is also automatically distributed. Pretty nifty, huh?
 
-### Order Cancellation
-
-For the order cancellation proboelm, the core question was how to determine a winner if two users try to take conflicting actions at the same time. For order cancellation, we can have cancelling an order and shipping an order both race to be the first call to `tryInitialize` on a write-once variable; whichever call is processed first is the one we accept, and any subsequent calls are rejected automatically:
+Now let's try the order cancellation problem. For that one, the core question was how to determine a winner if two users try to take conflicting actions at the same time. One possible solution is to have all attempts to ship or cancel an order race to be the first to call `tryInitialize` on a write-once variable; whichver is processed first is the one we accept, and all subsequent attempts are rejected automatically:
 
 ```java
 WriteOnce<OrderState> orderResult = // ...
@@ -330,13 +336,11 @@ OrderState getOrderState() {
 }
 ```
 
-Once again, the internal guarantees of thread safety / distribution provided by the `WriteOnce<OrderState>` confer thread safety / distribution onto the cancellation code without the cancellation code having to worry about it. Neat!
+Once again, the internal guarantees of thread safety / distribution provided by the `WriteOnce<OrderState>` confer thread safety / distribution onto this code without the caller having to worry about it. Neat!
 
-### ... And More!
+As you might imagine, there are quite a few problems that can be reduced to initialize a `WriteOnce<T>` this way, which vastly simplifies the process of making code thread safe and/or distributing it. If you see why that is, then you also already know why consensus is so foundational to distributed systems &mdash; because, drumroll please . . .
 
-As you might be imaginging by now, there are quite a few problems that can be reduced to trying to initialize a `WriteOnce<T>`, which vastly simplifies the process of threading / distributing the logic. If you see why that is, then you also already see why consensus is so foundational &mdash; because, drumroll please . . .
-
-## Consensus Algorithms are Implementations of Distributed Write-Once Variables
+## Consensus Algorithms Implement Distributed Write-Once Variables
 
 That's right, `DistributedWriteOnce<T>` is a full-blown consensus algorithm!
 

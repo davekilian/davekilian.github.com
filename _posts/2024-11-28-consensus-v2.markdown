@@ -553,13 +553,15 @@ The final value is the value which received a majorify of the system's votes. A 
 
 ## Split Votes
 
+
+
 TODO explain the problem, a diagram might help, emphasize this is a deadlock
 
-TODO pose question of how to handle it. Consider mentioning timeout-based retry here, but point out timeouts are tricky because it's possible consensus was reached, restarting the algorithm at that point will lead to a change of mind and hence an agreement violation.
+TODO pose question of how to handle it. Consider mentioning timeout-based retry here, but point out timeouts are tricky because it's possible consensus was reached, restarting the algorithm at that point will lead to a change of mind and hence an agreement violation. Plus there's no guarantee of termination after N restarts anyways. 
 
 TODO better, simpler idea: a tiebreaking rule. 
 
-## Tiebreaker: Plurality Voting
+## Tiebreaking
 
 TODO augment the implementaton to with a tiebreaker. Once all votes are in, pick the plurality. If there is a tie for plurality, run a bully algorithm to pick an item.
 
@@ -617,17 +619,18 @@ Part 4 is Paxos
 * Show an implementation just called `Paxos<T> implements WriteOnce<T>` which implements the basic strategy with symmetric peers and not much code
 * Add the bells and whistles to "grow" it into the synod algorithm you would recognize from Paxos Made Simple or Wikipedia
 
-Part 5 is about moving from the single-shot core Synod algorithm to a general state machine replication primitive (i.e. write-once variable to mutable variable semantics). 
+Part 5 is about state machine replication
 
-* In broad strokes
-  * Replicate a log where each entry is individually a write-once consensus variable
-  * Replaying the log deterministically rebuilds the state of any data structure
-  * Paxos includes further optimizations for this situation (multi-paxos)
-* We should boost Raft here
-  * The Paxos papers provide a broad strokes outline of how to do SMR but don't solve it completely
-  * The exercises left ot the reader are actually pretty hard
-  * Raft is a state machine algorithm, without the Paxos single-shot core, and is more explainable
-* So I will not delve into multi-paxos, but here is my recommendation
-  * If you want a state machine replication, probably starting with Raft is the best way to do it today
-  * However, the synod algorithm is worth understanding because it's small and fits nicely into other systems
-    * As a way of replicating writes to a database, for example
+* The cherry on top: making the `WriteOnce<T>` variable into a mutable variable with the same guarantees
+  * This is what people actually usually mean when they say you need a consensus algorithm
+  * ... I may need to adjust earlier sections to be really clear I'm using "consensus as write-once" sort of incorrectly
+    * Well, Paxos people might agree with me, maybe it's controversial lol
+* What does that mean semantically? Introduce state machine replication
+  * If you have any data structure that can be built deterministically
+  * And it has a deterministic starting point
+  * And you have a list of operations you did on it
+  * Then you can rebuild it by replaying the log
+  * Database people call this a write-ahead log, file system people call it journaling
+* Two ways of doing it
+* The multi-Paxos way: each log entry is an instance of synod. Some protocol optimizations to reduce repeated work. Electing one leader is a big one
+* The Raft way: build state machine replication as a first class primitive. Leader election uses our basic voting algorithm, but with randomized timeouts for retry; it's not an agreement violation to bounce the leader around. Within a leader epoch, we do log replication, and between epochs we do log recovery. There is no synod-like thing in here

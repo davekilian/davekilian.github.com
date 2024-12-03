@@ -340,17 +340,15 @@ Once again, the internal guarantees of thread safety / distribution provided by 
 
 As you might imagine, there are quite a few problems that can be reduced to initialize a `WriteOnce<T>` this way, which vastly simplifies the process of making code thread safe and/or distributing it. If you see why that is, then you also already know why consensus is so foundational to distributed systems &mdash; because, drumroll please . . .
 
-## Consensus Algorithms Implement Distributed Write-Once Variables
+## Consensus Algorithms Implement Write-Once Variables
 
-That's right, `DistributedWriteOnce<T>` is a full-blown consensus algorithm!
+The word "consensus" means "agreement." Calling something consensus implies a sort of story: once upon a time, there was a group, where not all members of the group initially agreed. Then, they all came into agreement. We call that kind of agreement, "consensus."
 
-The word "consensus" means "agreement." Calling something consensus implies a sort of story: once upon a time, there was a group, where not all members of the group initially agreed. Then, they all came into agreement. That kind of agreement is called "consensus." 
+In the context of a distributed system, the group is made up of threads running on different machines, rather than people, and the initial disagreement comes from different threads calling `tryInitialize` with different values. The final agreement comes from all threads receiving the same value from `finalValue`. If you check our write-once-based solutions from the previous heading, you'll see this in action. In both cases we start out with different threads in disagreement (different values are being passed to `tryInitialize`), and we end up with all threads in agreement (we forget what value we passed to `tryInitialize` and just trust the value returned by `finalValue` instead). Somewhere between `tryInitialize` and `finalValue`, the disagreement was resolved (arbitrarily, by picking the first `tryInitialize` call), and the final result was total agreement acrss all threads &mdash; consensus.
 
-So what does consensus have to do with distributed write-once variables? In that context, the group is made up of threads running on different machines, rather than people; the initial disagreement comes from different threads calling `tryInitialize` with different values, and the final agreement comes from all threads receiving the same value from `finalValue`.
+So, a write-once variable is a primitive backed by a consensus algorithm, which is to say a consensus algorithm is the algorithm that implements a write-once variable. They are two sides of the same coin.
 
-If you check our write-once solutions to the random user selection and order cancellation problems, you'll see this in action. In both cases we start out with different threads in disagreement (different values are being passed to `tryInitialize`), and we end up with all threads in agreement (we forget what value we passed to `tryInitialize` and just trust the value returned by `finalValue` instead). Somewhere between `tryInitialize` and `finalValue`, the disagreement was resolved (arbitrarily, by picking the first `tryInitialize` call), and the final result was total agreement acrss all threads &mdash; consensus.
-
-So, a consensus algorithm implements a write-once variable for a distributed system. That's a good high-level description, but we should dig deeper. What guarantees does a consensus algorithm need to provide? We should be able to glean everything we need from re-examining how the two example problems were built on top of `WriteOnce<T>`, and what implicit guarantees they were expecting `WriteOnce<T>` to provide.
+That's a good high-level description, but we should dig deeper. What guarantees does a consensus algorithm need to provide? We should be able to glean everything we need from re-examining how the two example problems were built on top of `WriteOnce<T>`, and what implicit guarantees they were expecting `WriteOnce<T>` to provide.
 
 ## Properties of a Consenus Algorithm
 
@@ -364,6 +362,8 @@ TODO we should be able to frame this as an examination of hidden assumptions in 
 
 TODO the segue out to fault tolerance: `DistributedWriteOnce<T>` already satisfies all of the above. Observe that means we have already done the impossible in creating a valid consensus algorithm. Something is wrong. A requirement is missing. Old content to potentially adapt here:
 
+> That's right, `DistributedWriteOnce<T>` is a full-blown consensus algorithm!
+>
 > Anyways, we've managed to write a consensus algorithm already &mdash; namely, `DistributedWriteOnce<T>`. We could end this blog post right here if we wanted to. (And if we did, we'd be quitting while we're ahead.) But clearly this cannot be the whole story. We managed to write a consensus algorithm already, without all that much thinking or code; aren't consensus algorithms supposed to be notoriously difficult for mere mortals to comprehend? I'm a mere mortal, and I comprehend `DistributedWriteOnce<T>` just fine . . .
 
 ## The Curveball: Fault Tolerance

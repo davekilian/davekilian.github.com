@@ -586,21 +586,19 @@ Part 3 is FLP, I had several thoughts of how to explain this without getting int
   * A decision is a step that runs in state (undecided) and cannot result in state (undecided)
 
 * At a high level, the core claim they make is you have three bad choices
-  * Algorithm doesn't guarantee any decision steps => stupid, it doesn't terminate
+  * Algorithm doesn't guarantee any decision steps => doesn't terminate
   * Algorithm guarantees just one decision step => it isn't fault tolerant, that step may never execute
   * Algorithm guarantees up to 2 decision steps => they can disagree with one another
+    * Intuition: you can't differentiate "never" vs "not yet" i.e. "failed / need to proceed" vs "running / need to wait"
 
-* Most of the work in the proof is proving the 2+ case
-  * Intuition: you can't differentiate "never" from "not yet" i.e. "failed" vs "slow"
-  * Their system model precludes the existence of timeouts, but that is correct, we don't want to rely on brittle timeouts
-  * Kicked off theory around "what if I had a failure detector" => great, but IRL we don't have this failure detector
 * Apply this back into the language of the majority voting example
   * Consider a vote between two different values, i.e. 0 v 1, red v blue, etc
   * Idea of a "one-way" vs "two-way" vote
   * The bad case is "two-way"
-  * An algorithm which never makes a two-way vote never terminates, stupid
-  * Our initial algorithm had one two-way decision, but it wasn't fault tolerant (split votes)
-  * Adding a tiebreak added two two-way decisions, and introduced a race condition
+  * An algorithm which doesn't guarantee a two-way vote never terminates, that was our no-tiebreak algorithm
+  * An algorithm which guarantees only one isn't fault tolerant, that was our tiebreak after all votes are in
+  * An algorithm which guarantees up to two violates agreement, that was our tiebreak before all votes in
+  * (No-tiebreak, tiebreak after all votes in, tiebreak before all votes in) covers all cases, now we are stuck
   * All of this is exactly as FLP predicted
 
 * Does this mean there are no fault tolerant consensus algorithms? 

@@ -435,9 +435,12 @@ Interesting &mdash; majority-rules voting is an algorithm that does not require
 
 # Part 2: Voting
 
+TODO explain the basic algorithm
 
-
-
+* Try-initialize broadcasts that value to all nodes in the system
+* Each node votes for the first value it hears about and never changes its mind
+* When a node votes, it tells all its peers what value it voted for
+* Each node independently determines the final value it sees a value has reached a majority
 
 TODO
 
@@ -485,7 +488,9 @@ class MajorityRulesVoting<T> implements WriteOnce<T> {
 }
 ```
 
+Be careful to note this is not a complete fault-tolerant algorithm, we actually need to keep rebroadcasting onCandidate and onVote forever so that nodes which were out of the system for a while and come back can catch up. But the code above is a pretty good sketch of what this needs to look like.
 
+TODO correctness proof sketch for each property. Agreement is from single majority. Validity is from voting for some value broadcasted by tryInitialize. Termination is ... oops. Split votes don't terminate do they?
 
 
 
@@ -493,8 +498,6 @@ class MajorityRulesVoting<T> implements WriteOnce<T> {
 
 TODO
 
-* Motivate one-shot red-vs-blue decision and how we should be able to generalize it later
-* A real-life fault-tolerant consensus algorithnm is majority rules voting
 * Explain the basic algorithm 
 * Split votes
 * Workaround to have an odd number of nodes fails if we lose a node

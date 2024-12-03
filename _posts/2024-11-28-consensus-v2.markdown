@@ -595,17 +595,21 @@ Part 3 is FLP, I had several thoughts of how to explain this without getting int
   * Their system model precludes the existence of timeouts, but that is correct, we don't want to rely on brittle timeouts
   * Kicked off theory around "what if I had a failure detector" => great, but IRL we don't have this failure detector
 * Apply this back into the language of the majority voting example
-  * Idea of a "one-way" vs "two-way" decision
+  * Consider a vote between two different values, i.e. 0 v 1, red v blue, etc
+  * Idea of a "one-way" vs "two-way" vote
   * The bad case is "two-way"
   * An algorithm which never makes a two-way vote never terminates, stupid
   * Our initial algorithm had one two-way decision, but it wasn't fault tolerant (split votes)
   * Adding a tiebreak added two two-way decisions, and introduced a race condition
   * All of this is exactly as FLP predicted
-* Are we stuck? No, there's a suble workaround, we don't actually need termination as long as probabilities converge
+
+* Does this mean there are no fault tolerant consensus algorithms? 
+  * No, there's a suble workaround, we don't actually need termination as long as probabilities converge
   * Doesn't matter if we don't guarantee termination if it becomes vanishingly unlikely to keep not terminating
   * Quote the FLP paper which I believe direclty suggests this, but doesn't manage to find the algorithm to do it
     * Eh probably they may also have thought this approach would not pan out?
-* So what does a majority voting algorithm that never forces a decision to be made? Let's examine one. It's called Paxos
+
+* So what does a majority voting algorithm that never forces a decision to be made? Where it's an endless stream of 1-way votes where continuing the algorithm without terminating grows exponentially unlikely over time?
 
 Part 4 is Paxos
 

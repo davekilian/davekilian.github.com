@@ -370,7 +370,7 @@ Here's one I can see: since this is a write-once variable, its value must never 
 
 In papers and textbook, this rule is sometimes called **agreement**:
 
-> **Agreement**: If the consensus algorithm returns a value, then no other value has ever or will ever been chosen. That is: if `finalValue()` returns some value, no other call to `finalValue()` has ever or will ever return any other value.
+> **Agreement**: If the consensus algorithm returns a value, then no other value has ever been or will ever be chosen. That is: if any call to `finalValue()` returns a value, no other call to `finalValue()` has ever or will ever return any other value.
 
 Here's another rule I can see: the value returned by `finalValue` has to be the value somebody previously passed to `tryInitialize`. It can't be some other nonsense value, random value, or something picked arbitrarily. For example, an execution like this should not be allowed:
 
@@ -379,15 +379,15 @@ Here's another rule I can see: the value returned by `finalValue` has to be the 
 * Thread 2 calls `tryInitialize()` passing in a value of 2
 * Thread 3 calls `finalValue()`, which returns 4 [*](https://xkcd.com/221/)
 
-In *the literature*, this rule is sometimes called **validity**:
+That might seem obvious, but it's still worth writing down. In *the literature*, this rule is sometimes called **validity**:
 
-> **Validity**: The value chosen by a consensus algorithm must be some value that was previously proposed. That is: the value returned by `finalValue()` must be a value previously passed to `tryInitialize()`. 
+> **Validity**: The value chosen by a consensus algorithm must be a value that was previously proposed. That is: the value returned by `finalValue()` must be a value previously passed to `tryInitialize()`. 
 
 One final rule: once `tryInitialize()` has been called, the algorithm gets a reasonable amount of time to do its processing before `finalValue()` futures finally resolve to the chosen value. We can't wait on the future forever. This rule is called **Termination**:
 
 > **Termination**: The algorithm eventually chooses some value; after `tryInitialize()` has been called, the futures returned by `finalValue()` eventually resolve
 
-Agreement, Validity, Termination. Seems like a pretty good starting set. However, I think we must still be missing a rule.
+Agreement, Validity, Termination; seems like a pretty good starting set. However, I think we must still be missing a rule.
 
 By the three rules above, `DistributedWriteOnce<T>` is a valid implementation of a distributed consensus algorithm. But consensus algorithms are supposed to be incomprehensible to mere mortals; I am a mere mortal, and I comprehend `DistributedWriteOnce<T>` just fine. There must something more that consensus algorithms do, that `DistributedWriteOnce<T>` does not.
 

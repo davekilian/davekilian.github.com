@@ -389,11 +389,11 @@ One final rule: once `tryInitialize()` has been called, the algorithm gets a rea
 
 Agreement, Validity, Termination; seems like a pretty good starting set. However, I think we must still be missing a rule.
 
-By the three rules above, `DistributedWriteOnce<T>` is a valid implementation of a distributed consensus algorithm. But consensus algorithms are supposed to be incomprehensible to mere mortals; I am a mere mortal, and I comprehend `DistributedWriteOnce<T>` just fine. There must something more that consensus algorithms do, that `DistributedWriteOnce<T>` does not.
+By the three rules above, `DistributedWriteOnce<T>` is a valid implementation of a distributed consensus algorithm. But consensus algorithms are supposed to be incomprehensible to mere mortals; I am a mere mortal, and I comprehend `DistributedWriteOnce<T>` just fine. There must be another thing that consensus algorithms do, that `DistributedWriteOnce<T>` does not.
 
 ## The Curveball: Fault Tolerance
 
-Earlier, we said the main complexity that distributing an algorithm adds on top of multithreading is that threads in a distributed system must communicate through a network, since they can't share variables. When I said that, I glossed over a really important problem that introduces: it is impossible to communication via variable-sharing to fail, but you bet communiating over a network can.
+Earlier, we said the main complexity that distributing an algorithm adds on top of multithreading is that threads in a distributed system must communicate through a network, since they can't share variables. When we said that, I glossed over a really important problem that introduces: it is impossible to communication via variable-sharing to fail, but you bet communiating over a network can.
 
 Distribution introduces the problems of **faults** in the system. Hardware can lose power, software can crash, and networks can degrade or disconnect. Technically these problems also affect single-node software, but nobody ever expects single-node code to be able to deal with a fault: for example, if the machine running some code crashes, the code is no longer running, and thus can't do anything about it. Since single-node code is no longer running and can't do anything if the hardware faults, it can largely pretend faults don't exist. In a distributed system, a fault can affect some nodes while leaving others online to deal with the consequences.
 

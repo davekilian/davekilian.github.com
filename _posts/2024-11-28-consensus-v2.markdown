@@ -5,7 +5,7 @@ author: Dave
 draft: true
 ---
 
-Distributed consensus algorithms are a critical piece of modern computing infrastructure, but few people really understand how they work. When the first consensus algorithm, *Paxos*, was introduced to the world in 1989, it was met with a sort of [indifferent confusion](https://www.microsoft.com/en-us/research/publication/part-time-parliament/), and it wasn't until 9 years later that it had gained enough grassroots popularity to be published in a major journal. As the world moved online and everyone started building and operating their critical infrastructure as distributed systems, Paxos found its way into the foundation of almost everyone of those newly built systems &mdash; but at the same time, it also grew notorious for being beyond the understanding of mere mortals. When a second viable consensus algorithm, *Raft*, finally came along well over a decade later, the paper was called *In Search of an Understandable Consensus Algorithm*, for good reason.
+Distributed consensus algorithms are a critical piece of modern computing infrastructure, but few people really understand how they work. When the first consensus algorithm, *Paxos*, was introduced to the world in 1989, it was met with a sort of [indifferent confusion](https://www.microsoft.com/en-us/research/publication/part-time-parliament/), and it wasn't until 9 years later that it had gained enough grassroots popularity to be published in a major journal. As the world moved online and everyone started building and operating their critical infrastructure as distributed systems, Paxos found its way into the foundation of almost everyone of those newly built systems &mdash; but at the same time, it also grew notorious for being beyond the comprehension of mere mortals. When a second viable consensus algorithm, *Raft*, finally came along well over a decade later, the paper was called *In Search of an Understandable Consensus Algorithm*, for good reason.
 
 I like Raft, and I think if you're choosing between Raft and multi-Paxos for a project today, Raft is probably the better choice. Multi-Paxos is presented as a rough sketch in the original Paxos paper, and so a hodgepodge of other papers have tried to fill in the blanks, but aren't completely consistent with one another; at least with Raft, there's a complete algorithm explained in one place! And yet, I don't think Paxos should be skipped over entirely. It's true the full multi-Paxos algorithm is complex and under-specified, but the core of Paxos (a little protocol called the *synod algorithm*) is small, well-specified, insightful, and can be embedded into other systems and algorithms. (TODO: doesn't Aurora do some kind of row-level Paxos? Maybe I'm misremembering.)
 
@@ -291,7 +291,7 @@ Once again we were able to multithread the initial solution with a lock and dist
 
 ### Picking a Random User
 
-The basic question behind picking a random user was how to make something happen once, e.g. how to ensure ensure one, and only one random user is picked per day. Here's a way to do that with a write-once variable:
+The core question behind picking a random user was how to make something happen once, e.g. how to ensure ensure one, and only one random user is picked per day. Here's a way to do that with a write-once variable:
 
 ```java
 User getUserOfTheDay() {
@@ -307,7 +307,7 @@ Just as we wanted, the guarantees provided by the `WriteOnce<T>` are conferred t
 
 ### Order Cancellation
 
-TODO
+For the order cancellation proboelm, the core question was how to determine a winner if two users try to take conflicting actions at the same time. For order cancellation, we can have cancelling an order and shipping an order both race to be the first call to `tryInitialize` on a write-once variable; whichever call is processed first is the one we accept, and any subsequent calls are rejected automatically:
 
 ```java
 WriteOnce<OrderState> orderResult = // ...
@@ -330,11 +330,13 @@ OrderState getOrderState() {
 }
 ```
 
+Once again, the internal guarantees of thread safety / distribution provided by the `WriteOnce<OrderState>` confer thread safety / distribution onto the cancellation code without the cancellation code having to worry about it. Neat!
+
 ### ... And More!
 
-TODO - as you can imagine, many problems can likely be reduced to getting and setting a single `WriteOnce<T>`. And by doing that, you automatically get the multithreading / distribution support baked into `WriteOnce<T>` for free. That's pretty neat!
+As you might be imaginging by now, there are quite a few problems that can be reduced to trying to initialize a `WriteOnce<T>`, which vastly simplifies the process of threading / distributing the logic. And that's why consensus is so useful: **a consensus algorithm is just a distributed implementation of a write-once variable**. That's right, `DistributedWriteOnce<T>` is actually a full-blown consensus algorithm! Surprise!
 
-And that's why consensus is so useful: **a consensus algorithm is just a distributed implementation of a write-once variable**. That's right, `DistributedWriteOnce<T>` is actually a full-blown consensus algorithm! Huh, I thought writing consensus algorithms was supposed to be harder than that . . .
+Huh, I thought writing consensus algorithms was supposed to be really hard to design . . .
 
 ## The Curveball: Fault Tolerance
 

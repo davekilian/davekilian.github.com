@@ -366,33 +366,30 @@ interface WriteOnce<T> {
 
 What hidden assumptions exist behind this interface? In other words, what rules govern the relationship between what gets passed to `tryInitialize` and what is returned by `finalValue`? What expected behaviors, if violated, would the example solutions we built on top of this interface?  Any such rule is a property of a consensus algorithm.
 
-Here's one I can see: the value returned by `finalValue` has to be the value somebody previously passed to `tryInitialize`. It can't be some other nonsense value, random value, or something picked arbitrarily. For example, an execution like this should not be allowed, as it would break the write-once-based solution code from earlier.
+Here's one I can see: since this is a write-once variable, its value must never change. So all futures returned by `finalValue()` must always resolve to the same value. Different threads must not get different values from `finalValue()`, nor can the same thread see different values over time. Think of the pandemonium that would ensue if we failed to uphold this rule, and in doing so we let the customer cancel an already-shipped order after the box was already on the truck!
+
+In papers and textbook, this rule is sometimes called **agreement**:
+
+> **Agreement**: If the consensus algorithm returns a value, then no other value has ever or will ever been chosen. That is: if `finalValue()` returns some value, no other call to `finalValue()` has ever or will ever return any other value.
+
+Here's another rule I can see: the value returned by `finalValue` has to be the value somebody previously passed to `tryInitialize`. It can't be some other nonsense value, random value, or something picked arbitrarily. For example, an execution like this should not be allowed:
 
 * `WriteOnce<Integer>` created
 * Thread 1 calls `tryInitialize()` passing in a value of 1
 * Thread 2 calls `tryInitialize()` passing in a value of 2
 * Thread 3 calls `finalValue()`, which returns 4 [*](https://xkcd.com/221/)
 
-In papers and textbooks, this rule is sometimes called **validity**:
+In *the literature*, this rule is sometimes called **validity**:
 
 > **Validity**: The value chosen by a consensus algorithm must be some value that was previously proposed. That is: the value returned by `finalValue()` must be a value previously passed to `tryInitialize()`. 
 
+One final rule: once `tryInitialize()` has been called, the algorithm gets a reasonable amount of time to do its processing before `finalValue()` futures finally resolve to the chosen value. We can't wait on the future forever. This rule is called **Termination**:
 
+> **Termination**: The algorithm eventually chooses some value; after `tryInitialize()` has been called, the futures returned by `finalValue()` eventually resolve
 
+Agreement, Validity, Termination. Seems like a pretty good starting set. However, I think we must still be missing a rule.
 
-
-TODO we should be able to frame this as an examination of hidden assumptions in the interface
-
-* Agreement: all futures always resolve to the same value
-  * Has both a spatial requirement (for all threads) and a temporal requirement (for all calls)
-  * Legalese: if finalValue returns a value, then no other call to finalValue anywhere else in the system has returned or will return any other value
-* Termination: the future must resolve eventually
-
-TODO the segue out to fault tolerance: `DistributedWriteOnce<T>` already satisfies all of the above. Observe that means we have already done the impossible in creating a valid consensus algorithm. Something is wrong. A requirement is missing. Old content to potentially adapt here:
-
-> That's right, `DistributedWriteOnce<T>` is a full-blown consensus algorithm!
->
-> Anyways, we've managed to write a consensus algorithm already &mdash; namely, `DistributedWriteOnce<T>`. We could end this blog post right here if we wanted to. (And if we did, we'd be quitting while we're ahead.) But clearly this cannot be the whole story. We managed to write a consensus algorithm already, without all that much thinking or code; aren't consensus algorithms supposed to be notoriously difficult for mere mortals to comprehend? I'm a mere mortal, and I comprehend `DistributedWriteOnce<T>` just fine . . .
+By the three rules above, `DistributedWriteOnce<T>` is a valid implementation of a distributed consensus algorithm. But consensus algorithms are supposed to be incomprehensible to mere mortals; I am a mere mortal, and I comprehend `DistributedWriteOnce<T>` just fine. There must something more that consensus algorithms do, that `DistributedWriteOnce<T>` does not.
 
 ## The Curveball: Fault Tolerance
 

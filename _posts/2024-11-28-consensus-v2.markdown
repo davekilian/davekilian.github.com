@@ -688,17 +688,35 @@ Oops, this isn't fault tolerant, is it? We don't run the tiebreaker until all vo
 
 ## Fault-Tolerant Tiebreaking 
 
-Okay, so we've realized we need a tiebreaker to force the algorithm to eventually terminate, and we now realize that tiebreaker needs to execute before all votes are in if we want it to be fault tolerant.
+Okay, so we've realized we need a tiebreaker to force the algorithm to eventually terminate, and we now realize that tiebreaker needs to execute before all votes are in if we want it to be fault tolerant. So how do we do that?
+
+... I'm really not sure.
+
+Executing the tiebreaker before all votes are in is quite dangerous: if we execute the tiebreaker before all votes are in, and then all those missing votes arrive, it can change the algorithm's answer and get everything all confused. For example, we could run the bully algorithm at a time where the tally only has votes for `Red` and `Blue`, and decide our answer is `Blue`; but then if other votes come in and even one of those votes picks `Green`, the next node to run its own instance of the tiebreaker will run the bully algorithm over `Red`, `Blue` and `Green` and pick `Green`. Now different nodes have picked different values, we have violated the Agreement property, which is sort of consensus's holiest of holies.
+
+Maybe we could work around this by having a different, even more clever tiebreaker than the one we already have. But no matter what tiebreaker we use, running it before all votes are in means a candidate value might still reach a majority after we have run the tiebreaker. So one node might run the tiebreaker prematurely and get the tiebreaker's answer, while some other node waits just a second or two longer, receives the last set of votes, and discovers some value has reached a majority. Once again, the different nodes disagree, violating Agreement.
+
+Based on this, I don't think any choice of tiebreaker will make tiebreaking fault-tolerant; instead, we need to adjust the trigger condition for when the tiebreaker runs. The trigger condition must run after votes have been received from all healthy nodes, but must not wait for any faulted nodes, since their votes will never arrive.
+
+It would seem what we really need is a **failure detector**: a reliable way to tell whether a remote node is still progressing or if it has faulted. There is quite a bit of literature about failure detectors and what we could do if we had a reliable one, but the fact is 100% correct failure detectors don't exist. 
 
 TODO we need to show the tiebreaking rule before all votes are in necessarily creates an agremenet violation in some situations.
 
-TODO justify we are now stuck, and segue out to FLP
+TODO justify we are now stuck
+
+# Intermission
+
+TODO
+
+* Recap that we set out to try the obvious things and find out they don't work and get stuck
+* Between DistributedWriteOnce, basic voting, and tiebreaking, we have now done that
+* This is the low point in our journey; things only get better from here
+* We are going to examine the FLP result, to learn what's wrong and figure out how to sidestep the problem
+* That wll finally lead us where we want to go: Paxos
 
 # Part 3: The FLP Result
 
-Thank you for making so far on this journey with me. You have now seen why consensus is ubiquitous, what a consensus algorithm needs to look like, you understand the importance and difficulty of making an algorithm fault-tolerant, and you have now seen several approaches to fault-tolerant consensus that don't work. We are almost ready to reach Paxos. There is but one more stepping stone to cross: we need to understand why we got stuck designing our voting algorithm, so we can figure out the workaround that lets us sidestep the problem we're running into.
 
-The funny thing about the FLP result is it doesn't really tell us anything we don't already know; it just generalizes the problem we are having with voting in a way that shows it affects *every* possible fault-tolerant consensus algorithm you might try to design, and it uses the language of formal mathematics to explain why all approaches are broken. Spoiler alert: they're all broken in the same way we have already encountered. (I may have steered the design discussion in Part 2 along a path that mimics the FLP proof.)
 
 ---
 

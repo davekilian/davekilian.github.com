@@ -96,7 +96,7 @@ Phew! That took a lot of thinking, but fortuitiously we ended up with a small en
 
 ## Example: Order Cancellation
 
-In server code, lots of tings are happening all at the same time; sometimes two users try to do two conflicting things at the same time. How do we make sure we accept one user's action and reject the other? For example, let's say we have an online ordering system where an order, once placed, can be cancelled up until it is shipped from the warehouse. What if someone in the warehouse tries to mark the order as shipped (no longer cancellable) at exactly the same time the customer tries to cancel the order?
+In server code, lots of things happen all at the same time; sometimes two users try to do two conflicting things at the same time. How do we make sure we accept one user's action and reject the other? For example, let's say we have an online ordering system where an order, once placed, can be cancelled up until it is shipped from the warehouse. What if someone in the warehouse tries to mark the order as shipped (no longer cancellable) at exactly the same time the customer tries to cancel the order?
 
 Once again this is simple enough to solve in regular, run-of-the-mill single-threaded code. We just need a variable with three states, order pending (not yet shipped, can still be cancelled), cancelled (no longer can be shipped), and shipped (no longer can be cancelled):
 

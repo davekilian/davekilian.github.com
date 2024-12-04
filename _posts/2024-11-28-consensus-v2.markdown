@@ -706,13 +706,9 @@ I think we're stuck.
 
 # Intermission
 
-TODO
+We set out with the goal of learning the problem space of consensus, so that we could see Paxos as the simplest possible solution to an unintuitive problem, rather than an unintuitive solution to a seemingly simple problem. Since then, we've gained an appreciation for why consensus is uniquitious in distributed systems, we nailed down the exact properties a consensus algorithm should have, and we've written quite a few consensus algorithms ourselves, between the `WriteOnce` implementation exercises in Part 1 and the voting algorithms in Part 2. Unfortunately, we have yet to invent a fault-tolerant distributed consensus algorithm.
 
-* Recap that we set out to try the obvious things and find out they don't work and get stuck
-* Between DistributedWriteOnce, basic voting, and tiebreaking, we have now done that
-* This is the low point in our journey; things only get better from here
-* We are going to examine the FLP result, to learn what's wrong and figure out how to sidestep the problem
-* That wll finally lead us where we want to go: Paxos
+This is the low point in our journey. We understand the problem and we appreciate its difficulty, but we don't yet have a way forward. Things will only get better from here. We're about to turn our attention to the FLP result, which explains what we have been doing wrong so far, and in doing so we'll learn what we need to change about our approach in order to arrive at the Paxos algorithm. Pour yourself your stimulant drink of choice and let's keep going.
 
 # Part 3: The FLP Result
 

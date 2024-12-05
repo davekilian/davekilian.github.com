@@ -704,6 +704,14 @@ So without a failure detector, there's no correct way to run the tiebreaker befo
 
 I think we're stuck.
 
+## TODO
+
+Before declaring defeat there are a few other things we should examine and rule out too:
+
+* What if instead of a tiebreaker, we restart the algorithm? Argument: restart the algorithm is basically just a tiebreaker and it has the same limitations. If you wait until all votes are in and then restart, you waited for all votes to be in. If you start before all votes are in and restart, you potentially restarted an algorithm that already reached consensus, which means some `finalValue()` futures may already have resolved.
+* What if we tried to use timeouts to rule out bad nodes? That's more clever but it still doesn't work: the node that did the last vote might know it has reached consensus and resolved `finalValue()` futures even though it can't communicate out to anybody else, which is another but more subtle agreement violation.
+* Both of these are good setup because the final Paxos solution is to make it safe to restart at any time. The point of synod is to guarantee, at any time, if someone successfully restarts the vote after consensus has been reached, always they will reach consensus again on the same value.
+
 # Intermission
 
 We set out with the goal of learning the problem space of consensus, so that we could see Paxos as the simplest possible solution to an unintuitive problem, rather than an unintuitive solution to a seemingly simple problem. Since then, we've gained an appreciation for why consensus is uniquitious in distributed systems, we nailed down the exact properties a consensus algorithm should have, and we've written quite a few consensus algorithms ourselves, between the `WriteOnce` implementation exercises in Part 1 and the voting algorithms in Part 2. Unfortunately, we have yet to invent a fault-tolerant distributed consensus algorithm, and as of yet we don't have any ideas to try next.

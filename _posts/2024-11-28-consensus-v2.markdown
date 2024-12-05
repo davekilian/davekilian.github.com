@@ -5,15 +5,15 @@ author: Dave
 draft: true
 ---
 
-Distributed consensus algorithms are a critical piece of modern computing infrastructure, but few people really understand how they work. When the first consensus algorithm, *Paxos*, was introduced to the world in 1989, it was met with a sort of [indifferent confusion](https://www.microsoft.com/en-us/research/publication/part-time-parliament/), and it wasn't until 9 years later that it had gained enough grassroots popularity to be published in a major journal. As the world moved online and everyone started building their critical infrastructure as distributed systems, Paxos found its way into the foundation of almost everyone of those newly built systems. But, at the same time, it also grew notorious for being beyond the comprehension of mere mortals &mdash; so much so that, when a second viable consensus algorithm, *Raft*, finally came along well over a decade later, the paper was called *In Search of an Understandable Consensus Algorithm*.
+Distributed consensus algorithms are a critical piece of modern computing infrastructure, but few people really understand how they work. When the first consensus algorithm, *Paxos*, was introduced to the world in 1989, it was met with a sort of [indifferent confusion](https://www.microsoft.com/en-us/research/publication/part-time-parliament/), and it wasn't until 9 years later that it had gained enough grassroots popularity to be published in a major journal. As the world moved online and everyone started building their critical infrastructure as distributed systems, Paxos found its way into the foundation of almost every one of those newly built systems. But, at the same time, it also grew notorious for being beyond the comprehension of mere mortals &mdash; so much so that, when a second viable consensus algorithm, *Raft*, finally came along well over a decade later, the paper was called *In Search of an Understandable Consensus Algorithm*.
 
 I like Raft, and I think if you're choosing between Raft and multi-Paxos for a project today, Raft is likely the better choice. Multi-Paxos is presented only as a rough sketch in the original Paxos paper, and although a hodgepodge of other papers try to fill in the blanks, they aren't completely consistent with one another. In the end, you'll find yourself partially reinventing the wheel. At least with Raft, there's a complete algorithm  in one place! Even so, I don't think Paxos should be skipped entirely. It's true the full multi-Paxos algorithm is complex and under-specified, but the core of Paxos (a little protocol called the *synod algorithm*) is small, well-specified, insightful, and can be embedded into other systems and algorithms in a way that the full Raft and multi-Paxos cannot. (TODO: Find an example. I thought Aurora does some kind of row-level Paxos using the synod algorithm? Am I misremembering?)
 
-Leslie Lamport, who invented Paxos, [once described Paxos's core synod algorithm](https://lamport.azurewebsites.net/pubs/paxos-simple.pdf) as "among the simplest and most obvious of distributed algorithms," and claimed that it "follows unavoidably from the properties we want it to satisfy." He's right, although it might not seem that way on a first read-through of the algorithm. Paxos's core algorithm falls out of a lot of invisible context: you need to really understand the problem we are solving, why obvious solutions fail, and what must be done to work around those failures, before the synod algorithm starts looking like a clear and minimal solution. So that's what we'll do: let's take a fresh look at the problem of consensus, try to solve it, get stuck, and then get un-stuck; we should end up reinventing the synod algorithm, which is the core of Paxos. Along the way we'll cover the FLP result, which bridges the gap from obvious algorithms that don't work, to algorithms (like Paxos) that do.
+Leslie Lamport, who invented Paxos, [once described Paxos's core synod algorithm](https://lamport.azurewebsites.net/pubs/paxos-simple.pdf) as "among the simplest and most obvious of distributed algorithms," and claimed that it "follows unavoidably from the properties we want it to satisfy." He's right, although it might not seem that way the first time you read through it. The Paxos synod algorithm falls out of a lot of invisible context: you need to really understand the problem we are solving, why obvious solutions fail, and what must be done to work around those failures, before the synod algorithm really does start to look like a clear and minimal solution. So that's what we'll do: let's take a fresh look at the problem of consensus, try to solve it, get stuck, and then find a workaround for our problem; we should end up reinventing Paxos’s core synod algorithm. Along the way we'll cover the FLP result, which bridges the gap from obvious algorithms that don't work, to algorithms (like Paxos) that do.
 
 # Part 1: Consensus
 
-Just about every distributed system has a consensus algorithm running it in somewhere. Even if you have never written code to use a consensus algorithm directly, the fancy distributed replicated database you're using itself relies on a consensus algorithm, as do any cloud services you use. But what makes consensus so fundamental? Why are they ubiquitous in distributed systems?
+Just about every distributed system has a consensus algorithm running it in somewhere. Even if you’ve never used in directly, the fancy distributed replicated database you're using itself relies on a consensus algorithm, as do any cloud services you use. But what makes consensus so fundamental? Why are they ubiquitous in distributed systems?
 
 One of the fun (or maybe "fun") parts of programming distributed systems is that quite a few common programming tasks that are easy to write in normal code turn out to be really, really hard in distributed code. Consensus algorithms help turn problems like that back into something more tractable. To see what I mean, let's look at a couple examples where a consensus algorithm might be helpful:
 
@@ -21,7 +21,7 @@ One of the fun (or maybe "fun") parts of programming distributed systems is that
 
 Let's say we're writing code for a message board website, and we want to add a 'user of the day' function where we spotlight one particular user at random each day. How do write code to pick a user once, and only once each day?
 
-In normal code, the solution is not too complex. It might look like this:
+A basic answer might be something like this:
 
 ```java
 User getUserOfTheDay() {
@@ -51,9 +51,9 @@ User getUserOfTheDay() {
 
 What if we have distributed system? In a way, a distributed system is lot like multithreading, just with the different threads running on different computers. So hopefully we should be able to reuse most of our multithreaded solution above.
 
-For us as programmers, what's different about distributed systems is how threads communicate: on a single machine, threads can just share variables, but once we have different threads on different machines we need to use the network. Our multithreaded solution relies on sharing variables, so we'll have to use the network now that we're distributed.
+For us as programmers, what's different about distributed systems is how threads communicate: on a single machine, threads can just share variables, but once we have different threads on different machines we need to use the network. Our multithreaded solution does rely on sharing variables, so we'll have to switch to using the network instead.
 
-Here's an approach: we can pick a node arbitrarily and assign it the job of managing the user of the day. Let's call that node the **coordinator**. The coordinator decides who is the user of the day, and remembers that decision all day. Any time another node needs to know who is the current user of the day, that other node asks the coordinator.
+Here's one way to do that: we can pick a node arbitrarily and assign it the job of managing the user of the day. Let's call that node the **coordinator**. The coordinator decides who is the user of the day, and remembers that decision all day. Any time another node needs to know who is the current user of the day, that other node asks the coordinator.
 
 Sounds great, but how do the nodes figure out which one is the coordinator? Well, for most distributed systems running in data centers or the cloud, we know ahead of time the full set of nodes that are going to participate in the system. If we provision each node with a copy of that node list, we could have all nodes independently run the same deterministic algorithm on that list to pick the coordinator. As long as all nodes run the same deterministic algorithm with the same node list as input, they'll all end up picking the same coordinator &mdash; without ever sending a single network message!
 
@@ -75,7 +75,7 @@ User getUserOfTheDay() {
 }
 ```
 
-On startup, if a node runs the bully algorithm and realizes it itself is the coordinator, it starts the server side of this remote method call interface, which it implements the same way we did for multithreading:
+On startup, if a node runs the bully algorithm and realizes it itself is the coordinator, it starts serving the remote method call interface, using our existing multithreaded implementation:
 
 ```java
 if (bullyAlgorithm(App.nodeIds) == App.myNodeId()) {
@@ -146,7 +146,7 @@ void tryShip() {
 }
 ```
 
-How about turning this into a distributed solution? We can do it the same way we did before: expose the implementation above as an RPC call from some coordinator node, and have all other nodes call into the coordinator when they need to get or updatethe order state. The client side might look like this:
+How about turning this into a distributed solution? We can do it the same way we did before: expose the implementation above as an RPC call from some coordinator node, and have all other nodes call into the coordinator when they need to get or update the order state. The client side might look like this:
 
 ```java
 OrderState getOrderState() {
@@ -202,12 +202,12 @@ interface WriteOnce<T> {
   /** Try to initialize to the given value, no-op if already initialized */
   public void tryInitialize(T value);
   
-  /** Reads the value once the variable haa been initialized */
+  /** Reads the value once the variable has been initialized */
   public Future<T> finalValue();
 }
 ```
 
-The way we implement this thing should look pretty similar by now. First we write a single-threaded implementation:
+The way we implement this thing should look pretty familiar by now. First we write a single-threaded implementation:
 
 ```java
 class BasicWriteOnce<T> implements WriteOnce<T> {
@@ -309,11 +309,11 @@ User getUserOfTheDay() {
 }
 ```
 
-The idea is to have every thread generate a random user of the day, but only allow the first such generated user to become today's user of the day; all other `tryInitialize()` calls silently have no effect because the write-once variable has already been picked. (To complete the solution, we would need a way to get a new `WriteOnce<User>` each day, but that's not important for this discussion so I'm going to handwave it.)
+The idea here is to actually choose *many* random users each day, but only install the first such user as today’s user of the day, by leveraging the write-once semantics of the `tryInitialize()` method. (To complete the solution, we would need a way to get a new `WriteOnce<User>` each day, but that's not important for this discussion so I'm going to handwave it.)
 
-Do you see how the multithreaded / distributed guarantees of `WriteOnce<T>` are automatically conferred onto this implementation of `getUserOfTheDay()`, without us having to do anything special? If we pass in a thread-safe `WriteOnce`, that makes `getUserOfTheDay()` thread-safe, and if we pass in a distributed `WriteOnce` then `getUserOfTheDay` is also automatically distributed. Pretty nifty, huh?
+Do you see how the multithreaded / distributed guarantees of `WriteOnce<T>` are automatically conferred onto this implementation of `getUserOfTheDay()`, without us having to do anything special? If we pass in a thread-safe `WriteOnce`, that makes `getUserOfTheDay()` thread-safe automatically, and if we pass in a distributed `WriteOnce` then `getUserOfTheDay` is also automatically distributed. Pretty nifty, huh?
 
-Now let's try the order cancellation problem. For that one, the core question was how to determine a winner if two users try to take conflicting actions at the same time. One possible solution is to have all attempts to ship or cancel an order race to be the first to call `tryInitialize` on a write-once variable; whichver is processed first is the one we accept, and all subsequent attempts are rejected automatically:
+Now let's try the order cancellation problem. For that one, the core question was how to determine a winner if two users try to take conflicting actions at the same time. One possible solution is to have all attempts to ship or cancel an order race to be the first to call `tryInitialize` on a write-once variable; whichver is processed first is the one we accept, and all subsequent attempts are rejected implicitly when `tryInitialize` ignores the corresponding write:
 
 ```java
 WriteOnce<OrderState> orderResult = // ...
@@ -338,17 +338,17 @@ OrderState getOrderState() {
 
 Once again, the internal guarantees of thread safety / distribution provided by the `WriteOnce<OrderState>` confer thread safety / distribution onto this code without the caller having to worry about it. Neat!
 
-As you might imagine, there are quite a few problems that can be reduced to initialize a `WriteOnce<T>` this way, which vastly simplifies the process of making code thread safe and/or distributing it. If you see why that is, then you also already know why consensus is so foundational to distributed systems &mdash; because, drumroll please . . .
+As you might imagine, there are quite a few problems that can be reduced to initializing a `WriteOnce<T>` this way, which in turn vastly simplifies the process of making that code thread safe and/or distributing it. If you see that, then you also already know why consensus is so foundational to distributed systems &mdash; because, drumroll please . . .
 
 ## Consensus Algorithms Implement Write-Once Variables
 
-A write-once variable is a primitive implemented by a consensus algorithm, which is to say, a consensus algorithm is the algorithm that implements a write-once variable. They are two sides of the same coin. One is an interface, the other is an algorithm that implements the interface.
+A write-once variable is a primitive implemented by a consensus algorithm, which is to say, a consensus algorithm is the algorithm that implements a write-once variable. The write-once variable is an interface, and a consensus algorithm is the implementation of the interface. They are two sides of the same coin.
 
-The naming might seem a bit odd. The word "consensus" means "agreement." Calling something consensus implies a sort of story: once upon a time, there was a group, where not all members of the group initially agreed. Then, they all worked it out and ended up in unanimous agreement. In this case, we call that kind of agreement, "consensus."
+The naming might seem a little odd. The word "consensus" means "agreement." Calling something consensus implies a sort of story: once upon a time, there was a group, where not all members of the group initially agreed. Then, they all worked it out and ended up in unanimous agreement. In this case, we call that kind of agreement, "consensus."
 
 In the context of a distributed system, the group is made up of threads running on different machines, rather than people, and the initial disagreement comes from different threads calling `tryInitialize` with different values. The final agreement comes from all threads receiving the same value from `finalValue`. If you check our write-once-based solutions from the previous heading, you'll see this in action. Both start with different threads in disagreement (different values are being passed to `tryInitialize`), and we end up with all threads in agreement (we forget what value we passed to `tryInitialize` and just trust the value returned by `finalValue`). Somewhere between `tryInitialize` and `finalValue`, the disagreement was resolved (arbitrarily, by picking the first `tryInitialize` call), and the final result was total agreement acrss all threads &mdash; so we call it “consensus.”
 
-So, a consensus algorithm implement a a write-once variable. That's a good high-level description, but we should dig deeper. What guarantees does a consensus algorithm need to provide? We should be able to glean everything we need from re-examining how the two example problems were built on top of `WriteOnce<T>`, and carefully checking what guarantees they were  implicitly expecting `WriteOnce<T>` to provide.
+So, a consensus algorithm implements a write-once variable. That's a good high-level description, but we should dig deeper. What guarantees does a consensus algorithm need to provide? We should be able to glean everything we need from re-examining how our two example solutions were rebuilt on top of `WriteOnce<T>`, and carefully checking what guarantees our code was implicitly expecting `WriteOnce<T>` to provide.
 
 ## Properties of a Consenus Algorithm
 

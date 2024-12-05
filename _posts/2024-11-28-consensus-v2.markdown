@@ -359,7 +359,7 @@ interface WriteOnce<T> {
   /** Try to initialize to the given value, no-op if already initialized */
   public void tryInitialize(T value);
   
-  /** Reads the value once the variable haa been initialized */
+  /** Reads the value once the variable has been initialized */
   public Future<T> finalValue();
 }
 ```

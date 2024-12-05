@@ -13,9 +13,9 @@ Leslie Lamport, who invented Paxos, [once described Paxos's core synod algorithm
 
 # Part 1: Consensus
 
-Just about every distributed system has a consensus algorithm running it in somewhere. Even if you have never written code to use a consensus algorithm directly, the fancy distributed replicated database you're using itself relies on a consensus algorithm, as do any cloud services you might be using. But what makes consensus so fundamental? Why are they ubiquitous in distributed systems?
+Just about every distributed system has a consensus algorithm running it in somewhere. Even if you have never written code to use a consensus algorithm directly, the fancy distributed replicated database you're using itself relies on a consensus algorithm, as do any cloud services you use. But what makes consensus so fundamental? Why are they ubiquitous in distributed systems?
 
-One of the fun (or maybe "fun") parts of programming distributed systems is that quite a few common tasks that are trivial in normal code turn out to be really, really hard in distributed code. Consensus algorithms help turn problems like that back into something more tractable. To see what I mean, let's lay a couple of examples where a consensus algorithm might be helpful:
+One of the fun (or maybe "fun") parts of programming distributed systems is that quite a few common programming tasks that are easy to write in normal code turn out to be really, really hard in distributed code. Consensus algorithms help turn problems like that back into something more tractable. To see what I mean, let's look at a couple examples where a consensus algorithm might be helpful:
 
 ## Example: Picking a Random User
 
@@ -53,9 +53,9 @@ What if we have distributed system? In a way, a distributed system is lot like m
 
 For us as programmers, what's different about distributed systems is how threads communicate: on a single machine, threads can just share variables, but once we have different threads on different machines we need to use the network. Our multithreaded solution relies on sharing variables, so we'll have to use the network now that we're distributed.
 
-Here's an approach: we can assign to one node the job of managing the user of the day. Let's call that node the **coordinator**. The coordinator decides who is the user of the day, and remembers that decision all day. Any time some other node needs to know who is the current user of the day, it asks the coordinator.
+Here's an approach: we can pick a node arbitrarily and assign it the job of managing the user of the day. Let's call that node the **coordinator**. The coordinator decides who is the user of the day, and remembers that decision all day. Any time another node needs to know who is the current user of the day, that other node asks the coordinator.
 
-This'll work, but now we have a bootstrapping problem: how do all nodes figure out which one is the coordinator? Well, for most distributed systems running in data centers or the cloud, we know ahead of time the full set of nodes that are going to participate in the system. If we provision each node with a copy of that node list, we could have all nodes independently run the same deterministic algorithm on that list to pick the coordinator. As long as all nodes run the same deterministic algorithm with the same node list as input, they'll all end up picking the same coordinator &mdash; without ever sending a single network message!
+Sounds great, but how do the nodes figure out which one is the coordinator? Well, for most distributed systems running in data centers or the cloud, we know ahead of time the full set of nodes that are going to participate in the system. If we provision each node with a copy of that node list, we could have all nodes independently run the same deterministic algorithm on that list to pick the coordinator. As long as all nodes run the same deterministic algorithm with the same node list as input, they'll all end up picking the same coordinator &mdash; without ever sending a single network message!
 
 As to what algorithm we should run on the node list, a common choice is the so-called *bully algorithm*, which works on the principle, "the biggest guy wins." We pick some attribute on which to sort the nodes in the node list, and then choose the node that is largest or smallest in the resulting sort order:
 

@@ -710,19 +710,29 @@ Maybe we could work around this by having a different, even more clever tiebreak
 
 What we really need to do is adjust the trigger condition for running the tiebreaker in the first place. We want the tiebreaker to run after all healthy nodes' votes are in, but without waiting for votes from faulted nodes whose votes will never arrive. But in practice, how do we know when that is?
 
-In literature, a piece of code that can tell the difference between "the remote node is still running, but it's not done yet" and "the remote node has failed, and will never do its work" is called a **failure detector**. Quite a bit of theory has been built around what we can do if we have a reliable failure detector, but the fact that remains, failure detectors don't exist in the real world. (At least, not 100% accurate failure detectors, which is what we need here.) Sure, we can detect that network requests we have sent to other nodes have timed out, but we can't tell the difference between "the reply hasn't arrived yet" vs "the reply is never coming."
+In literature, a piece of code that can tell the difference between "the remote node is still running, but it's not done yet" and "the remote node has failed, and will never do its work" is called a **failure detector**. Quite a bit of theory has been built around what we can do if we have a reliable failure detector, but the fact that remains, failure detectors don't exist in the real world. (At least, not 100% accurate failure detectors, which is what we need here.) Sure, we can detect that network requests we have sent to other nodes have timed out, but we can't tell the difference between "the reply hasn't arrived yet" vs "the reply is never coming." No matter how long we've waited, there's always a possibility the reply could arrive if we just waited a little longer.
 
-Without a failure detector, there's no way to know when to run the tiebreaker safely in spite of faults. So running the tiebreaker before all votes are in simply isn't an option. However, we also know that waiting for all votes before running the tiebreaker isn't fault tolerant; and if we don't have a tiebreaker at all, the algorithm might not terminate even when there are no faults in the system. However, (no tiebreaker, tiebreaker after all votes are in, tiebreaker before all votes are in) covers the entire range of possible algorithms we could design.
+Without a failure detector, there's no way fault-tolerant way to run a tiebreaker safely; finding the right time to run the tiebreaker would by definition be finding a perfect fault detector. So running the tiebreaker before all votes are in simply isn't an option. On the other hand, waiting until all votes are in isn't an option either &mdash; we would sacrifice fault tolerance. So tiebreaking rules are completely out.
 
-I think we're stuck.
+## Alternatives to Tiebreakers?
 
-## More Stuff That Doesn't Work
+Our basic majority voting algorithm doesn't always terminate if we run it without a tiebreaker. But we also can't run tiebreakers: either we end up with a broken algorithm, or we get an algorithm that sometimes deadlocks due to just one node crash. We need a lateral move. Can we fix split votes without a tiebreaker?
+
+Well, early on we passed on the idea of restarting the algorithm if we get a split vote. Would that work? Well, once again, we have to decide whether we wait until all votes are in before triggering a revote; if we wait for all votes before triggering a revote then we can't sustain the loss of even one node, but if we don't wait for all votes, the old voting round could produce a majority after we called for a revote, resulting in inconsistency. In other words, revoting has the same problem as the other tiebreaking rules we tried before; in retrospect, revoting is itself just another tiebreaking rule.
+
+
+
+
+
+
+
+
 
 TODO
 
-* What if instead of a tiebreaker, we restart the algorithm? Argument: restart the algorithm is basically just a tiebreaker and it has the same limitations. If you wait until all votes are in and then restart, you waited for all votes to be in. If you start before all votes are in and restart, you potentially restarted an algorithm that already reached consensus, which means some `finalValue()` futures may already have resolved.
 * What if we tried to use timeouts to rule out bad nodes? That's more clever but it still doesn't work: the node that did the last vote might know it has reached consensus and resolved `finalValue()` futures even though it can't communicate out to anybody else, which is another but more subtle agreement violation.
 * Both of these are good setup because the final Paxos solution is to make it safe to restart at any time. The point of synod is to guarantee, at any time, if someone successfully restarts the vote after consensus has been reached, always they will reach consensus again on the same value.
+* This is also potentially a good segue out: observe everything else we do looks an awful lot like a tiebreaker. Proving this would be huge: it would show that we're actually overconstrained.
 
 # Intermission
 

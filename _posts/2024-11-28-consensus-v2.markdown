@@ -473,8 +473,8 @@ CompletableFuture<T> outcome = new CompletableFuture<>();
 
 private void onVote(T value) {
   synchronized (lock) {
-    voteCounts.put(value, 1 + voteCounts.getOrDefault(value, 0));
-    if (voteCounts.get(value) > App.nodeIds().size() / 2) {
+    tally.put(value, 1 + tally.getOrDefault(value, 0));
+    if (tally.get(value) > App.nodeIds().size() / 2) {
       outcome.complete(value);
     }
   }
@@ -704,21 +704,21 @@ Okay, so we've realized we need a tiebreaker to force the algorithm to eventuall
 
 ... I'm really not sure.
 
-Running the tiebreaker before all votes are in is hella dangerous: if we run the tiebreaker before all votes are in, and then all those missing votes arrive, the missing votes can change the algorithm's answer and get everything all confused. For example, we could run the bully algorithm at a time where the tally only has votes for `Red` and `Blue`, and decide our answer is `Blue`; but then if other votes come in and even one of those votes picks `Green`, the next node to run its own tiebreaker may run the bully algorithm over `Red`, `Blue` and `Green` and pick `Green`. The net result is different nodes have picked different values, meaning we have violated the Agreement property, the consensus algorithm's holiest of holies.
+Running the tiebreaker before all votes are in is dangerous: if more votes arrive after we run the tiebreaker, they can change the algorithm's answer and get everything all confused. For example, we could run the bully algorithm at a time where the tally only has votes for `Red` and `Blue`, and decide our answer is `Blue`; but then if other votes come in and even one of those votes picks `Green`, the next node to run its own tiebreaker may run the bully algorithm over `Red`, `Blue` and `Green` and pick `Green`. Then we have disagreement, the algorithm is broken.
 
-Maybe we could work around this by having a different, even more clever tiebreaker than the one we already have. But I doubt it. No matter what tiebreaker we use, running it before all votes are in leaves the door open to a candidate value reaching a majority after we have run the tiebreaker. So one node might run the tiebreaker prematurely and get the tiebreaker's answer, while some other node waits maybe just a second or two longer, receives the last set of votes, discovers some value has reached a majority, and picks that value. Once again, the different nodes disagree, violating Agreement, and it doesn't even matter what the tiebreaking rule was.
+Maybe we could work around this by having a different, even more clever tiebreaker than the one we already have. But I doubt it. Even if we had a tiebreaker that somehow couldn't change its mind, we'd still have to deal with the possibility that some candidate value reaches a majority after we run the tiebreaker. If that happens, any node that ran this clever tiebreaker still might end up disagreeing with nodes that saw the majority value first. So the algorithm is still broken.
 
-What we really need to do is adjust the trigger condition, to somehow run the tiebreaker after all healthy nodes' votes are in, but without waiting for votes from faulted nodes whose votes will never arrive. That requires code to discriminate between healthy and failed nodes, something called a **failure detector** in literature.
+What we really need to do is adjust the trigger condition for running the tiebreaker in the first place. We want the tiebreaker to run after all healthy nodes' votes are in, but without waiting for votes from faulted nodes whose votes will never arrive. But in practice, how do we know when that is?
 
-Here's the thing: quite a bit of work has been done thinking about failure detectors and what we could do if we had a reliable one, but the fact remains, there are no 100% correct failure detectors in the real world. We can detect network timeouts, but timeouts don't tell us what's going on with the node we're trying to talk to: whether it is offline, running slowly, or just coming back online, the symptom is the same: network requests time out.
+In literature, a piece of code that can tell the difference between "the remote node is still running, but it's not done yet" and "the remote node has failed, and will never do its work" is called a **failure detector**. Quite a bit of theory has been built around what we can do if we have a reliable failure detector, but the fact that remains, failure detectors don't exist in the real world. (At least, not 100% accurate failure detectors, which is what we need here.) Sure, we can detect that network requests we have sent to other nodes have timed out, but we can't tell the difference between "the reply hasn't arrived yet" vs "the reply is never coming."
 
-So without a failure detector, there's no correct way to run the tiebreaker before all votes are in. We also know running the tiebreaker *after* all votes are in isn't fault tolerant. And not having a tiebreaker means we don't guarantee termination. Between all three of these (no tiebreaker, tiebreaker after all votes are in, tiebreaker before all votes are in), we've covered the full set of possible cases. There's nowhere else to go from here.
+Without a failure detector, there's no way to know when to run the tiebreaker safely in spite of faults. So running the tiebreaker before all votes are in simply isn't an option. However, we also know that waiting for all votes before running the tiebreaker isn't fault tolerant; and if we don't have a tiebreaker at all, the algorithm might not terminate even when there are no faults in the system. However, (no tiebreaker, tiebreaker after all votes are in, tiebreaker before all votes are in) covers the entire range of possible algorithms we could design.
 
 I think we're stuck.
 
-## TODO
+## More Stuff That Doesn't Work
 
-Before declaring defeat there are a few other things we should examine and rule out too:
+TODO
 
 * What if instead of a tiebreaker, we restart the algorithm? Argument: restart the algorithm is basically just a tiebreaker and it has the same limitations. If you wait until all votes are in and then restart, you waited for all votes to be in. If you start before all votes are in and restart, you potentially restarted an algorithm that already reached consensus, which means some `finalValue()` futures may already have resolved.
 * What if we tried to use timeouts to rule out bad nodes? That's more clever but it still doesn't work: the node that did the last vote might know it has reached consensus and resolved `finalValue()` futures even though it can't communicate out to anybody else, which is another but more subtle agreement violation.

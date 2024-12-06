@@ -561,11 +561,15 @@ Majority-rules voting (as a system, not just our algorithm) is vulnerable to a s
 
 For example, say we have a network with 25 nodes, and we are voting on one of three different colors: red, green or blue. If all three proposals (`tryInitialize` calls) for all three colors are made at around the same time, we could end up with the following tally:
 
+<div class="overflows" markdown="block">
+
 | Candidate Value | Number of Votes | Winner? |
 | --------------- | --------------- | ------- |
 | Red             | 9               | No      |
 | Blue            | 5               | No      |
 | Green           | 11              | No      |
+
+</div>
 
 Here no candidate is the winner because it takes at least 13 votes to reach a majority, and no candidate received 13 votes. Since we do not have a winner, the `finalValue()` future has not resolved. However, since all votes have been cast, the tally will never change either. So we have not finished and also cannot progress. We're deadlocked!
 
@@ -579,11 +583,15 @@ A different approach that avoids both of these problems is to have a **tiebreake
 
 Let's take another look at the example tally from the previous section:
 
+<div class="overflows" markdown="block">
+
 | Candidate Value | Number of Votes | Winner? |
 | --------------- | --------------- | ------- |
 | Red             | 9               | No      |
 | Blue            | 5               | No      |
 | Green           | 11              | No      |
+
+</div>
 
 Looking at the results, what seems like a good tiebreaking rule?
 
@@ -591,11 +599,15 @@ The first one that jumps out to me is "pick the one that got the most votes," wh
 
 Plurality voting would work in the example above, but it doesn't work in this case:
 
+<div class="overflows" markdown="block">
+
 | Candidate Value | Number of Votes | Winner? |
 | --------------- | --------------- | ------- |
 | Red             | 10              | No      |
 | Blue            | 10              | No      |
 | Green           | 5               | No      |
+
+</div>
 
 Here we have two winning candidates but plurality voting rules; to narrow it down further, we would need another tiebreaking rule (a tiebreaker for the tiebreaker). But, whatever rule we use as the tiebreaker-of-tiebreakers would probably work as a tiebreaker in its own right. So let's not use plurality voting.
 
@@ -719,6 +731,10 @@ We set out with the goal of learning the problem space of consensus, so that we 
 This is the low point in our journey. We understand the problem and we appreciate its difficulty, but we don't yet have a way forward. Things will only get better from here. We're about to turn our attention to the FLP result, which explains what we have been doing wrong so far, and in doing so we'll learn what we need to change about our approach in order to arrive at the Paxos algorithm. Pour yourself your stimulant drink of choice and let's keep going!
 
 # Part 3: The FLP Result
+
+TODO:: a good cold open might be a repeat of Lemma (2? 3?) the inscrutable one. "Refuses to elaborate, leave"
+
+TODO: open as the proof generalizes what you already saw with the tie breaker / pick your poison
 
 
 

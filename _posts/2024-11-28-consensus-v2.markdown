@@ -762,6 +762,7 @@ Basic proof structure from my old notes:
     * If the node is up and decides 1, the additional logic decides 1
     * If the node is down, the additional logic does not wait on the node
     * We cannot distinguish between the node up and node down cases
+    * Other words: the final deciding run must decide something; that something must be 0 in case ee’ but it also must be 1 in case e’e. But it cannot be both.
 5. Clearly this is impossible; we cannot be consistent with what the node decides without waiting to see what it decides. So we cannot write that additional logic. It does not exist.
 6. But that means we do not terminate in the event of one fault. QED
 

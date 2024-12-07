@@ -750,41 +750,35 @@ TODO: open as the proof generalizes what you already saw with the tie breaker / 
 
 ---
 
-Part 3 is FLP, I had several thoughts of how to explain this without getting into the formal math
+Part 3 is FLP
 
-* Their model
-  * For now let's focus with a consensus model with just two possible outputs: 0 or 1
-  * A system has three possible consensus states: 0, 1 or undecided
-  * Each step of the algorithm that runs while state is undecided can result in subset of (0, 1, undecided)
-  * Once the consensus state is (0, 1) no step can transition it to anything else
-  * Every step runs on a single node
+Basic proof structure from my old notes:
 
-* My model: a decision
-  * A decision is a step that runs in state (undecided) and cannot result in state (undecided)
+1. We terminate, so there is some step that always decides
+2. It could decide either way, depends on the network delivery order on that node
+3. If we lose that node, we need additional logic to decide without that node
+4. Requirements for the additional logic
+    * If the node is up and decides 0, the additional logic decides 0
+    * If the node is up and decides 1, the additional logic decides 1
+    * If the node is down, the additional logic does not wait on the node
+    * We cannot distinguish between the node up and node down cases
+5. Clearly this is impossible; we cannot be consistent with what the node decides without waiting to see what it decides. So we cannot write that additional logic. It does not exist.
+6. But that means we do not terminate in the event of one fault. QED
 
-* At a high level, the core claim they make is you have three bad choices
-  * Algorithm doesn't guarantee any decision steps => doesn't terminate
-  * Algorithm guarantees just one decision step => it isn't fault tolerant, that step may never execute
-  * Algorithm guarantees up to 2 decision steps => they can disagree with one another
-    * Intuition: you can't differentiate "never" vs "not yet" i.e. "failed / need to proceed" vs "running / need to wait"
+Hookups to the actual proof, probably don’t need to harp on this but good to leave breadcrumbs 
 
-* Apply this back into the language of the majority voting example
-  * Consider a vote between two different values, i.e. 0 v 1, red v blue, etc
-  * Idea of a "one-way" vs "two-way" vote
-  * The bad case is "two-way"
-  * An algorithm which doesn't guarantee a two-way vote never terminates, that was our no-tiebreak algorithm
-  * An algorithm which guarantees only one isn't fault tolerant, that was our tiebreak after all votes are in
-  * An algorithm which guarantees up to two violates agreement, that was our tiebreak before all votes in
-  * (No-tiebreak, tiebreak after all votes in, tiebreak before all votes in) covers all cases, now we are stuck
-  * All of this is exactly as FLP predicted
+1. This is event e
+2. This is e’ and that p=p’
+3. This is lemma 3’s finite deciding run
+4. This is figure (3?), the big graph, plus the commutativity argument 
+5. Conclusion of contradiction in lemma 3
+6. The main proof of non-termination
 
-* Does this mean there are no fault tolerant consensus algorithms? 
-  * No, there's a suble workaround, we don't actually need termination as long as probabilities converge
-  * Doesn't matter if we don't guarantee termination if it becomes vanishingly unlikely to keep not terminating
-  * Quote the FLP paper which I believe direclty suggests this, but doesn't manage to find the algorithm to do it
-    * Eh probably they may also have thought this approach would not pan out?
+Draw parallel between the lemma 3 finite deciding run and the tiebreaker before all votes are in. All other algorithms we have written, including distributed write once, basic voting, and tiebreaker at the end are all examples of non-terminating consensus algorithms that do have agreement and validity.
 
-* So what does a majority voting algorithm that never forces a decision to be made? Where it's an endless stream of 1-way votes where continuing the algorithm without terminating grows exponentially unlikely over time?
+Finally, getting around this. We are over constrained, we must sacrifice agreement validity or termination. Termination: non-guaranteed termination is very different from guaranteed non-termination. Maybe we can rely on the probability of termination continually increasing over time. Like if you have a 10% chance of failing a round, 1 in 10 executions proceed to the second round, 1 in 100 proceed to the third round, and one in 10 billion proceed to round 10. 
+
+How do we do that? We need a voting algorithm with an infinite number of rounds, and also avoids ever having a deciding step. We’re starting to encroach onto liveness here
 
 Part 4 is Paxos
 

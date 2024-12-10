@@ -752,35 +752,36 @@ TODO: open as the proof generalizes what you already saw with the tie breaker / 
 
 Part 3 is FLP
 
-Basic proof structure from my old notes:
+* Point out sometimes missing a vote is OK, but in the case of a split vote with one final node it is not. So what is special about a split vote? What is the X-factor that makes it illegal to lose a step? If we know that, maybe we can avoid it.
+* FLP’s X-factor: the system can still decide either way, and there is some step which has already been triggered, and will ensure the system is decided once executed
+* That’s a lot to unpack
+* Go over a system model: binary consensus, decision state, steps
+* Why is a state with these oddly specific requirements pathological?
+* Answer: it’s because in this situation, there is some execution where the node receiving that message and executing that step ends up deciding all by itself, using local information only it has
+* Proof step 1: the step can decide either way, because the system can decide either way. If the step always picked zero, for example, that means if the system decides 1 and then the step executes, it would change the answer to 0, which is illegal
+* Proof step 2: so what changes which way the step decides? Well the trigger message has already been sent and can’t be changed; so at this point the only thing that can change what the step decides is local state on that node. And the only thing that can change the nodes state is other steps running on that node
+* So now we know there’s a step, or set of steps which run on the node, which change what our magic step decides. If the magic step goes first, we decide one way (eg 0), but if the other steps go before the magic step we decide 1 instead
+* Example of split vote illustrates this. 
+* But basically now we have a node making the decision unilaterally using information only it has. What if the node crashes?
+* Well, we could do nothing and stop. But then we do not terminate, which means we are not fault tolerant
+* We could also try to keep going and make a decision anyways. But here’s the problem: if we keep going, we have to be able to always keep going, even if that node doesn’t crash. Because we don’t have a failure detector: no matter how long we have waited for that node to make up its mind, it’s still possible it’ll respond if we just wait a little longer
+* Thus requirements for keeping going: we must make a decision, in case p has crashed; we must decide 0 in case p has decided 0; we must decide 1 in case p has decided 1. That doesn’t make sense. Ergo the code to keep going actually doesn’t exist.
+* But if we don’t keep going, then we just get stuck if that node crashes. Either way, we are not fault tolerant
+* So that’s the X-factor and that’s how it prevents us from being fault tolerant.
+* So let’s just design an algorithm that avoids this case!
+* Not so fast, say FL&P: any algorithm that avoids this case doesn’t guarantee termination even if there are zero faults!
+* To avoid this case, we just guarantee, up until we happen to make a decision, every step that has been triggered has an “out,” some ordering of network messages such that, once that step has executed, the system is still undecided. Otherwise, the opposite is a step that ensures a decision, which is the thing we must avoid
+* But if every step has an out, then no matter how long you have been executing, there is still a chance you happen to randomly take that path. The result: an algorithm with at least one execution (potentially infinitely long!) which does not terminate.
+* So pick your poison, you can’t have it all:
+* Your algorithm does not guarantee termination no matter how many faults
+* Or your algorithm doesn’t guarantee termination in case of just one crash
+* Or your algorithm contains fundamentally broken logic that corrupts the decision state because you don’t have a failure detector
+* Which would you pick?
+* Well, non-guaranteed termination is not the same thing as guaranteed non-termination
+* Can we avoid the X-factor and end up with an algorithm that never terminates, but be ensured that the probability of not terminating is always falling geometrically 
+* Indeed we can; one such way of modifying our voting algorithm into that is called Paxos.
 
-1. We terminate, so there is some step that always decides
-2. It could decide either way, depends on the network delivery order on that node
-3. If we lose that node, we need additional logic to decide without that node
-4. Requirements for the additional logic
-    * If the node is up and decides 0, the additional logic decides 0
-    * If the node is up and decides 1, the additional logic decides 1
-    * If the node is down, the additional logic does not wait on the node
-    * We cannot distinguish between the node up and node down cases
-    * Other words: the final deciding run must decide something; that something must be 0 in case ee’ but it also must be 1 in case e’e. But it cannot be both.
-    * Other other words: final deciding run must run in parallel with p deciding ee’ vs e’e, it must somehow agree with p despite having no contact with p.
-5. Clearly this is impossible; we cannot be consistent with what the node decides without waiting to see what it decides. So we cannot write that additional logic. It does not exist.
-6. But that means we do not terminate in the event of one fault. QED
-
-Hookups to the actual proof, probably don’t need to harp on this but good to leave breadcrumbs 
-
-1. This is event e
-2. This is e’ and that p=p’
-3. This is lemma 3’s finite deciding run
-4. This is figure (3?), the big graph, plus the commutativity argument 
-5. Conclusion of contradiction in lemma 3
-6. The main proof of non-termination
-
-Draw parallel between the lemma 3 finite deciding run and the tiebreaker before all votes are in. All other algorithms we have written, including distributed write once, basic voting, and tiebreaker at the end are all examples of non-terminating consensus algorithms that do have agreement and validity.
-
-Finally, getting around this. We are over constrained, we must sacrifice agreement validity or termination. Termination: non-guaranteed termination is very different from guaranteed non-termination. Maybe we can rely on the probability of termination continually increasing over time. Like if you have a 10% chance of failing a round, 1 in 10 executions proceed to the second round, 1 in 100 proceed to the third round, and one in 10 billion proceed to round 10. 
-
-How do we do that? We need a voting algorithm with an infinite number of rounds, and also avoids ever having a deciding step. We’re starting to encroach onto liveness here
+How do we do that? We need a voting algorithm with an infinite number of rounds since we need to keep trying to terminate, and also avoids ever having a decision-ensuring step.
 
 Part 4 is Paxos
 

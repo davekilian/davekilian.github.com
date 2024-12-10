@@ -774,8 +774,8 @@ Part 3 is FLP
 * But if every step has an out, then no matter how long you have been executing, there is still a chance you happen to randomly take that path. The result: an algorithm with at least one execution (potentially infinitely long!) which does not terminate.
 * So pick your poison, you can’t have it all:
 * Your algorithm does not guarantee termination no matter how many faults
-* Or your algorithm doesn’t guarantee termination in case of just one crash
-* Or your algorithm contains fundamentally broken logic that corrupts the decision state because you don’t have a failure detector
+* Or your algorithm is guaranteed non-termination in case of just one crash, like DWO, basic voting and tiebreaker at the end
+* Or your algorithm contains fundamentally broken logic that corrupts the decision state because you don’t have a failure detector, like tiebreaker before the end
 * Which would you pick?
 * Well, non-guaranteed termination is not the same thing as guaranteed non-termination
 * Can we avoid the X-factor and end up with an algorithm that never terminates, but be ensured that the probability of not terminating is always falling geometrically 

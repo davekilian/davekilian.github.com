@@ -7,21 +7,23 @@ draft: true
 
 Distributed consensus algorithms are a critical piece of modern computing infrastructure, but few people really understand how they work. When the first consensus algorithm, *Paxos*, was introduced to the world in 1989, it was met with a sort of [indifferent confusion](https://www.microsoft.com/en-us/research/publication/part-time-parliament/), and it wasn't until 9 years later that it had gained enough grassroots popularity to be published in a major journal. As the world moved online and everyone started building their critical infrastructure as distributed systems, Paxos found its way into the foundation of almost every one of those newly built systems. But, at the same time, it also grew notorious for being beyond the comprehension of mere mortals &mdash; so much so that, when a second viable consensus algorithm, *Raft*, finally came along well over a decade later, the paper was called *In Search of an Understandable Consensus Algorithm*.
 
-I like Raft, and I think if you're choosing between Raft and multi-Paxos for a project today, Raft is likely the better choice. Multi-Paxos is presented only as a rough sketch in the original Paxos paper, and although a hodgepodge of other papers try to fill in the blanks, they aren't completely consistent with one another. In the end, you'll find yourself partially reinventing the wheel. At least with Raft, there's a complete algorithm  in one place! Even so, I don't think Paxos should be skipped entirely. It's true the full multi-Paxos algorithm is complex and under-specified, but the core of Paxos (a little protocol called the *synod algorithm*) is small, well-specified, insightful, and can be embedded into other systems and algorithms in a way that the full Raft and multi-Paxos cannot. (TODO: Find an example. I thought Aurora does some kind of row-level Paxos using the synod algorithm? Am I misremembering?)
+I like Raft. If you're choosing between Raft and and the full, “multi-Paxos” variant of Paxos for a project today, I think Raft is likely the better choice. The full multi-Paxos algorithm used by so many systems is presented only as a rough sketch in the original Paxos paper, and although a hodgepodge of other papers try to fill in the blanks, they’re not completely consistent with one another. In the end, you'll find yourself partially reinventing the wheel. At least with Raft, there's a complete algorithm  in one place! Even so, I don't think Paxos should be skipped entirely. The kernel at the core of Paxos is a little protocol called the *synod algorithm*, which is small, well-specified, insightful, and can be embedded into other systems and algorithms in a way that the full Raft and multi-Paxos cannot. (TODO: Find an example. I thought Aurora does some kind of row-level Paxos using the synod algorithm? Am I misremembering?)
 
-Leslie Lamport, who invented Paxos, [once described Paxos's core synod algorithm](https://lamport.azurewebsites.net/pubs/paxos-simple.pdf) as "among the simplest and most obvious of distributed algorithms," and claimed that it "follows unavoidably from the properties we want it to satisfy." He's right, although it might not seem that way the first time you read through it. The Paxos synod algorithm falls out of a lot of invisible context: you need to really understand the problem we are solving, why obvious solutions fail, and what must be done to work around those failures, before the synod algorithm really does start to look like a clear and minimal solution. So that's what we'll do: let's take a fresh look at the problem of consensus, try to solve it, get stuck, and then find a workaround for our problem; we should end up reinventing Paxos’s core synod algorithm. Along the way we'll cover the FLP result, which bridges the gap from obvious algorithms that don't work, to algorithms (like Paxos) that do.
+Leslie Lamport, who invented Paxos, [once described Paxos's core synod algorithm](https://lamport.azurewebsites.net/pubs/paxos-simple.pdf) as "among the simplest and most obvious of distributed algorithms," and claimed that it "follows unavoidably from the properties we want it to satisfy." He's right, although it might not seem that way the first time you read through it. The Paxos synod algorithm falls out of a lot of invisible context: once you really understand the problem we are solving, why obvious solutions fail, and what must be done to work around those failures, the synod algorithm really does start to look like a clear and minimal solution. So let’s try it that way: we’ll take a fresh look at the problem of consensus, try to solve it, get stuck, and then find a workaround for our problem. We should then be one or two good ideas away fro reinventing Paxos’s core synod algorithm. Along the way we'll cover the FLP result, which bridges the gap from obvious algorithms that don't work, to algorithms (like Paxos) that do.
 
 # Part 1: Consensus
 
-Just about every distributed system has a consensus algorithm running it in somewhere. Even if you’ve never used in directly, the fancy distributed replicated database you're using itself relies on a consensus algorithm, as do any cloud services you use. But what makes consensus so fundamental? Why are they ubiquitous in distributed systems?
+Just about every distributed system has a consensus algorithm running it in somewhere. Even if you’ve written plenty of distributed, cloud-native code without ever using a consensus algorithm directly, the fancy distributed replicated database you're using relies on a consensus algorithm internally, as do any cloud services you use. But what makes consensus so fundamental? Why are they ubiquitous in distributed systems?
 
 One of the fun (or maybe "fun") parts of programming distributed systems is that quite a few common programming tasks that are easy to write in normal code turn out to be really, really hard in distributed code. Consensus algorithms help turn problems like that back into something more tractable. To see what I mean, let's look at a couple examples where a consensus algorithm might be helpful:
 
 ## Example: Picking a Random User
 
-Let's say we're writing code for a message board website, and we want to add a 'user of the day' function where we spotlight one particular user at random each day. How do write code to pick a user once, and only once each day?
+How do you write code to do something exactly one time? For example, let's say we're writing code for a message board website, and we want to add a 'user of the day' function where we spotlight one particular user at random each day. How do write code to pick a user once, and only once each day?
 
-A basic answer might be something like this:
+In real life, we’d probably just add something to a database, and maybe add it to some caching service as well, but let’s pretend for a minute we don’t have those things because they haven’t been invented yet: all we have are computers, networks, and our code. The problem should still fundamentally be solvable, even if we now have to do more of the heavy lifting ourselves. So without fancy data management infrastructure, how do we pick a user once each day?
+
+If we have everything running on one machine, a simple answer might be something like this:
 
 ```java
 User getUserOfTheDay() {
@@ -75,7 +77,7 @@ User getUserOfTheDay() {
 }
 ```
 
-On startup, if a node runs the bully algorithm and realizes it itself is the coordinator, it starts serving the remote method call interface, using our existing multithreaded implementation:
+On startup, if a node runs the bully algorithm and realizes it itself is the coordinator, it starts serving the remote method call interface, backed by our previous multithreaded implementation:
 
 ```java
 if (bullyAlgorithm(App.nodeIds) == App.myNodeId()) {
@@ -98,7 +100,7 @@ Phew! That took a lot of thinking, but fortuitiously we ended up with a small en
 
 In server code, lots of things happen all at the same time; sometimes two users try to do two conflicting things at the same time. How do we make sure we accept one user's action and reject the other? For example, let's say we have an online ordering system where an order, once placed, can be cancelled up until it is shipped from the warehouse. What if someone in the warehouse tries to mark the order as shipped (no longer cancellable) at exactly the same time the customer tries to cancel the order?
 
-Once again this is simple enough to solve in regular, run-of-the-mill single-threaded code. We just need a variable with three states, order pending (not yet shipped, can still be cancelled), cancelled (no longer can be shipped), and shipped (no longer can be cancelled):
+Once again this is simple enough to solve in regular, run-of-the-mill single-threaded code. We just need a variable with three states: order pending (not yet shipped, can still be cancelled), cancelled (no longer can be shipped), and shipped (no longer can be cancelled):
 
 ```java
 enum OrderState {
@@ -191,7 +193,7 @@ if (bullyAlgorithm(App.nodeIds) == App.myNodeId()) {
 }
 ```
 
-It's interesting that we have two different problems, both with completely different single-threaded solutions, which could nonetheless be multithreaded and then distributed using the exact same approaches. In fact, there is an opportunity for refactoring here: we can isolate the code that does the multithreaded / distributed parts of these solutions by introducing a new abstraction, which I'll call a *write-once variable*.
+It's interesting that we have two different problems, both with completely different single-threaded solutions, which could nonetheless be multithreaded and then distributed using the exact same approaches. In fact, there is an opportunity for refactoring here: we can isolate the code that does the multithreaded / distributed parts of these solution and thereby factor it out of the main solution code, by introducing a new abstraction which I'll call a *write-once variable*.
 
 ## Write-Once Variables
 
@@ -291,11 +293,11 @@ class DistributedWriteOnce<T> implements WriteOnce<T> {
 }
 ```
 
-Once again we were able to multithread the initial solution with a lock and distribute the multithreaded solution by selecting a coordinator node. Now let's see how this lets us *remove* the lock and the coordinator from our other two problem solutions by rewriting them on top of the `WriteOnce<T>` abstractions.
+Once again we were able to multithread the initial solution with a lock and distribute the multithreaded solution by selecting a coordinator node. Now let's see how rewriting our other two solutions on top of the `WriteOnce<T>` abstractions lets us factor away all the details involving multithreading and distribution.
 
 ## Using Write-Once Variables
 
-Let's start with the random user-of-the-day problem. The core question behind that one was how to make something happen once; in this case, namely, how to make sure one, and only one random user is picked each day.
+Let's start with the random user-of-the-day problem. The core question behind that one was how to make something happen once; in this case, we wanted to make sure one, and only one random user is picked each day.
 
 Here's a way to do that with a write-once variable:
 
@@ -309,9 +311,9 @@ User getUserOfTheDay() {
 }
 ```
 
-The idea here is to actually choose *many* random users each day, but only install the first such user as today’s user of the day, by leveraging the write-once semantics of the `tryInitialize()` method. (To complete the solution, we would need a way to get a new `WriteOnce<User>` each day, but that's not important for this discussion so I'm going to handwave it.)
+The idea here is to actually choose *many* random users each day, but only the first such user successfully become the user of the day, by virtue of being the only randomly chosen user to initialize the write-once variable. (To complete the solution, we would need a way to get a new `WriteOnce<User>` each day, but that's not important for this discussion so I'm going to handwave it.)
 
-Do you see how the multithreaded / distributed guarantees of `WriteOnce<T>` are automatically conferred onto this implementation of `getUserOfTheDay()`, without us having to do anything special? If we pass in a thread-safe `WriteOnce`, that makes `getUserOfTheDay()` thread-safe automatically, and if we pass in a distributed `WriteOnce` then `getUserOfTheDay` is also automatically distributed. Pretty nifty, huh?
+Do you see how the multithreaded / distributed guarantees of `WriteOnce<T>` are automatically conferred onto this implementation of `getUserOfTheDay()`, without us having to do anything special? If we pass in a thread-safe `WriteOnce`, `getUserOfTheDay()` becomes thread-safe automatically, and if we pass in a distributed `WriteOnce` then `getUserOfTheDay` is also automatically distributed. Pretty nifty, huh?
 
 Now let's try the order cancellation problem. For that one, the core question was how to determine a winner if two users try to take conflicting actions at the same time. One possible solution is to have all attempts to ship or cancel an order race to be the first to call `tryInitialize` on a write-once variable; whichver is processed first is the one we accept, and all subsequent attempts are rejected implicitly when `tryInitialize` ignores the corresponding write:
 
@@ -344,9 +346,14 @@ As you might imagine, there are quite a few problems that can be reduced to init
 
 A write-once variable is a primitive implemented by a consensus algorithm, which is to say, a consensus algorithm is the algorithm that implements a write-once variable. The write-once variable is an interface, and a consensus algorithm is the implementation of the interface. They are two sides of the same coin.
 
-The naming might seem a little odd. The word "consensus" means "agreement." Calling something consensus implies a sort of story: once upon a time, there was a group, where not all members of the group initially agreed. Then, they all worked it out and ended up in unanimous agreement. In this case, we call that kind of agreement, "consensus."
+The naming might seem a little odd. The word "consensus" means "agreement." How does initializing a write-once variable involve agreement?
 
-In the context of a distributed system, the group is made up of threads running on different machines, rather than people, and the initial disagreement comes from different threads calling `tryInitialize` with different values. The final agreement comes from all threads receiving the same value from `finalValue`. If you check our write-once-based solutions from the previous heading, you'll see this in action. Both start with different threads in disagreement (different values are being passed to `tryInitialize`), and we end up with all threads in agreement (we forget what value we passed to `tryInitialize` and just trust the value returned by `finalValue`). Somewhere between `tryInitialize` and `finalValue`, the disagreement was resolved (arbitrarily, by picking the first `tryInitialize` call), and the final result was total agreement acrss all threads &mdash; so we call it “consensus.”
+Maybe we should take a closer look at the definition of consensus first. Calling something consensus implies a sort of story: once upon a time, there was a group, where not all members of the group initially agreed. Then, they all worked it out and ended up in unanimous agreement. In this case, we call that kind of agreement, "consensus."
+
+Implementing a distributed write-once variable internally involves that story of agreement. Here, the group is made up of threads running on different computers, rather than people, and the initial disagreement comes from different threads calling `tryInitialize` with different values. The final agreement comes from all threads receiving the same value from `finalValue`. Somewhere in between, the threads worked it out between each other; that was how they reached consensus. Hence we call the algorithm a consensus algorithm.
+
+If you check our write-once-based solutions from the previous heading, you'll see all
+This in action. Both examples start with different threads in disagreement (different values are being passed to `tryInitialize`), and we end up with all threads in agreement (we forget what value we passed to `tryInitialize` and just trust the value returned by `finalValue`). Somewhere between `tryInitialize` and `finalValue`, the disagreement was resolved (arbitrarily, by picking the first `tryInitialize` call), and the final result was total agreement across all threads &mdash; consensus.
 
 So, a consensus algorithm implements a write-once variable. That's a good high-level description, but we should dig deeper. What guarantees does a consensus algorithm need to provide? We should be able to glean everything we need from re-examining how our two example solutions were rebuilt on top of `WriteOnce<T>`, and carefully checking what guarantees our code was implicitly expecting `WriteOnce<T>` to provide.
 
@@ -364,15 +371,15 @@ interface WriteOnce<T> {
 }
 ```
 
-What hidden assumptions exist behind this interface? In other words, what rules govern the relationship between what gets passed to `tryInitialize` and what is returned by `finalValue`? What expected behaviors, if violated, would the example solutions we built on top of this interface?  Any such rule is a property of a consensus algorithm.
+What hidden assumptions exist behind this interface? In other words, what rules govern the relationship between what gets passed to `tryInitialize` and what is returned by `finalValue`? What expected behaviors, if violated, would break the example solutions we built on top of this interface?  Any such rule must be a property of a consensus algorithm.
 
 Here's one I can see: since this is a write-once variable, its value must never change. So all futures returned by `finalValue()` must always resolve to the same value. Different threads must not get different values from `finalValue()`, nor can the same thread see different values over time. Think of the pandemonium that would ensue if we failed to uphold this rule, and in doing so we let the customer cancel an already-shipped order after the box was already on the truck!
 
-In papers and textbook, this rule is sometimes called **agreement**:
+In papers and textbooks, this rule is sometimes called **agreement**:
 
 > **Agreement**: If the consensus algorithm returns a value, then no other value has ever been or will ever be chosen. That is: if any call to `finalValue()` returns a value, no other call to `finalValue()` has ever or will ever return any other value.
 
-Here's another rule I can see: the value returned by `finalValue` has to be the value somebody previously passed to `tryInitialize`. It can't be some other nonsense value, random value, or something picked arbitrarily. For example, an execution like this should not be allowed:
+Here's another rule I can see: the value returned by `finalValue` has to be the value somebody previously passed to `tryInitialize`. It can't be some other nonsense value, a random choice, or something picked arbitrarily. For example, an execution like this should not be allowed:
 
 * `WriteOnce<Integer>` created
 * Thread 1 calls `tryInitialize()` passing in a value of 1
@@ -389,7 +396,7 @@ One final rule: once `tryInitialize()` has been called, the algorithm gets a rea
 
 Agreement, Validity, Termination; seems like a pretty good starting set. However, I think we must still be missing a rule.
 
-By the three rules above, `DistributedWriteOnce<T>` is a valid implementation of a distributed consensus algorithm. But consensus algorithms are supposed to be incomprehensible to mere mortals; I am a mere mortal, and I comprehend `DistributedWriteOnce<T>` just fine. There must be another thing that consensus algorithms do, that `DistributedWriteOnce<T>` does not.
+By the three rules above, `DistributedWriteOnce<T>` is a valid implementation of a distributed consensus algorithm. But consensus algorithms are supposed to be incomprehensible to mere mortals; I am a mere mortal, and I comprehend `DistributedWriteOnce<T>` just fine. There must be another thing that consensus algorithms do, that `DistributedWriteOnce<T>` does not. And that thing must be a curveball that wrecks our approaches so far.
 
 ## The Curveball: Fault Tolerance
 
@@ -397,7 +404,7 @@ Earlier, we said the main complexity that distributing an algorithm adds on top 
 
 Distribution introduces the problems of **faults** in the system. Hardware can lose power, software can crash, and networks can degrade or disconnect. Technically these problems also affect single-node software, but nobody ever expects single-node code to be able to deal with a fault: for example, if the machine running some code crashes, the code is no longer running, and thus can't do anything about it. Since single-node code is no longer running and can't do anything if the hardware faults, it can largely pretend faults don't exist. In a distributed system, a fault can affect some nodes while leaving others online to deal with the consequences.
 
-Distributed system code that keeps working even if some nodes fault is called **fault tolerant**. The distributed consensus algorithm we previously implemented, `DistributedWriteOnce<T>` is not fault tolerant: it relies on a single coordinator node and cannot recover if a single fault happens to take down that coordinator node. This is because, in normal operation, all non-coordinator nodes contact the coordinator any time they need to get or set the variable:
+Distributed system code that keeps working even if some nodes fault is said to be **fault tolerant**. The distributed consensus algorithm we previously implemented, `DistributedWriteOnce<T>` is not fault tolerant: it relies on a single coordinator node and cannot recover if a single fault happens to take down that coordinator node. This is because, in normal operation, all non-coordinator nodes contact the coordinator any time they need to get or set the variable:
 
 ```java
 public void tryInitialize(T value) {
@@ -409,9 +416,9 @@ public Future<T> finalValue() {
 }
 ```
 
-There is no provision here ever to not use the coordinator node, so if the coordinator crashes, loses power or otherwise goes away, this code will continue to send messages to the remote coordinator and wait for a response. But the coordinator is gone, so no response ever comes, and so the algorithm fails to make progress. Since it took just one fault &mdash; one downed node &mdash; to break the `DistributedWriteOnce` consensus algorithm, it is not fault tolerant.
+There is no provision here to ever use any node other than the coordinator, so if the coordinator crashes, loses power or otherwise goes away, this code will continue to send messages to the remote coordinator and wait for a response. But since the coordinator is gone, no response ever comes, and so the algorithm fails to make progress. Since it took just one fault &mdash; one downed node &mdash; to make `DistributedWriteOnce` fail to Terminate, it is not fault tolerant.
 
-Now, the lack of fault tolerance is certainly a limitation, but depending on your use case that may not be a problem. Plenty of systems run on a small number of nodes, and if you have a small network with just a few machines, hardware and software is reliable enough that you won't see faults in the system very often. Rare hardware and software faults only become a consistent nuisance if you have a large enough system to start hitting rare problems frequently. Also, many systems do not need to be highly available: you can take them offline from time to time to do regular maintenance like upgrading software, replacing old hardware, etc.
+Now, the lack of fault tolerance is certainly a limitation, but depending on your use case that may not be a problem. Plenty of systems run on a small number of nodes, and if you have a small network with just a few machines, hardware and software is reliable enough that you won't see faults in the system very often. Rare hardware and software faults only become a consistent nuisance if you have a large enough system to start hitting rare problems frequently. Also, many systems do not need to be highly available: you can take them offline from time to time to do regular maintenance like upgrading software, replacing old hardware, and so on.
 
 If you're dealing with a small system that admits maintenance windows, you can probably get away with something like `DistributedWriteOnce<T>`, which is pretty nice: `DistributedWriteOnce<T>` is much simpler than anything else we're about to discuss, so really you'd be quitting while you're ahead. However, if you have a really big system, or you really can't accept any downtime at all (e.g. maybe you're running the city's E911 or something), then you require fault tolerance, and `DistributedWriteOnce<T>` is too simplistic to meet your needs.
 
@@ -423,7 +430,7 @@ There is some wiggle room in choosing how many faults the algorithm needs to be 
 
 ## Implementing Fault-Tolerant Consensus
 
-Our previous strategy of implementing distributed consensus was not fault tolerant because it relied  a single coordinator node to be solely responsible for storing and managing the varible. If we want something fault tolerant, we will have to do away with the coordinator and come up with an entirely peer-to-peer algorithm. Every node needs to have its own copy of the variable, and we need to come up with some protocol for them all to come into agreement as to what value they should store.
+Our previous strategy of implementing distributed consensus was not fault tolerant because it relied on a single coordinator node to be solely responsible for storing and managing the varible. If we want something fault tolerant, we will have to do away with the coordinator and come up with an entirely peer-to-peer algorithm. Every node needs to have its own copy of the variable, and we need to come up with some protocol for them all to come into agreement as to what value they should store.
 
 Do you know any real-life leaderless, peer-to-peer algorithms for groups to come to consensus?
 

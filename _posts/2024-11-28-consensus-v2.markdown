@@ -759,12 +759,20 @@ TODO: open as the proof generalizes what you already saw with the tie breaker / 
 
 Part 3 is FLP
 
-* Point out sometimes missing a vote is OK, but in the case of a split vote with one final node it is not. So what is special about a split vote? What is the X-factor that makes it illegal to lose a step? If we know that, maybe we can avoid it.
-* FLP’s X-factor: the system can still decide either way, and there is some step which has already been triggered, and will ensure the system is decided once executed
-* That’s a lot to unpack
-* Go over a system model: binary consensus, decision state, steps
-* Why is a state with these oddly specific requirements pathological?
-* Answer: it’s because in this situation, there is some execution where the node receiving that message and executing that step ends up deciding all by itself, using local information only it has
+* The proof thinks a lot about termination. What does it look like when a consensus algorithm makes a decision?
+* We need a way to talk about algorithms generically. Observation: consensus algorithms we have built so far are all snippets of 100% deterministic code which still decide nondeterministically. The nondeterminism is network delivery order
+* Step model: think about how a deterministic algorithm interacts with a nondeterministic network. The network delivers a message, some deterministic logic runs, maybe we send some more network messages too. Call that logic a step
+* How do steps relate to decisions? Well, first of all a consensus algorithm must never change its mind once it makes a decision. So there should be one step that makes the decision aka terminates the algorithm: before this step, it was possible to go either way, but afterward every node is fated to return the same finalValue
+* Thats interesting, because if you think about it, every step runs on one node. So in the end, in every consensus algorithm termination, one node does a thing which terminates the algorithm
+* Hmmmm what if we lose that node, and the step goes away?
+* Actually, frequently losing a step that would have made a decision is not a problem. Consider a 5 node network where there are already two votes for blue. If we lose a node that was about to decide blue, but then some other node comes and decides blue anyways, no biggie. Frequently we can replace the lost step with some other step
+* But Termination doesn’t mean we can decide, it means we guarantee some decisions eventually made
+* So we’re not interested in the step that decides; we want to rewind the clock a little bit.
+* If the algorithm guarantees a decision, we should eventually get to a state where the algorithm could still decide either way, but some step has been triggered (its network message has been sent but not yet received), which guarantees a decision is made no matter what it does 
+* That’s a lot to unpack. Do examples of previous algorithms to show what this decision-ensuring step looks like and what the vulnerable point of the algorithm is where we have sent but not received that message
+* Why must a Terminating algorithm have such a step? If it didn’t, then at every state of the algorithm, there’s some network delivery order for which we don’t terminate, basically by definition.
+* Okay, so a Terminating algorithm will eventually trigger a decision ensuring step. Alas, that is a big problem for us. 
+* In this situation, there is some execution where the node receiving that message and executing that step ends up deciding all by itself, using local information only it has
 * Proof step 1: the step can decide either way, because the system can decide either way. If the step always picked zero, for example, that means if the system decides 1 and then the step executes, it would change the answer to 0, which is illegal
 * Proof step 2: so what changes which way the step decides? Well the trigger message has already been sent and can’t be changed; so at this point the only thing that can change what the step decides is local state on that node. And the only thing that can change the nodes state is other steps running on that node
 * So now we know there’s a step, or set of steps which run on the node, which change what our magic step decides. If the magic step goes first, we decide one way (eg 0), but if the other steps go before the magic step we decide 1 instead

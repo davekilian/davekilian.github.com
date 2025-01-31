@@ -815,7 +815,19 @@ In fact, (pull the quote from the paper)
 
 So that’s how we’ll do it: we need to avoid the situation where two messages inbound to the same node decide on behalf of the algorithm, and we’ll have to sacrifice termination guarantees to do it.
 
- 
+Now the segue into Paxos is like:
+
+We want to avoid this split vote situation where relative delivery order decides. Can we do that? Well the only reason this happens is because two different proposals are inbound to the same node. What if we only vote on one proposal at a time? That way the decision isn’t, A vs B, it’s A vs keep going.
+
+Of course we have to deal with the fact that two proposals might start simultaneously. We can organize these into rounds, so we keep voting in rounds until we make a decision. In each round, the decision is between A or “move to the next round.”
+
+Since every round we can keep going, we have no guarantee of termination, as FLP predicted. But if we have a good probability of coming into a decision in one round, then have a really good chance of doing it in two, a really really good chance of doing it in three, and so on. So we have non-guaranteed termination rather than guaranteed non-termination. So that’s good.
+
+Network programming offers a class of collision avoidance algorithms, any of which can help avoid proposals from stomping on one another, driving up that probability of terminating per round. In the end, the number of rounds is pretty manageable, and usually one!
+
+But even then we still have a problem: how do we safely change rounds? We have solved the problem of “I don’t know whether that machine decided A or B,” but now we have the problem “I don’t know whether that machine decided A or moved to the next round.” But that’s fine! Because there’s a decision that’s safe either way: assume conservatively that it did choose A.
+
+This I think gets us to the interlock idea, where you check what the most recent voted value is and help that one, on the assumption that one was picked. You know all earlier round values that received votes did not reach majority because the coordinator of the next round never saw it during its first round majority lock and read. The only one you’re not sure about is the most recent round you saw that received votes. 
 
 
 

@@ -754,6 +754,72 @@ TODO:: a good cold open might be a repeat of Lemma (2? 3?) the inscrutable one. 
 
 TODO: open as the proof generalizes what you already saw with the tie breaker / pick your poison
 
+---
+
+1/30: came up with a new option for flowing this section
+
+First, explain the key situation that FLP is concerned with: there are two inbound messages to the same node, and the relative order those messages are processed determines what the algorithm ultimately decides.
+
+That probably sounds abstract, so show it again in terms of the split vote situation: 5 nodes, 2v2 split vote, two inbound proposal messages for both values to the last node. Now we have two inbound messages and the relative order they are processed decides for the whole system (out rule is first in wins, but there could be others)
+
+Preview now we have to cover two topics:
+
+* Why this is inevitable
+* Why this is pathological
+
+Why inevitable: 
+
+First, point out we start out bivalent (don’t use that word). At the start of the algorithm we can’t do anything because nothing has been proposed. In one possible future, only red is proposed and by validity we eventually decide red. In another, only blue is proposed and we eventually decide blue. Thus both outcomes are still possible.
+
+But of course we need to eventually get to the point where only one outcome is possible.
+
+Surprising claim: there must be a point in the algorithm where both outcomes are still possible, but there is some message which has already been sent, and once that message is processed, we’ll have picked an outcome.
+
+In other words, that message either arrives after an outcome has been decided and thus does not affect the outcome, or it arrives before an outcome has been decided and forces a decision to be made. But there is no way that message can be processed and end up with the system still undecided.
+
+Quick check: this exists in the voting algorithm. 
+
+But how do we know it always happens? Because if that never happens, there’s no termination guarantee; the algorithm is allowed to kick the can down the road forever. Induction proof.
+
+Okay, so there is some message, it has already been sent, and once it is delivered, no matter when it is delivered, we can still be undecided.
+
+But how we be undecided still? Clearly sometimes the message arrives and we choose blue, other times it arrives and we choose red. What affects the decision? It can’t be something about the message itself -- it has already been sent! The only thing that can affect it is the state of the receiving node, which can only be changed by some other message.
+
+So there must be some second message now, where if that second message arrives first, then we decide one way, or if that decider message comes first, then we go the other way.
+
+And so boom, no matter what the algorithm is, we have a situation where sometimes the delivery order of two inbound messages for the same node decides what the algorithm decides. It is inevitable!
+
+But why pathological? 
+
+We’ve already kind of seen it.
+
+In this situation where one node’s delivery order makes the global decisions, what should the other nodes be doing?
+
+Waiting? If so, the algorithm hangs if that node crashes and never received anything.
+
+So then not waiting? Deciding for themselves? Well what are they supposed to do if that other node doesn’t crash? It made the decision, how are we supposed to also decide?
+
+Now if we could tell the difference between crashed and still up, then we could do it. But we don’t have fault detectors in the real world.
+
+Summarize
+
+Segue out: well, okay, now we know we’re overconstrained, just picking the properties we picked means we inevitably get into this situation where one node’s message delivery order ends up being critical, and there’s no way to safely recover from losing that node before the delivery order is discovered.
+
+So we’re stuck and consensus is impossible? Well obviously consensus algorithms exist, so it’s not impossible. But do you see the lateral move? How do we get out of here?
+
+Well, one reason we said it’s inevitable is because the algorithm needs to guarantee termination. Does it need to guarantee termination?
+
+I mean, guaranteed non-termination would be pretty bad. But non-guaranteed termination might not be so bad.
+
+In fact, (pull the quote from the paper)
+
+So that’s how we’ll do it: we need to avoid the situation where two messages inbound to the same node decide on behalf of the algorithm, and we’ll have to sacrifice termination guarantees to do it.
+
+ 
+
+
+
+
 
 
 ---

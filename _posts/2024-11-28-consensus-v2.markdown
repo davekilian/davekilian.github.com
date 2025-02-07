@@ -756,9 +756,21 @@ TODO: open as the proof generalizes what you already saw with the tie breaker / 
 
 ---
 
+2/6: as a setup to the below, it may be worthwhile to frame the way we abstracted the algorithm
+
+Consensus algorithms appear to be nondeterministic. When you have competing proposals, the algorithm picks one arbitrarily / largely at random. Different executions starting from the same starting conditions can end up deciding on different answers. They’re non-deterministic.
+
+That’s odd though .. look again, all of our code is 100% deterministic so far. No random calls, no timeouts ... where is the non-determinism coming from?
+
+The answer is the network.
+
+Different network delivery orders cause a deterministic algorithm to potentially decide different things in different executions from the same starting conditions.  
+
+That suggests we should pay close attention to network messages and the order they are received and processed, and how that affects what the deterministic code we write is doing. Indeed, that is the way FLP looked at it too.
+
 1/30: came up with a new option for flowing this section
 
-First, explain the key situation that FLP is concerned with: there are two inbound messages to the same node, and the relative order those messages are processed determines what the algorithm ultimately decides.
+First, explain the key situation that FLP is concerned with: there are two messages addressed to the same node, both have already been sent, and the relative order those messages are processed determines what the algorithm ultimately decides.
 
 That probably sounds abstract, so show it again in terms of the split vote situation: 5 nodes, 2v2 split vote, two inbound proposal messages for both values to the last node. Now we have two inbound messages and the relative order they are processed decides for the whole system (out rule is first in wins, but there could be others)
 
@@ -769,13 +781,13 @@ Preview now we have to cover two topics:
 
 Why inevitable: 
 
-First, point out we start out bivalent (don’t use that word). At the start of the algorithm we can’t do anything because nothing has been proposed. In one possible future, only red is proposed and by validity we eventually decide red. In another, only blue is proposed and we eventually decide blue. Thus both outcomes are still possible.
+First, point out we start out bivalent (don’t use that word). At the start of the algorithm we can’t do anything because nothing has been proposed. In one possible future, only red is proposed and by validity we eventually decide red. In another, only blue is proposed and we eventually decide blue. Thus both outcomes are still possible at the very beginning.
 
 But of course we need to eventually get to the point where only one outcome is possible.
 
 Surprising claim: there must be a point in the algorithm where both outcomes are still possible, but there is some message which has already been sent, and once that message is processed, we’ll have picked an outcome.
 
-In other words, that message either arrives after an outcome has been decided and thus does not affect the outcome, or it arrives before an outcome has been decided and forces a decision to be made. But there is no way that message can be processed and end up with the system still undecided.
+To unpack: that message either arrives after an outcome has been decided and thus does not affect the outcome, or it arrives before an outcome has been decided and causes a decision to be made. But there is no way that message can be processed and end up with the system still undecided.
 
 Quick check: this exists in the voting algorithm. 
 
@@ -783,9 +795,9 @@ But how do we know it always happens? Because if that never happens, there’s n
 
 Okay, so there is some message, it has already been sent, and once it is delivered, no matter when it is delivered, we can still be undecided.
 
-But how we be undecided still? Clearly sometimes the message arrives and we choose blue, other times it arrives and we choose red. What affects the decision? It can’t be something about the message itself -- it has already been sent! The only thing that can affect it is the state of the receiving node, which can only be changed by some other message.
+But can how we be undecided still? Clearly sometimes the message arrives and we choose blue, other times it arrives and we choose red. What affects the decision? It can’t be something about the message itself -- it has already been sent! The only thing that can affect it is the state of the receiving node, which can only be changed by some other message.
 
-So there must be some second message now, where if that second message arrives first, then we decide one way, or if that decider message comes first, then we go the other way.
+So there must be some second message now, which has the ability to affect the outcome. If that other message arrives first, then we decide one way, or if it arrives second we go the other way.
 
 And so boom, no matter what the algorithm is, we have a situation where sometimes the delivery order of two inbound messages for the same node decides what the algorithm decides. It is inevitable!
 
@@ -795,11 +807,11 @@ We’ve already kind of seen it.
 
 In this situation where one node’s delivery order makes the global decisions, what should the other nodes be doing?
 
-Waiting? If so, the algorithm hangs if that node crashes and never received anything.
+Waiting? Well then if the node crashes before receiving either message, we’re stuck. The algorithm hangs. We can’t just wait on the node.
 
-So then not waiting? Deciding for themselves? Well what are they supposed to do if that other node doesn’t crash? It made the decision, how are we supposed to also decide?
+So we should make a decision without that node? Well, that node isn’t guaranteed to crash ... so any decision made without that node’s help must be consistent with what the node decided. But it’s literally impossible to know in advance what the node will decide: the decision is determined by the order those two messages are delivered, and nobody else knows the delivery order in advance!
 
-Now if we could tell the difference between crashed and still up, then we could do it. But we don’t have fault detectors in the real world.
+Now if we could tell the difference between crashed and still up, then we could do it. In the case where the node is guaranteed crashed, we can determine nobody saw the decision and then make a decision without that nodes help; in the case where the node hadn’t crashed, we keep waiting. But sadly, we don’t have fault detectors in the real world.
 
 Summarize
 
@@ -809,23 +821,27 @@ So we’re stuck and consensus is impossible? Well obviously consensus algorithm
 
 Well, one reason we said it’s inevitable is because the algorithm needs to guarantee termination. Does it need to guarantee termination?
 
-I mean, guaranteed non-termination would be pretty bad. But non-guaranteed termination might not be so bad.
+I mean, guaranteed non-termination would be pretty bad. But non-guaranteed termination might not be so bad...
 
 In fact, (pull the quote from the paper)
 
-So that’s how we’ll do it: we need to avoid the situation where two messages inbound to the same node decide on behalf of the algorithm, and we’ll have to sacrifice termination guarantees to do it.
+So that’s how we’ll do it: we need to avoid the situation where two messages inbound to the same node ultimately decide the outcome, and we’ll have to sacrifice termination guarantees to do it.
 
 Now the segue into Paxos is like:
 
-We want to avoid this split vote situation where relative delivery order decides. Can we do that? Well the only reason this happens is because two different proposals are inbound to the same node. What if we only vote on one proposal at a time? That way the decision isn’t, A vs B, it’s A vs keep going.
+In other words (example of the above), we will need to avoid split votes, and we will end up sacrificing termination guarantees (introducing a potentially infinite loop) to do it.
+
+Can we do that? Well the only reason split votes are a problem, per FLP, is because two different proposals are inbound to the same node. What if we only vote on one proposal at a time? That way the decision isn’t, A vs B, it’s A vs start a new vote.
 
 Of course we have to deal with the fact that two proposals might start simultaneously. We can organize these into rounds, so we keep voting in rounds until we make a decision. In each round, the decision is between A or “move to the next round.”
 
-Since every round we can keep going, we have no guarantee of termination, as FLP predicted. But if we have a good probability of coming into a decision in one round, then have a really good chance of doing it in two, a really really good chance of doing it in three, and so on. So we have non-guaranteed termination rather than guaranteed non-termination. So that’s good.
+Since every round we can keep going, we have no guarantee of termination, as FLP predicted. But if we have a good probability of coming into a decision in one round, then have a really good chance of doing it in two, a really really good chance of doing it in three, and so on. So we have non-guaranteed termination rather than guaranteed non-termination.
 
 Network programming offers a class of collision avoidance algorithms, any of which can help avoid proposals from stomping on one another, driving up that probability of terminating per round. In the end, the number of rounds is pretty manageable, and usually one!
 
 But even then we still have a problem: how do we safely change rounds? We have solved the problem of “I don’t know whether that machine decided A or B,” but now we have the problem “I don’t know whether that machine decided A or moved to the next round.” But that’s fine! Because there’s a decision that’s safe either way: assume conservatively that it did choose A.
+
+So in the next round, propose A again. If we were right and A had been chosen, voting for A again is wasteful, but isn’t a correctness problem. If we were wrong, A is still a valid choice (someone must have proposed it for it to appear in a prior round), so now we have terminated by choosing a valid option. Either way, we’re happy!
 
 This I think gets us to the interlock idea, where you check what the most recent voted value is and help that one, on the assumption that one was picked. You know all earlier round values that received votes did not reach majority because the coordinator of the next round never saw it during its first round majority lock and read. The only one you’re not sure about is the most recent round you saw that received votes. 
 

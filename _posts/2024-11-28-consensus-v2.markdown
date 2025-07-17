@@ -750,6 +750,22 @@ This is the low point in our journey. We understand the problem and we appreciat
 
 # Part 3: The FLP Result
 
+7/17/25: one more observation I’d like to work in below: the situation with the two inbound messages that determine the outcome of the algorithm is unsolvable because it’s an instance of the CAP theorem: if you get partitioned from that node you can either be consistent with its answer (required by agreement) or you can be available (required by termination), but not both.
+
+So the basic flow of this section might be like
+
+* Explain FLP revolves around this situation where the delivery order of two messages inbound to one machine determines the outcome of the algorithm. One order results in one outcome, the other results in the other. Work examples to show we have hit this situation multiple times already
+* Preview the basic proof: this situation is both unavoidable and unfixable
+* Unavoidable proof: the cute non-termination argument. At any point you can stop the algorithm and for any two messages, there is some delivery order where the algorithm remains undecided, so you don’t have termination
+* Unfixable proof: preview for readers who know the CAP theorem that this is CAP, per above
+* Consistency leg of proof: if you wait to hear from the other guy, you aren’t available if he crashes. Non-termination
+* Availability leg of proof: if you move on, different nodes can end up with different answers, non-consistent / agreement violated
+* Maybe mention failure detection: if you can modify P so that you can tell the difference between alive and dead, you can decide on the fly whether to be CP with the live node or AP with the dead one. But alas, perfect failure detectors don’t actually exist
+* Finally set up the lateral move: so we definitely can’t solve the CAP theorem but we can avoid the situation by making the algorithm that doesn’t terminate as per the unavoidability proof above. The result can always keep wasting time without a decision, but maybe we can make continuing to remain undecided progressively more unlikely over time, and end up with a probabilistic guarantee. Note that FLP said this in the original paper
+* The majority voting algorithm can be adjusted into something that avoids the FLP situation. The simplest way to do it results in a classic algorithm called paxos.
+
+--
+
 TODO:: a good cold open might be a repeat of Lemma (2? 3?) the inscrutable one. "Refuses to elaborate, leave"
 
 TODO: open as the proof generalizes what you already saw with the tie breaker / pick your poison

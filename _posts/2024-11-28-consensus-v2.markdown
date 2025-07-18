@@ -205,12 +205,6 @@ It's interesting that we have two different problems, both with completely diffe
 
 ## Write-Once Variables
 
----
-
-TODO: adding Future<> to the mix here is semantically right but confuses the example because CompletableFuture is already a thread safe primitive, so tracking an initialized bit and using locks is using it wrong in the example code. Refactor these examples so that we return a bare value, null if not yet decided, and don’t provide any kind of wait primitive.
-
----
-
 Say we have a primitive I'll call a **write-once variable**. The interface looks something like this:
 
 ```java
@@ -218,8 +212,8 @@ interface WriteOnce<T> {
   /** Try to initialize to the given value, no-op if already initialized */
   public void tryInitialize(T value);
   
-  /** Reads the value once the variable has been initialized */
-  public Future<T> finalValue();
+  /** Reads the value, or null if not yet initialized */
+  public T finalValue();
 }
 ```
 
@@ -227,18 +221,18 @@ The way we implement this thing should look pretty familiar by now. First we wri
 
 ```java
 class BasicWriteOnce<T> implements WriteOnce<T> {
-  private CompletableFuture<T> value = new CompletableFuture<>();
+  private T value = null;
   private boolean initialized = false;
   
   public void tryInitialize(T value) {
-    if (!initialized) {
-      value.complete(value);
-      initialized = true;
+    if (!this.initialized) {
+      this.value = value;
+      this.initialized = true;
     }
   }
   
-  public Future<T> finalValue() {
-    return value;
+  public T finalValue() {
+    return this.value;
   }
 }
 ```
@@ -248,20 +242,20 @@ To make it thread-safe for multithreading, we just add a lock:
 ```java
 class MultithreadedWriteOnce<T> implements WriteOnce<T> {
   private Object lock = new Object();
-  private CompletableFuture<T> value = new CompletableFuture<>();
+  private T value = null;
   private boolean initialized = false;
   
   public void tryInitialize(T value) {
-    synchronized (lock) {
-      if (!initialized) {
-        value.complete(value);
-        initialized = true;
+    synchronized (this.lock) {
+      if (!this.initialized) {
+        this.value = value;
+        this.initialized = true;
       }
     }
   }
   
   public Future<T> finalValue() {
-    return value;
+    return this.value;
   }
 }
 ```
@@ -292,16 +286,12 @@ class DistributedWriteOnce<T> implements WriteOnce<T> {
   }
   
   private void runCoordinator() {
-    WriteOnce<T> impl = new MultithreadedWriteOnce<>();
-    
+    WriteOnce<T> impl = new MultithreadedWriteOnce<>();   
     registerRemoteCall("tryInitialize", (value) => {
       impl.tryInitialize(value);
     });
-
     registerRemoteCall("finalValue", () => {
-      AsyncResponse<T> response = new AsyncResponse<>();
-      impl.get().thenAccept(val => response.respond(val));
-      return response;
+      return impl.finalValue();
     });
   }
 }
@@ -321,7 +311,7 @@ User getUserOfTheDay() {
   
   WriteOnce<User> userOfTheDay = // ...
   userOfTheDay.tryInitialize(randomUser);
-  return userOfTheDay.finalValue().get();
+  return userOfTheDay.finalValue();
 }
 ```
 
@@ -335,7 +325,7 @@ Now let's try the order cancellation problem. For that one, the core question wa
 WriteOnce<OrderState> orderResult = // ...
 
 void tryCancel() {
-  orderResult.tryInitialize(OrderState.CANCELLED);
+orderResult.tryInitialize(OrderState.CANCELLED);
 }
 
 void tryShip() {
@@ -343,12 +333,12 @@ void tryShip() {
 }
 
 OrderState getOrderState() {
-  Future<OrderResult> resultFuture = orderResult.finalValue();
-  if (resultFuture.isDone()) {
-    return resultFuture.get();
-  } else {
+  OrderResult result = orderResult.finalValue();
+  if (result == null) {
     return OrderState.PENDING;
   }
+  
+  return result;
 }
 ```
 

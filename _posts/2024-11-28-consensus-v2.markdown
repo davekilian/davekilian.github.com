@@ -21,7 +21,7 @@ Just about every distributed system has a consensus algorithm running it in some
 
 But what makes consensus so fundamental? Why are they ubiquitous in distributed systems?
 
-One of the fun (or maybe "fun") parts of programming distributed systems is that quite a few common programming tasks that are normally easy turn out to be really, really hard in distributed code. The most important of those is arguably making something happen just once: normally you can make something happen once by just writing code to do it (and not putting it in a loop); once is the “default.” But in distributed systems, “just once” turns out to be fiendishly difficult. Consensus algorithms help turn “just once” problems back into something more tractable, by providing one generic solution.
+One of the fun (or maybe "fun") parts of programming distributed systems is that quite a few common programming tasks that are normally easy turn out to be really, really hard in distributed code. Arguably the most important of those is making something happen just once. Normally you can make something happen once by just writing code to do it (and not putting it in a loop); once is the “default.” But in distributed systems, “just once” turns out to be fiendishly difficult. Consensus algorithms help turn “just once” problems back into something more tractable, by providing one generic solution.
 
 To see what I mean, let's look at a couple examples where a consensus algorithm might be helpful, even for small tasks that don’t feel like they ought to be too difficult.
 

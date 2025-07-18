@@ -205,7 +205,13 @@ It's interesting that we have two different problems, both with completely diffe
 
 ## Write-Once Variables
 
-Say we have a primitive I'll call a **write-once variable**. The interface looks something like this::
+---
+
+TODO: adding Future<> to the mix here is semantically right but confuses the example because CompletableFuture is already a thread safe primitive, so tracking an initialized bit and using locks is using it wrong in the example code. Refactor these examples so that we return a bare value, null if not yet decided, and don’t provide any kind of wait primitive.
+
+---
+
+Say we have a primitive I'll call a **write-once variable**. The interface looks something like this:
 
 ```java
 interface WriteOnce<T> {

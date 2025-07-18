@@ -13,17 +13,21 @@ Even so, I don't think Paxos should be skipped entirely. The kernel at the core 
 
 Leslie Lamport, who invented Paxos, [once described Paxos's core synod algorithm](https://lamport.azurewebsites.net/pubs/paxos-simple.pdf) as "among the simplest and most obvious of distributed algorithms," and claimed that it "follows unavoidably from the properties we want it to satisfy." He's right, although it might not seem that way the first time you read through the algorithm. The Paxos synod algorithm falls out of a lot of invisible context: once you really understand the problem we are solving, why obvious solutions are dead ends, and what must be done to work around those dead ends, the synod algorithm really does start to look like a clear and minimal solution.
 
-So let’s try it that way: we’ll take a fresh look at the problem of consensus, try to solve it, get stuck; then we’ll identify the problem and work around it. We should then arrive at Paxos’s core synod algorithm. Along the way we'll cover the FLP result, which bridges the gap from obvious algorithms that don't work, to algorithms (like Paxos) that do.
+So let’s try it that way: we’ll take a fresh look at the problem of consensus, try to solve it, and get stuck; then we’ll identify the problem and work around it. We should then arrive at Paxos’s core synod algorithm. Along the way we'll cover the FLP result, which bridges the gap from obvious algorithms that don't work, to algorithms (like Paxos) that do.
 
 # Part 1: Consensus
 
-Just about every distributed system has a consensus algorithm running it in somewhere. Even though most programmers have never interacted with a consensus algorithm directly, those fancy distributed replicated databases rely on consensus algorithms internally, as do pretty much all cloud services. But what makes consensus so fundamental? Why are they ubiquitous in distributed systems?
+Just about every distributed system has a consensus algorithm running it in somewhere. Even if you’ve never interacted with a consensus algorithm directly (most programmers haven’t), you have still relied on one if you’ve ever built anything in the cloud. Just about every cloud service relies on a consensus algorithm in one way or another.
 
-One of the fun (or maybe "fun") parts of programming distributed systems is that quite a few common programming tasks that are easy to write in normal code turn out to be really, really hard in distributed code. Consensus algorithms help turn problems like that back into something more tractable. To see what I mean, let's look at a couple examples where a consensus algorithm might be helpful:
+But what makes consensus so fundamental? Why are they ubiquitous in distributed systems?
+
+One of the fun (or maybe "fun") parts of programming distributed systems is that quite a few common programming tasks that are normally easy turn out to be really, really hard in distributed code. The most important of those is arguably making something happen just once: normally you can make something happen once by just writing code to do it (and not putting it in a loop); once is the “default.” But in distributed systems, “just once” turns out to be fiendishly difficult. Consensus algorithms help turn “just once” problems back into something more tractable, by providing one generic solution.
+
+To see what I mean, let's look at a couple examples where a consensus algorithm might be helpful, even for small tasks that don’t feel like they ought to be too difficult.
 
 ## Example: Picking a Random User
 
-How do you write code to do something exactly one time? For example, let's say we're writing code for a message board website, and we want to add a 'user of the day' feature where we spotlight one particular user at random each day. How do write code to pick a user once, and only once each day?
+Let's say we're writing code for a message board website, and we want to add a 'user of the day' feature where we spotlight one particular user at random each day. How do write code to pick a user once, and only once each day?
 
 In real life, we’d probably just add something to a database, and maybe add it to some caching service as well, but let’s pretend for a minute we don’t have those things because they haven’t been invented yet: all we have are computers, networks, and our code. The problem should still fundamentally be solvable, even if we have to do the heavy lifting ourselves. So without fancy data management infrastructure, how do we pick a user once each day?
 

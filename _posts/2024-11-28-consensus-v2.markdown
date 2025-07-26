@@ -5,9 +5,9 @@ author: Dave
 draft: true
 ---
 
-Distributed consensus algorithms are a critical component of modern computing infrastructure, but few people really understand how they work. When the first consensus algorithm, *Paxos*, was introduced to the world in 1989, it was met with a sort of [indifferent confusion](https://www.microsoft.com/en-us/research/publication/part-time-parliament/), and it wasn't until 9 years later that it had gained enough grassroots popularity to be published in a mainstream academic journal. As the world moved online and distributed systems became the norm, Paxos found its way into the foundation of almost every one of those new systems. But, at the same time, it also grew notorious for being beyond the comprehension of mere mortals &mdash; so much so that, when a second viable consensus algorithm, *Raft*, finally came along well over a decade later, the paper was called *In Search of an Understandable Consensus Algorithm*.
+Distributed consensus algorithms are a cornerstone of modern computing infrastructure, but few people really understand how they work. When the first consensus algorithm, *Paxos*, was introduced to the world in 1989, it was met with a sort of [indifferent confusion](https://www.microsoft.com/en-us/research/publication/part-time-parliament/), and it wasn't until 9 years later that it had gained enough grassroots popularity to be published in a mainstream academic journal. As the world moved online and distributed systems became the norm, Paxos found its way into the foundation of almost every one of those new systems. But, at the same time, it also grew notorious for being beyond the comprehension of mere mortals &mdash; so much so that, when a second viable consensus algorithm, *Raft*, finally came along well over a decade later, the paper was called *In Search of an Understandable Consensus Algorithm*.
 
-For the most part, Raft has supplanted Paxos. You can roughly estimate the age of a distributed systems project by the algorithm it uses: if it uses Raft, development probably started in the last few years; if it uses Paxos, it’s older. Raft is a “batteries included” paper: if you implement exactly what you find in the paper, you will end up with a full consensus system which works the way programmers usually expect a consensus system to work. For Paxos, the original papers present the full system only as a sketch, so everybody implementing Paxos has to fill in those blanks themselves, and as a result every Paxos implementation is a little bit different. If you’re starting a project today and you need to implement a distributed consensus algorithm, Raft is probably the better choice. 
+These days, Raft has mostly supplanted Paxos. You can roughly estimate the age of a distributed systems project by the consensus algorithm it uses: if it uses Raft, development probably started in the last few years; if it uses Paxos, it’s older. Raft is a “batteries included” paper: if you implement exactly what you find in the paper, you will end up with a full consensus system which works the way programmers usually expect a consensus system to work. For Paxos, the original papers present the full system only as a sketch, so everybody implementing Paxos has to fill in those blanks themselves, and as a result every Paxos implementation is a little bit different. If you’re starting a project today and you need to implement a distributed consensus algorithm, Raft is probably the better choice. 
 
 Even so, I don't think Paxos should be skipped entirely. The kernel at the core of Paxos is a little protocol called the *synod algorithm*, which is small, well-specified, insightful, and can be embedded into other systems and algorithms in a way that Raft and the full ‘multi-Paxos’ algorithm cannot.
 
@@ -21,15 +21,15 @@ Just about every distributed system has a consensus algorithm running it in some
 
 But what makes consensus so fundamental? Why are they ubiquitous in distributed systems?
 
-One of the fun (or maybe "fun") parts of programming distributed systems is that quite a few common programming tasks that are normally easy turn out to be really, really hard in distributed code. Arguably the most important of those is making something happen just once. Normally you can make something happen once by just writing code to do it (and not putting it in a loop); “once” is the default. But in distributed systems, making something happen “just once” turns out to be *fiendishly* difficult. Consensus algorithms provide a generic solution that turns these “just once” problems back into something more tractable.
+One of the fun (or maybe "fun") parts of programming distributed systems is that quite a few common programming tasks that are normally easy turn out to be really, really hard in distributed code. Arguably the most important of those is making something happen just once. Normally, making something happen once is the default: just write code to do it, and don’t put it in a loop. But in distributed systems, making something happen “just once” turns out to be *fiendishly* difficult. Consensus algorithms provide a generic solution for turning “just once” problems back into something more tractable.
 
-To see what I mean, let's look at a couple examples where a consensus algorithm might be helpful, even for small tasks that don’t feel like they ought to be too difficult.
+To see what I mean, let's look at a couple examples where a consensus algorithm might be helpful, even for small tasks that ought not to be too difficult.
 
 ## Example: Picking a Random User
 
-Let's say we're writing code for a message board website, and we want to add a 'user of the day' feature where we spotlight one particular user at random each day. How do write code to pick a user once, and only once each day?
+Let's say we're writing code for a message board website, and we want to add a 'user of the day' feature where we spotlight one user chosen at random each day. How do write code to pick a user once, and only once each day?
 
-In real life, we’d probably just add something to a database, and maybe add it to some caching service as well, but let’s pretend for a minute we don’t have those things because they haven’t been invented yet: all we have are computers, networks, and our code. The problem should still fundamentally be solvable, even if we have to do the heavy lifting ourselves. So without fancy data management infrastructure, how do we pick a user once each day?
+In real life, we’d probably just add a field to some kind of database, but let’s pretend we don’t have a database because modern distributed computing infrastructure hasn’t been invented yet. For this exercise, all we have are computers, networks, and our code. The problem should still fundamentally be solvable, even if we have to do the heavy lifting ourselves. So without fancy infrastructure, how do we pick a user once each day?
 
 If we have everything running on one machine, a simple answer might be something like this:
 
@@ -64,6 +64,14 @@ What if we have distributed system? In a way, a distributed system is lot like m
 For us as programmers, what's different about distributed systems is how threads communicate: on a single machine, threads can just share variables, but once we have different threads on different machines we need to use the network. We do indeed rely on sharing variables in our multithreaded solution, so to distribute it we'll have to switch to using the network instead.
 
 Here's one way to do that: we can pick a node arbitrarily and assign it the job of managing the user of the day. Let's call that node the **coordinator**. The coordinator decides who is the user of the day, and remembers that decision all day. Any time another node needs to know who is the current user of the day, that other node asks the coordinator.
+
+---
+
+TODO: can we safely remove the bully algorithm discussion from this part of the article?
+
+I’m not sure it really serves the overall narrative, and until we start talking about failures and fault tolerance, there is no obvious reason not to simply provision each node with a hardcoded coordinator address.
+
+---
 
 Sounds great, but how do the nodes figure out which one is the coordinator? Well, for most distributed systems running in data centers or the cloud, we know ahead of time the full set of nodes that are going to participate in the system. If we provision each node with a copy of that node list, we could have all nodes independently run the same deterministic algorithm on that list to pick the coordinator. As long as all nodes run the same deterministic algorithm with the same node list as input, they'll all end up picking the same coordinator &mdash; without ever sending a single network message!
 

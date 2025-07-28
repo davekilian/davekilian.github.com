@@ -23,6 +23,20 @@ But what makes consensus so fundamental? Why are they ubiquitous in distributed 
 
 One of the fun (or maybe "fun") parts of programming distributed systems is that quite a few common programming tasks that are normally easy turn out to be really, really hard in distributed code. Arguably the most important of those is making something happen just once. Normally, making something happen once is the default: just write code to do it, and don’t put it in a loop. But in distributed systems, making something happen “just once” turns out to be *fiendishly* difficult. Consensus algorithms provide a generic solution for turning “just once” problems back into something more tractable.
 
+---
+
+TODO - one thing I don’t like here is I made it sound like the problem solved is “exactly once,” but really there are an interconnected set of problems which are mutually reducible to one another without much effort:
+
+* Exactly once
+* Conflict resolution
+* Ordering events
+
+The relationship between these problems is interesting but not something we can talk about here / we may not have space to at all. However, we should make it clear there are several problem classes that are all served by consensus (readers should start being able to identify what they are)
+
+Luckily we already have two problems which fall easily under the two classes -- exactly once for user of the day, conflict resolution for order statuses, we just need to rebrand them as different problems with surprisingly similar solutions.
+
+---
+
 To see what I mean, let's look at a couple examples where a consensus algorithm might be helpful, even for small tasks that ought not to be too difficult.
 
 ## Example: Picking a Random User

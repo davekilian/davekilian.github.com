@@ -5,12 +5,7 @@ author: Dave
 draft: true
 ---
 
-Distributed consensus algorithms are known primarily for two things: 
-
-1. They play a critical, fundamental role in modern computing infrastructure
-2. They are obscure, arcane even
-
-You can work on cloud software all your life and never interact with a consensus algorithm even once, yet everything you build in the cloud fundamentally relies on a consensus algorithm at a fundamental level &mdash; or so they say. But what exactly is a consensus algorithm, and what is this small but fundamental role they play? That too is obscure, but in this deep dive we aim to find out.
+I would venture to say programmers generally know two things about consensus algorithms: that they're important for cloud computing at a fundamental level, and that basically nobody knows how they work &mdash; in fact, most people can't say what a consensus algorithm does, or what fundamental role it would play in a larger system. You can work on cloud software all your life and never interact with a consensus algorithm even once, yet everything you build ends up relying on consensus algorithms, because there's a consensus algorithm running somewhere behind all the APIs and abstractions cloud software is built on. This article itself was brought to you in part by a consensus algorithm.
 
 When the first consensus algorithm, *Paxos*, was introduced to the world in 1989, it was met with a sort of [indifferent confusion](https://www.microsoft.com/en-us/research/publication/part-time-parliament/), and it wasn't until 9 years later that it had gained enough grassroots popularity to be taken seriously. As the world moved online and distributed systems became the way we build software, Paxos found its way into the foundation those new systems. But at the same time, it also grew notorious for being beyond the comprehension of mere mortals. In fact, when a second viable consensus algorithm, *Raft*, finally came along well over a decade later, the paper was called *In Search of an Understandable Consensus Algorithm* &mdash; the accomplishment was not in creating a new consensus algorithm, but rather in being able to explain how one works!
 

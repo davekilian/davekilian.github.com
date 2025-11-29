@@ -780,6 +780,84 @@ This is the low point in our journey. We understand the problem and we appreciat
 
 # Part 3: The FLP Result
 
+First a couple of setup topics
+
+I want to present the CAP theorem as FLP says there’s an instance of the CAP problem hiding inside the algorithms we are trying to build.  CAP is not a theorem, but an “observation” that in the basic situation where A is asked but B is the authority, A can ask B, but if B never responds then A can either refuse to answer (C) or provide its best guess (A); calling it a “theorem,” “pick two” is a joke. But it is a useful problem to think about because there’s an instance of it embedded in this problem.
+
+Also cover how all of our algorithms have random / nondeterministic behavior but have only deterministic steps, and where that comes from is the network. Land the discussion as getting used to thinking about the behavior of consensus algorithms in terms of network delivery order.
+
+Now on to the proof.
+
+Say you have an algorithm that always obeys this rule:
+
+> At any point before the algorithm has decided, for any message already sent but not yet delivered, there is an order of operations where the algorithm remains undecided after the message has been delivered
+
+Let’s call this “rule #1”
+
+This is a mouthful so draw it out in diagrams
+
+Now say you have an algorithm and stop it and look at the messages already sent but not yet delivered. Now look at the rule above. Pick any message; there is some order of operations such that that message is delivered and the system remains undecided. So let’s say, just by pure dumb luck, the messages are delivered in that order. Where does that leave us?
+
+* The algorithm has progressed
+* Time has been spent
+* One or messages are consumed
+* The system is yet undecided
+* And “rule #1” is still in effect!
+
+Which means we can apply rule 1 again &mdash; once again, pick any message; there is some way for the message to be delivered and the system to remain undecided; so say by dumb luck that actually happens again; then we are back in the same situation again.
+
+The key observation is nothing stops this from happening again, and again, and again ...
+
+What does this mean? It means the algorithm does not guarantee termination: at any point in the algorithm there is still some way for the algorithm to remain undecided. Since nothing forces a decision to eventually happen, we have to admit we don’t really have a termination guarantee.
+
+Well, that’s great. We actually do want a termination guarantee though. So we need to avoid rule 1. So in fact, as a design constraint, we should adopt New Rule #1
+
+> At some point point before the algorithm has decided, there will be a message already sent but not yet delivered, such that no matter what order messages are delivered, the algorithm cannot remain undecided after the message has been delivered
+
+Note that New Rule 1 is just the inversion of Rule 1. An algorithm can either implement Rule 1 or the New Rule 1. But since Rule 1 algorithms don’t guarantee termination, we want an algorithm that implements New Rule #1
+
+Well now let’s think about this message that “was sent before the algorithm decided” and somehow makes it so the “algorithm cannot remain undecided.” Select one (the definition only says the algorithm will have “at least 1” such message.)
+
+Call that message e.
+
+WLOG say if e is delivered immediately after it is sent, the algorithm decides red.
+
+Well, the algorithm is still undecided by the time e is still pending, right? So there also must be some sequence of events (message deliveries) which cause the system to decided blue by the time e is delivered.
+
+But each machine can only see its own local message delivery order. So this delivery order that causes e to decided blue red can blue can only depend on the relative order of messages sent to that one machine.
+
+So if e exists, there also exists e’ which is also destined to the same machine. If e gets there first, we will decide red, but if r’ gets there first we will decide blue instead.
+
+So the decision of the entire system now depends on the local delivery order for a single machine.
+
+Uh oh, it’s the CAP theorem!
+
+Only machine B receiving e and e’ knows what their relative order will be. So if all other machines A get cut off from B, everyone else can either wait to hear from B (consistent) or try to move on without B (available).
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+---
+
 7/17/25: one more observation I’d like to work in below: the situation with the two inbound messages that determine the outcome of the algorithm is unsolvable because it’s an instance of the CAP theorem: if you get partitioned from that node you can either be consistent with its answer (required by agreement) or you can be available (required by termination), but not both.
 
 So the basic flow of this section might be like

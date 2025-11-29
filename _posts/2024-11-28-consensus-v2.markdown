@@ -834,7 +834,19 @@ Uh oh, it’s the CAP theorem!
 
 Only machine B receiving e and e’ knows what their relative order will be. So if all other machines A get cut off from B, everyone else can either wait to hear from B (consistent) or try to move on without B (available).
 
+So we are in a catch-22
 
+* If we have a Rule 1 algorithm, it doesn’t guarantee termination
+* If we instead of have New Rule 1, we run into the CAP theorem
+* But an algorithm can only be one of those two
+
+So now we are stuck.
+
+So consensus is impossible? Yes and no. Certainly the requirements we previously chose for ourselves were overconstrained, now we know it is impossible to satisfy them all.
+
+But there is a lateral move out of here. Pull the randomized termination guarantee quite out of the FLP paper. Non-guaranteed termination is very different from guaranteed non-termination. Yes, a Rule 1 algorithm can technically remain undecided forever, but if the probability of remaining undecided falls exponentially as the algorithm runs longer, we have something close enough to a termination guarantee that maybe we can get by.
+
+In fact, this is the lateral move that Paxos takes. Paxos is a Rule 1 algorithm.
 
 
 

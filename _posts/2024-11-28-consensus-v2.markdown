@@ -784,6 +784,8 @@ First a couple of setup topics
 
 I want to present the CAP theorem as FLP says there’s an instance of the CAP problem hiding inside the algorithms we are trying to build.  CAP is not a theorem, but an “observation” that in the basic situation where A is asked but B is the authority, A can ask B, but if B never responds then A can either refuse to answer (C) or provide its best guess (A); calling it a “theorem,” “pick two” is a joke. But it is a useful problem to think about because there’s an instance of it embedded in this problem.
 
+I think where I want to land this is: the CAP theorem describes a situation where the system is effectively wedged (it cannot make progress without giving wrong answers), so our jobs as designers of distributed algorithms is to notice we have accidentally created a CAP situation and redesign our systems to avoid it
+
 Also cover how all of our algorithms have random / nondeterministic behavior but have only deterministic steps, and where that comes from is the network. Land the discussion as getting used to thinking about the behavior of consensus algorithms in terms of network delivery order.
 
 Now on to the proof.

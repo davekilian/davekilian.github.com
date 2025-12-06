@@ -19,9 +19,7 @@ Ready? Then let’s dive in!
 
 # Part 1: Consensus
 
-The first major problem people have in explaining consensus algorithms is that it’s hard to even say exactly what a consensus algorithm does. Let’s tackle that first.
-
-One of the fun (or maybe "fun") parts of programming distributed systems is that quite a few common programming tasks that are normally easy turn out to be just *fiendishly* difficult in distributed code. Among the most important of those is making something happen just once. In normal code, "once" is something that happens for free: if you call some piece of code and you don't do it in a loop, it'll happen just once by default. But in distributed systems, making something happen “just once” turns out to be *fiendishly* difficult. Consensus algorithms provide a generic solution for turning “just once” problems back into something more tractable.
+One of the fun (or maybe "fun") parts of programming distributed systems is that quite a few common programming tasks that are normally easy turn out to be awfully difficult in distributed code. Among the most important of those is making something happen just once. In normal code, "once" is something that happens for free: if you call some piece of code and you don't do it in a loop, it'll happen just once by default. But in distributed systems, making something happen “just once” turns out to be *fiendishly* difficult. Consensus algorithms provide a generic solution for turning “just once” problems back into something more tractable.
 
 ---
 

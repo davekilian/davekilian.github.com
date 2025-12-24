@@ -21,9 +21,7 @@ Leslie Lamport, who invented Paxos, [once described Paxos's synod algorithm](htt
 
 So maybe that's the best way to learn about consensus: let's figure out what exactly a consensus algorithm should do, try all the obvious approaches to solving it, find they are all broken, and then get stuck. Then, in getting ourselves un-stuck, we'll have to find the pattern in why our attempts so far haven't worked, and that should lead us "unavoidably" into the synod algorithm &mdash; supposedly one of the simplest and most obvious consensus algorithms.
 
-Remember, our ultimate goal will not be to build a full consensus system; instead, we want to get to the crux of consensus.
-
-Ready? Then let’s dive in!
+Remember, our ultimate goal will not be to build a full consensus system; instead, we want to get to the crux of consensus. Ready? Then let’s dive in!
 
 # Part 1: Consensus
 

@@ -13,7 +13,7 @@ In fact, Raft is all the more appealing if you intend to implement any of the th
 
 So yeah, Raft has a lot of things going for it. But I wouldn't be here writing this if I thought this mean Paxos had nothing going for it either :)
 
-Raft has certainly made this understandability situation better, but in my reading, Raft is more of a recipe than an insight &mdash; a feat of factoring more than a completely new way to look at the consensus problem. I respect that, but when I study an algorithm, what I usually want to get out of it is to find a crux: what is the tricky problem at the heart of the algorithm, and what’s the trick we chose for solving it? For example, binary search uses the idea of eliminating half the remaining search space in one step; Dijkstra’s algorithm is about exploring the shortest remaining segment you know of so far; what’s that idea for a consensus algorithm like Raft or Paxos? Neither paper exactly answers that, but Paxos gets much closer to the crux than Raft.
+Raft has certainly made this understandability situation better, but in my reading, Raft is more of a recipe than an insight &mdash; it's a feat of factoring more than a completely new way to look at the consensus problem. I respect that, but when I study an algorithm, what I usually want to get out of it is to find a crux: what is the tricky problem at the heart of the algorithm, and what’s the trick we chose for solving it? For example, binary search uses the idea of eliminating half the remaining search space in one step; Dijkstra’s algorithm is about exploring the shortest remaining segment you know of so far; what’s that idea for a consensus algorithm like Raft or Paxos? Neither paper exactly answers that, but Paxos gets much closer to the crux than Raft.
 
 This is because Paxos, unlike Raft, is layered around a small, simple, insightful algorithm, which the paper calls the *Synod* algorithm in keeping with its “parliaments” theme. Whether or not you ever design a full consensus system (few people will ever need to), I still think the synod algorithm is worth learning if you want to have a strong foundation in distrubted algorithms.
 
@@ -25,7 +25,11 @@ Remember, our ultimate goal will not be to build a full consensus system; instea
 
 # Part 1: Consensus
 
-One of the fun (or maybe "fun") parts of programming distributed systems is that quite a few common programming tasks that are normally easy turn out to be awfully difficult in distributed code. Among the most important of those is making something happen just once. In normal code, "once" is something that happens for free: if you call some piece of code and you don't do it in a loop, it'll happen just once by default. But in distributed systems, making something happen “just once” turns out to be *fiendishly* difficult. Consensus algorithms provide a generic solution for turning “just once” problems back into something more tractable.
+One of the fun (or maybe "fun") parts of programming distributed systems is that some kinds of common programming tasks become unexpetedly, terribly difficult in distributed code. 
+
+
+
+quite a few common programming tasks that are normally easy turn out to be awfully difficult in distributed code. Among the most important of those is making something happen just once. In normal code, "once" is something that happens for free: if you call some piece of code and you don't do it in a loop, it'll happen just once by default. But in distributed systems, making something happen “just once” turns out to be *fiendishly* difficult. Consensus algorithms provide a generic solution for turning “just once” problems back into something more tractable.
 
 ---
 

@@ -7,7 +7,7 @@ draft: true
 
 Should you learn Paxos?
 
-There are some legitimate arguments in favor of skipping it. For one, Paxos is notoriously difficult to understand &mdash; so much so that it [languished in relative obscurity for the better part of a decade](https://www.microsoft.com/en-us/research/publication/part-time-parliament/) before it started to be taken seriously in the mainstream. Plus, Raft exists. The Raft paper was called, *In Search of an Understandable Consensus Algorithm*, because Raft’s big accomplishment is that it solves the same problem as Paxos without being as unintuitive and explanation-defying as Paxos.
+There are some legitimate arguments in favor of skipping it. For one, Paxos is notoriously difficult to understand &mdash; so much so that it [languished in relative obscurity for the better part of a decade](https://www.microsoft.com/en-us/research/publication/part-time-parliament/) before it started to be taken seriously in the mainstream. That happened because nobody understood the paper, thus nobody saw its significance either. It was seen as a sort of joke played on the community by a smart but eccentric man. Plus, Raft exists. The Raft paper was called, *In Search of an Understandable Consensus Algorithm*, because Raft’s big accomplishment is that it solves the same problem as Paxos without being as unintuitive and explanation-defying as Paxos.
 
 These are reasonable points, but obviously we wouldn’t be here if I thought that was the end of the story :)
 
